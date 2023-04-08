@@ -8,7 +8,9 @@ const Side = (props) => {
 
   const handlerClick = (target) => {
     props.onSelect(target);
-    setItemActive(()=>{return(target)});
+    setItemActive(() => {
+      return target;
+    });
   };
 
   return (
@@ -19,14 +21,14 @@ const Side = (props) => {
           label="Farmlands"
           target="farmlands"
           ico="/logo192.png"
-          active={(itemActive==="farmlands"?true:false)}
+          active={itemActive === "farmlands" ? true : false}
         />
         <SideItem
           onClick={handlerClick}
           label="Companies"
           target="companies"
           ico="/logo192.png"
-          active={(itemActive==="companies"?true:false)}
+          active={itemActive === "companies" ? true : false}
         />
 
         <Summary />
