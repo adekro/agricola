@@ -1,0 +1,22 @@
+header{
+    min-height: 60px;
+}
+.layoutBody{
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    min-height: calc(100vh - 60px);
+}
+.layoutSide{
+    width: 20%; 
+    min-width: 200px;
+    display: flex;
+    justify-content: center;    
+}
+.layoutContent{
+    width: 80%;
+    display: flex;
+    justify-content: center;
+}
+
+
