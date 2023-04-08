@@ -11,7 +11,7 @@ header{
     width: 20%; 
     min-width: 200px;
     display: flex;
-    justify-content: center;    
+    justify-content: center;
 }
 .layoutContent{
     width: 80%;
