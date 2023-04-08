@@ -5,6 +5,7 @@
     justify-content:baseline;
     width: 50%;
     min-height: 200px;
+    font-size: calc(10px + 1vmin);
 }
 .sideItem{
     margin: 5px;
@@ -17,6 +18,7 @@
     justify-content:space-between;
     border: 1px solid transparent;
     border-radius: 50px;
+   
 }
 
 .sideItem:hover{
@@ -26,7 +28,6 @@
 .siteItemActive{
     background-color: #d3e3fd;
     -webkit-font-smoothing: antialiased;
-    font-size: 1.1rem;
     font-weight: 600;
     letter-spacing: normal;
     color: #202124;
