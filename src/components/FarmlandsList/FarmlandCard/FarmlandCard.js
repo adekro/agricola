@@ -1,5 +1,5 @@
 import Button from "../../UI/Button/Button";
-import "./FarmlandCard.scss";
+import styles from "./FarmlandCard.module.scss";
 
 const FarmlandCard = ({
   type,
@@ -12,27 +12,31 @@ const FarmlandCard = ({
     console.log("Do something with task #6");
   };
   return (
-    <div className="FarmlandCard-container">
-      <div className="FarmlandCard-primaryInfo">
+    <div className={styles["FarmlandCard-container"]}>
+      <div className={styles["FarmlandCard-primaryInfo"]}>
         <div>
-          <h6 className="label">Farming</h6>
-          <h2 className="value">{type}</h2>
+          <h6 className={styles.label}>Farming</h6>
+          <h2 className={styles.value}>{type}</h2>
         </div>
         <div>
-          <div className="label labelSmall">
+          <div className={`${styles.label} ${styles.labelSmall}`}>
             {`Area: ${area}`}m<sup>2</sup>
           </div>
-          <div className="label labelSmall">{`Perimeter: ${perimeter}m`}</div>
+          <div
+            className={`${styles.label} ${styles.labelSmall}`}
+          >{`Perimeter: ${perimeter}m`}</div>
         </div>
       </div>
-      <div className="FarmlandCard-details">
-        <div className="FarmlandCard-detailsInner">
-          <div className="FarmlandCard-owner">
-            <h6 className="label labelVariant">Owner</h6>
-            <h2 className="value">{ownerDisplayName}</h2>
+      <div className={styles["FarmlandCard-details"]}>
+        <div className={styles["FarmlandCard-detailsInner"]}>
+          <div className={styles["FarmlandCard-owner"]}>
+            <h6 className={`${styles.label} ${styles.labelVariant}`}>Owner</h6>
+            <h2 className={styles.value}>{ownerDisplayName}</h2>
           </div>
-          <div className="FarmlandCard-location">
-            <span className="FarmlandCard-locationText label labelVariant">
+          <div className={styles["FarmlandCard-location"]}>
+            <span
+              className={`${styles["FarmlandCard-locationText"]} ${styles.label} ${styles.labelVariant}`}
+            >
               {location}
             </span>
           </div>
