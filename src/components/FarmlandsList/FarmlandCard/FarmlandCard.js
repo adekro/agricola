@@ -1,5 +1,5 @@
 import Button from "../../UI/Button/Button";
-import "./FarmlandCard.css";
+import "./FarmlandCard.scss";
 
 const FarmlandCard = ({
   type,
