@@ -8,7 +8,7 @@ import CompaniesList from "../CompaniesList/CompaniesList";
 
 const Layout = () => {
 	const { farmlands } = useFarmlands();
-  const { companies } = useCompanies();
+	const { companies } = useCompanies();
 	const [selectedList, setSelectedList] = useState("farmlands");
 	const handlerSelectSide = (target) => {
 		setSelectedList(() => {
