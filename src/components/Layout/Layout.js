@@ -11,9 +11,7 @@ const Layout = () => {
 	const { companies } = useCompanies();
 	const [selectedList, setSelectedList] = useState("farmlands");
 	const handlerSelectSide = (target) => {
-		setSelectedList(() => {
-			return target;
-		});
+		setSelectedList(target);
 	};
 
 	return (

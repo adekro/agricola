@@ -1,13 +1,13 @@
 import Button from "../../UI/Button/Button";
-import styles from "./CompaniesCard.module.scss";
+import styles from "./CompanyCard.module.scss";
 
-const CompaniesCard = ({ phone, email, piva, website, notes, name }) => {
+const CompanyCard = ({ phone, email, piva, website, notes, name }) => {
 	const onViewButtonClickHandler = () => {
 		console.log("Do something with task #11");
 	};
 	return (
-		<div className={styles["CompaniesCard-container"]}>
-			<div className={styles["CompaniesCard-primaryInfo"]}>
+		<div className={styles["CompanyCard-container"]}>
+			<div className={styles["CompanyCard-primaryInfo"]}>
 				<div>
 					<h6 className={styles.label}>Contacts</h6>
 				</div>
@@ -21,9 +21,9 @@ const CompaniesCard = ({ phone, email, piva, website, notes, name }) => {
 						className={`${styles.label} ${styles.labelSmall}`}>{`Website: ${website}`}</div>
 				</div>
 			</div>
-			<div className={styles["CompaniesCard-details"]}>
-				<div className={styles["CompaniesCard-detailsInner"]}>
-					<div className={styles["CompaniesCard-owner"]}>
+			<div className={styles["CompanyCard-details"]}>
+				<div className={styles["CompanyCard-detailsInner"]}>
+					<div className={styles["CompanyCard-owner"]}>
 						<h6 className={`${styles.label} ${styles.labelVariant}`}>Owner</h6>
 						<h2 className={styles.value}>{name}</h2>
 						<div className={`${styles.labelNotes}`}>
@@ -31,7 +31,7 @@ const CompaniesCard = ({ phone, email, piva, website, notes, name }) => {
 								className={`${styles.labelVariant} ${styles.labelSmall}`}>{`${notes}`}</div>
 						</div>
 					</div>
-					<div className={styles["CompaniesCard-piva"]}>
+					<div className={styles["CompanyCard-piva"]}>
 						<h6 className={`${styles.labelVariant} ${styles.labelNoMargin}`}>CF/P.IVA</h6>
 						<div className={`${styles.labelVariant} ${styles.labelSmall}`}>
 							{piva}
@@ -44,4 +44,4 @@ const CompaniesCard = ({ phone, email, piva, website, notes, name }) => {
 	);
 };
 
-export default CompaniesCard;
+export default CompanyCard;

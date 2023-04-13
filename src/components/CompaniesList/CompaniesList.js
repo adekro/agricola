@@ -1,10 +1,10 @@
-import CompaniesCard from "./CompaniesCard/CompaniesCard";
+import CompanyCard from "./CompanyCard/CompanyCard";
 
 const CompaniesList = ({ companies }) => {
 	return (
 		<div>
 			{companies.map((company) => (
-				<CompaniesCard
+				<CompanyCard
 					phone={company.phone}
 					email={company.email}
 					piva={company.piva}
