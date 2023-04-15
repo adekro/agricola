@@ -7,9 +7,12 @@ const FarmlandCard = ({
   location,
   perimeter,
   ownerDisplayName,
+  id,
+  onView,
 }) => {
   const onViewButtonClickHandler = () => {
-    console.log("Do something with task #6");
+    onView(id);
+    console.log("card" + id);
   };
   return (
     <div className={styles["FarmlandCard-container"]}>
