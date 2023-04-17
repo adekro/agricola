@@ -8,45 +8,45 @@ import CompaniesList from "../CompaniesList/CompaniesList";
 import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
 
 const Layout = () => {
-  const { farmlands } = useFarmlands();
-  const { companies } = useCompanies();
-  const [selectedList, setSelectedList] = useState("farmlands");
-  const [viewFarmland, setViewFarmland] = useState(-1);
-  const handlerSelectSide = (target) => {
-    setSelectedList(target);
-    setViewFarmland(-1);
-  };
+	const { farmlands } = useFarmlands();
+	const { companies } = useCompanies();
+	const [selectedList, setSelectedList] = useState("farmlands");
+	const [viewFarmland, setViewFarmland] = useState(null);
+	const handlerSelectSide = (target) => {
+		setSelectedList(target);
+		setViewFarmland(null);
+	};
 
-  const handlerFarmlandOnClick = (id) => {
-    setViewFarmland(id);
-    setSelectedList("");
-  };
+	const handlerFarmlandOnClick = (id) => {
+		setViewFarmland(id);
+		setSelectedList("");
+	};
 
-  return (
-    <React.Fragment>
-      <header>header</header>
-      <div className={classes.layoutBody}>
-        {viewFarmland === -1 && (
-          <>
-            <div className={classes.layoutSide}>
-              <Side onSelect={handlerSelectSide} />
-            </div>
-            <div className={classes.layoutContent}>
-              {selectedList === "farmlands" && (
-                <FarmlandsList
-                  farmlands={farmlands}
-                  onClick={handlerFarmlandOnClick}
-                />
-              )}
-              {selectedList === "companies" && (
-                <CompaniesList companies={companies} />
-              )}
-            </div>
-          </>
-        )}
-        {viewFarmland > -1 && <FarmlandScreen onBack={handlerSelectSide} />}
-      </div>
-    </React.Fragment>
-  );
+	return (
+		<React.Fragment>
+			<header>header</header>
+			<div className={classes.layoutBody}>
+				{viewFarmland === null && (
+					<>
+						<div className={classes.layoutSide}>
+							<Side onSelect={handlerSelectSide} />
+						</div>
+						<div className={classes.layoutContent}>
+							{selectedList === "farmlands" && (
+								<FarmlandsList
+									farmlands={farmlands}
+									onClick={handlerFarmlandOnClick}
+								/>
+							)}
+							{selectedList === "companies" && (
+								<CompaniesList companies={companies} />
+							)}
+						</div>
+					</>
+				)}
+				{viewFarmland != null && <FarmlandScreen onBack={handlerSelectSide} />}
+			</div>
+		</React.Fragment>
+	);
 };
 export default Layout;
