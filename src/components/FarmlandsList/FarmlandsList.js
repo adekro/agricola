@@ -1,6 +1,9 @@
 import FarmlandCard from "./FarmlandCard/FarmlandCard";
 
-const FarmlandsList = ({ farmlands }) => {
+const FarmlandsList = ({ farmlands, onClick }) => {
+  const onViewHandler = (id) => {
+    onClick(id);
+  };
   return (
     <div>
       {farmlands.map((farm) => (
@@ -11,6 +14,8 @@ const FarmlandsList = ({ farmlands }) => {
           location={farm.location}
           ownerDisplayName={farm.ownerDisplayName}
           key={farm.id}
+          id={farm.id}
+          onView={onViewHandler}
         />
       ))}
     </div>
