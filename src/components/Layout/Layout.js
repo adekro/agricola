@@ -7,6 +7,7 @@ import FarmlandsList from "../FarmlandsList/FarmlandsList";
 import CompaniesList from "../CompaniesList/CompaniesList";
 import Header from "../Header/Header";
 import Search from "../Header/Search/Search";
+import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
 // import Button from "../UI/Button/Button";
 
 const Layout = () => {
@@ -14,10 +15,15 @@ const Layout = () => {
   const { companies } = useCompanies();
   const [selectedList, setSelectedList] = useState("farmlands");
   const [filterString, setFilterString] = useState("");
+  const [viewFarmland, setViewFarmland] = useState(null);
   const handlerSelectSide = (target) => {
     setSelectedList(target.toLowerCase());
+    setViewFarmland(null);
   };
-
+  const handlerFarmlandOnClick = (id) => {
+    setViewFarmland(id);
+    setSelectedList("");
+  };
   const filterResultsList = useCallback(
     (list) => {
       return list.filter((item) => {
@@ -44,17 +50,25 @@ const Layout = () => {
         </Button> */}
       </Header>
       <div className={classes.layoutBody}>
-        <div className={classes.layoutSide}>
-          <Side onSelect={handlerSelectSide} />
-        </div>
-        <div className={classes.layoutContent}>
-          {selectedList === "farmlands" && (
-            <FarmlandsList farmlands={filterResultsList(farmlands)} />
-          )}
-          {selectedList === "companies" && (
-            <CompaniesList companies={filterResultsList(companies)} />
-          )}
-        </div>
+        {viewFarmland === null && (
+          <>
+            <div className={classes.layoutSide}>
+              <Side onSelect={handlerSelectSide} />
+            </div>
+            <div className={classes.layoutContent}>
+              {selectedList === "farmlands" && (
+                <FarmlandsList
+                  farmlands={filterResultsList(farmlands)}
+                  onClick={handlerFarmlandOnClick}
+                />
+              )}
+              {selectedList === "companies" && (
+                <CompaniesList companies={filterResultsList(companies)} />
+              )}
+            </div>
+          </>
+        )}
+        {viewFarmland != null && <FarmlandScreen onBack={handlerSelectSide} />}
       </div>
     </React.Fragment>
   );
