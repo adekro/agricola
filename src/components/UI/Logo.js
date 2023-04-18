@@ -1,12 +1,12 @@
-export default (() => {
+const Logo = ({ type }) => {
   const getLogo = () => {
     return (
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        width="512"
-        height="512"
+        // width="512"
+        // height="512"
         viewBox="0 0 512 512"
-        style="overflow: visible;"
+        style={{ overflow: "visible" }}
       >
         <g
           transform="matrix(0.17444946689662208, 0, 0, 0.17444946689662208, 314.50298904253935, 145.2445450851443)"
@@ -45,10 +45,10 @@ export default (() => {
     return (
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        width="512"
-        height="512"
-        viewBox="0 0 512 512"
-        style="overflow: visible;"
+        width="256"
+        height="128"
+        // viewBox="0 0 20 256"
+        style={{ overflow: "visible" }}
       >
         <g
           transform="matrix(0.17444946689662208, 0, 0, 0.17444946689662208, 314.50298904253935, 145.2445450851443)"
@@ -193,8 +193,11 @@ export default (() => {
     );
   };
 
-  return {
-    getLogo,
-    getAgricolaLogo,
-  };
-})();
+  if (type === "small") {
+    return getLogo();
+  } else {
+    return getAgricolaLogo();
+  }
+};
+
+export default Logo;
