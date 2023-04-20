@@ -5,16 +5,19 @@
   min-height: calc(100vh - 60px);
 }
 .layoutSide {
-  width: 20%;
+  width: 19%;
   min-width: 200px;
   display: flex;
   justify-content: center;
+  background: var(--background-secondary);
+  margin-right: 1%;
+  border-top-right-radius: 10px;
 }
 .layoutContent {
   width: 80%;
   display: flex;
   justify-content: center;
-  background-color: white;
+  background-color: var(--background-secondary);
   border-top-left-radius: 10px;
 }
 

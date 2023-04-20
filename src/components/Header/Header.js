@@ -4,7 +4,7 @@ const Header = ({ children }) => {
   return (
     <header className={styles.Header}>
       <a href="#default" className={styles.logo}>
-        AgricolaLogo
+        <img src="/logolabel.png" />
       </a>
       {children}
       <div className={styles["header-right"]}>

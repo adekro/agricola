@@ -20,19 +20,21 @@
 }
 
 .sideItem:hover {
-  background-color: #eee;
+  background-color: var(--secondary-color);
+  color: var(--secondary-color-text);
   cursor: pointer;
 }
 .siteItemActive {
-  background-color: #d3e3fd;
+  background-color: var(--secondary-color-dark);
   -webkit-font-smoothing: antialiased;
   font-weight: 600;
   letter-spacing: normal;
-  color: #202124;
+  color: var(--secondary-color-dark-text);
   text-shadow: none;
 }
 .siteItemActive:hover {
-  background-color: #d3e3fd;
+  background-color: var(--secondary-color-dark);
+  color: var(--secondary-color-dark-text);
 }
 
 .sideItem img {
