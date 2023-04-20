@@ -1,9 +1,9 @@
 import Button from "../../UI/Button/Button";
 import styles from "./CompanyCard.module.scss";
 
-const CompanyCard = ({ phone, email, piva, website, notes, name }) => {
+const CompanyCard = ({ id, phone, email, piva, website, notes, name, onView }) => {
 	const onViewButtonClickHandler = () => {
-		console.log("Do something with task #11");
+		onView(id);
 	};
 	return (
 		<div className={styles["CompanyCard-container"]}>

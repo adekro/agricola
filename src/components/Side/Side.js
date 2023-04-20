@@ -3,11 +3,11 @@ import classes from "./Side.module.css";
 import SideItem from "./SideItem";
 import Summary from "../Summary/Summary";
 
-const Side = (props) => {
-  const [itemActive, setItemActive] = useState("farmlands");
+const Side = ({ onSelect, active }) => {
+  const [itemActive, setItemActive] = useState(active);
 
   const handlerClick = (target) => {
-    props.onSelect(target);
+    onSelect(target);
     setItemActive(() => {
       return target;
     });

@@ -1,7 +1,16 @@
 export default (() => {
 	const localStorageKeyName = "companies";
-	const getItems = () => {
-		return JSON.parse(localStorage.getItem(localStorageKeyName) ?? {});
+	const getItems = (companyId = null) => {
+		if (companyId === null) {
+			return JSON.parse(localStorage.getItem(localStorageKeyName) ?? {});
+		} else {
+
+			let list = JSON.parse(localStorage.getItem(localStorageKeyName) ?? {});
+			return list.filter(
+				(company) => company.id === companyId
+			);
+		}
+
 	};
 	const storeItems = (companies) => {
 		localStorage.setItem(localStorageKeyName, JSON.stringify(companies));
