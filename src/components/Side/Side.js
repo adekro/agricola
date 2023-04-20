@@ -1,9 +1,9 @@
-import React, { useState, active } from "react";
+import React, { useState } from "react";
 import classes from "./Side.module.css";
 import SideItem from "./SideItem";
 import Summary from "../Summary/Summary";
 
-const Side = ({ onSelect }) => {
+const Side = ({ onSelect, active }) => {
   const [itemActive, setItemActive] = useState(active);
 
   const handlerClick = (target) => {
