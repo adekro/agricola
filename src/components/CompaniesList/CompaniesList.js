@@ -1,6 +1,9 @@
 import CompanyCard from "./CompanyCard/CompanyCard";
 
-const CompaniesList = ({ companies }) => {
+const CompaniesList = ({ companies, onClick }) => {
+	const onViewHandler = (id) => {
+		onClick(id);
+	};
 	return (
 		<div>
 			{companies.map((company) => (
@@ -12,6 +15,8 @@ const CompaniesList = ({ companies }) => {
 					notes={company.notes}
 					name={company.name}
 					key={company.id}
+					id={company.id}
+					onView={onViewHandler}
 				/>
 			))}
 		</div>

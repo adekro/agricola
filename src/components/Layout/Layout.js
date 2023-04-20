@@ -8,6 +8,8 @@ import CompaniesList from "../CompaniesList/CompaniesList";
 import Header from "../Header/Header";
 import Search from "../Header/Search/Search";
 import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
+import CompanyScreen from "../CompanyScreen/CompanyScreen";
+
 // import Button from "../UI/Button/Button";
 
 const Layout = () => {
@@ -16,13 +18,20 @@ const Layout = () => {
   const [selectedList, setSelectedList] = useState("farmlands");
   const [filterString, setFilterString] = useState("");
   const [viewFarmland, setViewFarmland] = useState(null);
+  const [viewCompany, setViewCompany] = useState(null);
   const handlerSelectSide = (target) => {
     setSelectedList(target.toLowerCase());
     setViewFarmland(null);
+    setViewCompany(null);
+
   };
   const handlerFarmlandOnClick = (id) => {
     setViewFarmland(id);
-    setSelectedList("");
+    setSelectedList("farmlands");
+  };
+  const handlerCompanyOnClick = (id) => {
+    setViewCompany(id);
+    setSelectedList("company");
   };
   const filterResultsList = useCallback(
     (list) => {
@@ -50,25 +59,26 @@ const Layout = () => {
         </Button> */}
       </Header>
       <div className={classes.layoutBody}>
-        {viewFarmland === null && (
+        {viewFarmland === null && viewCompany === null && (
           <>
             <div className={classes.layoutSide}>
-              <Side onSelect={handlerSelectSide} />
+              <Side onSelect={handlerSelectSide} active={selectedList} />
             </div>
             <div className={classes.layoutContent}>
-              {selectedList === "farmlands" && (
+              {selectedList === "farmlands" && viewFarmland === null && (
                 <FarmlandsList
                   farmlands={filterResultsList(farmlands)}
                   onClick={handlerFarmlandOnClick}
                 />
               )}
-              {selectedList === "companies" && (
-                <CompaniesList companies={filterResultsList(companies)} />
+              {selectedList === "companies" && viewCompany === null && (
+                <CompaniesList companies={filterResultsList(companies)} onClick={handlerCompanyOnClick} />
               )}
             </div>
           </>
         )}
         {viewFarmland != null && <FarmlandScreen onBack={handlerSelectSide} />}
+        {viewCompany != null && <CompanyScreen onBack={handlerSelectSide} companyId={viewCompany} />}
       </div>
     </React.Fragment>
   );
