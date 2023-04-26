@@ -16,6 +16,10 @@ header {
   margin-right: 1%;
   border-top-right-radius: 10px;
 }
+.layoutSidecontent{
+  display: flex;
+  flex-direction: column;
+}
 .layoutContent {
   width: 80%;
   display: flex;

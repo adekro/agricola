@@ -9,6 +9,7 @@ import Header from "../Header/Header";
 import Search from "../Header/Search/Search";
 import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
 import CompanyScreen from "../CompanyScreen/CompanyScreen";
+import Summary from "../Summary/Summary";
 
 // import Button from "../UI/Button/Button";
 
@@ -23,7 +24,6 @@ const Layout = () => {
     setSelectedList(target.toLowerCase());
     setViewFarmland(null);
     setViewCompany(null);
-
   };
   const handlerFarmlandOnClick = (id) => {
     setViewFarmland(id);
@@ -62,7 +62,12 @@ const Layout = () => {
         {viewFarmland === null && viewCompany === null && (
           <>
             <div className={classes.layoutSide}>
-              <Side onSelect={handlerSelectSide} active={selectedList} />
+              <div className={classes.layoutSidecontent}>
+                <Side onSelect={handlerSelectSide} active={selectedList} />
+                {selectedList === "farmlands" && viewFarmland === null && (
+                  <Summary farmlands={filterResultsList(farmlands)} />
+                )}
+              </div>
             </div>
             <div className={classes.layoutContent}>
               {selectedList === "farmlands" && viewFarmland === null && (
@@ -72,13 +77,18 @@ const Layout = () => {
                 />
               )}
               {selectedList === "companies" && viewCompany === null && (
-                <CompaniesList companies={filterResultsList(companies)} onClick={handlerCompanyOnClick} />
+                <CompaniesList
+                  companies={filterResultsList(companies)}
+                  onClick={handlerCompanyOnClick}
+                />
               )}
             </div>
           </>
         )}
         {viewFarmland != null && <FarmlandScreen onBack={handlerSelectSide} />}
-        {viewCompany != null && <CompanyScreen onBack={handlerSelectSide} companyId={viewCompany} />}
+        {viewCompany != null && (
+          <CompanyScreen onBack={handlerSelectSide} companyId={viewCompany} />
+        )}
       </div>
     </React.Fragment>
   );
