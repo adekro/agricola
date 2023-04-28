@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import classes from "./Side.module.css";
 import SideItem from "./SideItem";
-import Summary from "../Summary/Summary";
 
 const Side = ({ onSelect, active }) => {
   const [itemActive, setItemActive] = useState(active);
@@ -30,8 +29,6 @@ const Side = ({ onSelect, active }) => {
           ico="/logo192.png"
           active={itemActive === "companies" ? true : false}
         />
-
-        <Summary />
       </div>
     </React.Fragment>
   );
