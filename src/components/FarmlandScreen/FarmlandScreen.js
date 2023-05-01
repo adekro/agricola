@@ -1,6 +1,6 @@
 import WorldMap from "../WorldMap/WorldMap";
 import classes from "./FarmlandScreen.module.css";
-import SideItem from "../Side/SideItem";
+import BackButton from "../UI/BackButton/BackButton";
 
 const FarmlandScreen = ({ onBack }) => {
   const backHandler = () => {
@@ -9,18 +9,8 @@ const FarmlandScreen = ({ onBack }) => {
 
   return (
     <div className={classes.layoutBody}>
-      <div className={classes.layoutSide}>
-        <div className={classes.sidecontent}>
-          <SideItem
-            onClick={backHandler}
-            label="Back"
-            target=""
-            ico="/logo192.png"
-            active={false}
-          />
-        </div>
-      </div>
       <div className={classes.layoutContent}>
+        <BackButton onClick={backHandler} />
         <WorldMap />
       </div>
     </div>
