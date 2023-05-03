@@ -2,13 +2,14 @@ import { AppBar, IconButton, Toolbar, Typography, Button } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import FullScreenDialog from "../UI/FullScreenDialog/FullScreenDialog";
 import { useState } from "react";
+import WorldMap from "../WorldMap/WorldMap";
 
 const NewFarmlandScreen = ({ onClose }) => {
   const [open, setOpen] = useState(true);
 
   const handleOnClose = () => {
     setOpen(false);
-    onClose();
+    onClose("farmlands");
   };
 
   return (
@@ -31,7 +32,7 @@ const NewFarmlandScreen = ({ onClose }) => {
           </Button>
         </Toolbar>
       </AppBar>
-      To be done
+      <WorldMap />
     </FullScreenDialog>
   );
 };

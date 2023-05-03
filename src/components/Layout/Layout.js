@@ -12,6 +12,7 @@ import CompanyScreen from "../CompanyScreen/CompanyScreen";
 import Summary from "../Summary/Summary";
 import { Button } from "@mui/material";
 import NewFarmlandScreen from "../NewFarmlandScreen/NewFarmlandScreen";
+import NewCompanyScreen from "../NewCompanyScreen/NewCompanyScreen";
 
 const Layout = () => {
   const { farmlands } = useFarmlands();
@@ -96,13 +97,25 @@ const Layout = () => {
             </div>
           </>
         )}
-        {viewFarmland != null && <FarmlandScreen onBack={handlerSelectSide} />}
+        {viewFarmland != null && (
+          <NewFarmlandScreen onClose={handlerSelectSide} />
+        )}
         {viewCompany != null && (
-          <CompanyScreen onBack={handlerSelectSide} companyId={viewCompany} />
+          <NewCompanyScreen
+            onClose={handlerSelectSide}
+            companyId={viewCompany}
+          />
         )}
       </div>
       {createMode === "farmland" && (
         <NewFarmlandScreen
+          onClose={() => {
+            setCreateMode();
+          }}
+        />
+      )}
+      {createMode === "company" && (
+        <NewCompanyScreen
           onClose={() => {
             setCreateMode();
           }}
