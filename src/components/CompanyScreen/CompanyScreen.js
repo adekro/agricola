@@ -1,11 +1,11 @@
 import React, { useEffect } from "react";
 import classes from "./CompanyScreen.module.css";
-import SideItem from "../Side/SideItem";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import companyLoader from "../../data/companyLoader";
+import BackButton from "../UI/BackButton/BackButton";
 
 const ValidateSchema = Yup.object().shape({
   name: Yup.string()
@@ -43,23 +43,12 @@ const CompanyScreen = ({ onBack, companyId }) => {
 
   const backHandler = () => {
     onBack("companies");
-    console.log("companies");
   };
 
   return (
     <div className={classes.layoutBody}>
-      <div className={classes.layoutSide}>
-        <div className={classes.sidecontent}>
-          <SideItem
-            onClick={backHandler}
-            label="Back"
-            target=""
-            ico="/logo192.png"
-            active={false}
-          />
-        </div>
-      </div>
       <div className={classes.layoutContent}>
+        <BackButton onClick={backHandler} />
         <div className={classes.layoutContentItem}>
           <form onSubmit={formik.handleSubmit} className={classes.form}>
             <TextField
@@ -112,10 +101,15 @@ const CompanyScreen = ({ onBack, companyId }) => {
               value={formik.values.notes}
               multiline={true}
             />
-
-            <Button variant="contained" fullWidth type="submit">
-              Submit
-            </Button>
+            <div className={classes.submitcontainer}>
+              <button
+                variant="contained"
+                type="submit"
+                className={classes.buttonsubmit}
+              >
+                Submit
+              </button>
+            </div>
           </form>
         </div>
       </div>
