@@ -1,12 +1,14 @@
 header {
   min-height: 60px;
 }
+
 .layoutBody {
   width: 100%;
   display: flex;
   justify-content: center;
   min-height: calc(100vh - 60px);
 }
+
 .layoutSide {
   width: 19%;
   min-width: 200px;
@@ -16,14 +18,27 @@ header {
   margin-right: 1%;
   border-top-right-radius: 10px;
 }
-.layoutSidecontent{
+
+.layoutSidecontent {
   display: flex;
   flex-direction: column;
 }
+
 .layoutContent {
   width: 80%;
   display: flex;
   justify-content: center;
   background-color: var(--background-secondary);
   border-top-left-radius: 10px;
+}
+
+.HeaderWrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 80%;
+
+  .HeaderSearchbox {
+    margin: 0 2em;
+  }
 }

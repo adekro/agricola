@@ -1,18 +1,28 @@
-import styles from "./Search.module.scss";
+import SearchIcon from "@mui/icons-material/Search";
+import { InputAdornment, TextField } from "@mui/material";
 
-const Search = ({ mode, onChange }) => {
+const Search = ({ mode, onChange, className }) => {
   return (
     <>
-      {mode != "" && (
-        <input
-          className={styles.Search}
-          type={"text"}
-          placeholder={`Search ${
-            mode === "farmlands" ? "farmlands" : "companies"
-          } ...`}
-          name="search"
-          onChange={(event) => onChange(event.target.value)}
-        />
+      {mode !== "" && (
+        <div className={className}>
+          <TextField
+            id="search"
+            name="search"
+            placeholder={`Search ${
+              mode === "farmlands" ? "farmlands" : "companies"
+            } ...`}
+            type={"text"}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        </div>
       )}
     </>
   );

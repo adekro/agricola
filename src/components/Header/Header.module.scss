@@ -28,16 +28,6 @@
     max-width: 250px;
     width: 20vw;
   }
-
-  a:hover {
-    background-color: var(--secondary-color);
-    color: var(--secondary-color-text);
-  }
-
-  a.active {
-    background-color: var(--secondary-color-dark);
-    color: var(--secondary-color-dark-text);
-  }
 }
 
 @media screen and (max-width: 500px) {
