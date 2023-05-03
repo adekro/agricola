@@ -17,3 +17,21 @@
 .buttonsubmit {
   width: 80%;
 }
+
+.buttonsubmit {
+  background-color: var(--primary-color);
+  border: 0;
+  border-radius: 7px;
+  box-shadow: 0 10px 10px rgba(0, 0, 0, 0.2);
+  color: var(--primary-color-text);
+  font-size: 16px;
+  padding: 12px 25px;
+  bottom: 30px;
+  right: 30px;
+  letter-spacing: 1px;
+}
+.buttonsubmit:hover {
+  cursor: pointer;
+  background-color: var(--secondary-color);
+  color: var(--secondary-color-text);
+}
