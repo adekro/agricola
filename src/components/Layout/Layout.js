@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import classes from "./Layout.module.css";
+import classes from "./Layout.module.scss";
 import Side from "../Side/Side";
 import useFarmlands from "../../hooks/useFarmlands";
 import useCompanies from "../../hooks/useCompanies";
@@ -10,8 +10,8 @@ import Search from "../Header/Search/Search";
 import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
 import CompanyScreen from "../CompanyScreen/CompanyScreen";
 import Summary from "../Summary/Summary";
-
-// import Button from "../UI/Button/Button";
+import { Button } from "@mui/material";
+import NewFarmlandScreen from "../NewFarmlandScreen/NewFarmlandScreen";
 
 const Layout = () => {
   const { farmlands } = useFarmlands();
@@ -25,6 +25,7 @@ const Layout = () => {
     setViewFarmland(null);
     setViewCompany(null);
   };
+  const [createMode, setCreateMode] = useState();
   const handlerFarmlandOnClick = (id) => {
     setViewFarmland(id);
     setSelectedList("farmlands");
@@ -36,7 +37,9 @@ const Layout = () => {
   const filterResultsList = useCallback(
     (list) => {
       return list.filter((item) => {
-        const valueToSearch = (item?.type || item?.name).toLowerCase();
+        const valueToSearch = `${item?.type} 
+          ${item?.name} 
+          ${item?.ownerDisplayName}`.toLowerCase();
 
         return valueToSearch.indexOf(filterString) > -1;
       });
@@ -48,15 +51,23 @@ const Layout = () => {
     setFilterString(value);
   };
 
+  const onCreateButtonClickHandler = () => {
+    setCreateMode(selectedList === "farmlands" ? "farmland" : "company");
+  };
+
   return (
     <React.Fragment>
       <Header>
-        <Search mode={selectedList} onChange={searchChangeHandler} />
-        {/*
-        // To be completed
-        <Button>
-          Create {selectedList === "farmlands" ? "new farmland" : "new company"}
-        </Button> */}
+        <div className={classes.HeaderWrapper}>
+          <Search
+            className={classes.HeaderSearchbox}
+            mode={selectedList}
+            onChange={searchChangeHandler}
+          />
+          <Button variant="contained" onClick={onCreateButtonClickHandler}>
+            Create {selectedList === "farmlands" ? "farmland" : "company"}
+          </Button>
+        </div>
       </Header>
       <div className={classes.layoutBody}>
         {viewFarmland === null && viewCompany === null && (
@@ -90,6 +101,13 @@ const Layout = () => {
           <CompanyScreen onBack={handlerSelectSide} companyId={viewCompany} />
         )}
       </div>
+      {createMode === "farmland" && (
+        <NewFarmlandScreen
+          onClose={() => {
+            setCreateMode();
+          }}
+        />
+      )}
     </React.Fragment>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import classes from "./CompanyScreen.module.css";
 import SideItem from "../Side/SideItem";
 import { useFormik } from "formik";
