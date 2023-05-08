@@ -48,7 +48,7 @@ const NewCompanyScreen = ({ onClose, companyId }) => {
     formik.setFieldValue("phone", companyId ? list.phone : "");
     formik.setFieldValue("website", companyId ? list.website : "");
     formik.setFieldValue("notes", companyId ? list.notes : "");
-  }, []);
+  }, [companyId, formik]);
 
   return (
     <FullScreenDialog open={open} handleOnClose={handleOnClose}>

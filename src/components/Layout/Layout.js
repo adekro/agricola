@@ -7,8 +7,6 @@ import FarmlandsList from "../FarmlandsList/FarmlandsList";
 import CompaniesList from "../CompaniesList/CompaniesList";
 import Header from "../Header/Header";
 import Search from "../Header/Search/Search";
-import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
-import CompanyScreen from "../CompanyScreen/CompanyScreen";
 import Summary from "../Summary/Summary";
 import { Button } from "@mui/material";
 import NewFarmlandScreen from "../NewFarmlandScreen/NewFarmlandScreen";
@@ -21,20 +19,24 @@ const Layout = () => {
   const [filterString, setFilterString] = useState("");
   const [viewFarmland, setViewFarmland] = useState(null);
   const [viewCompany, setViewCompany] = useState(null);
-  const handlerSelectSide = (target) => {
+  const [createMode, setCreateMode] = useState();
+
+  const handlerSelectSide = useCallback((target) => {
     setSelectedList(target.toLowerCase());
     setViewFarmland(null);
     setViewCompany(null);
-  };
-  const [createMode, setCreateMode] = useState();
-  const handlerFarmlandOnClick = (id) => {
+  }, []);
+
+  const handlerFarmlandOnClick = useCallback((id) => {
     setViewFarmland(id);
     setSelectedList("farmlands");
-  };
-  const handlerCompanyOnClick = (id) => {
+  }, []);
+
+  const handlerCompanyOnClick = useCallback((id) => {
     setViewCompany(id);
     setSelectedList("company");
-  };
+  }, []);
+
   const filterResultsList = useCallback(
     (list) => {
       return list.filter((item) => {
@@ -48,13 +50,17 @@ const Layout = () => {
     [filterString]
   );
 
-  const searchChangeHandler = (value) => {
+  const searchChangeHandler = useCallback((value) => {
     setFilterString(value);
-  };
+  }, []);
 
-  const onCreateButtonClickHandler = () => {
+  const onCreateButtonClickHandler = useCallback(() => {
     setCreateMode(selectedList === "farmlands" ? "farmland" : "company");
-  };
+  }, [selectedList]);
+
+  const closeCreateScreenHandler = useCallback(() => {
+    setCreateMode();
+  }, []);
 
   return (
     <React.Fragment>
@@ -98,7 +104,10 @@ const Layout = () => {
           </>
         )}
         {viewFarmland != null && (
-          <NewFarmlandScreen onClose={handlerSelectSide} />
+          <NewFarmlandScreen
+            farmlandId={viewFarmland}
+            onClose={handlerSelectSide}
+          />
         )}
         {viewCompany != null && (
           <NewCompanyScreen
@@ -107,20 +116,12 @@ const Layout = () => {
           />
         )}
       </div>
-      {createMode === "farmland" && (
-        <NewFarmlandScreen
-          onClose={() => {
-            setCreateMode();
-          }}
-        />
-      )}
-      {createMode === "company" && (
-        <NewCompanyScreen
-          onClose={() => {
-            setCreateMode();
-          }}
-        />
-      )}
+      {createMode === "farmland" ? (
+        <NewFarmlandScreen onClose={closeCreateScreenHandler} />
+      ) : null}
+      {createMode === "company" ? (
+        <NewCompanyScreen onClose={closeCreateScreenHandler} />
+      ) : null}
     </React.Fragment>
   );
 };
