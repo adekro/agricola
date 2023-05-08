@@ -84,7 +84,7 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
       formik.setFieldValue("area", area);
       formik.setFieldValue("perimeter", perimeter);
     }
-  }, [area, perimeter, formik]);
+  }, [area, perimeter]);
 
   useEffect(() => {
     if (farmlandId) {
@@ -98,7 +98,7 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
       formik.setFieldValue("notes", farm?.notes || "");
       formik.setFieldValue("owner", farm?.owner || "");
     }
-  }, [farmlandId, formik]);
+  }, [farmlandId]);
 
   return (
     <FullScreenDialog open={open} handleOnClose={handleOnClose}>
