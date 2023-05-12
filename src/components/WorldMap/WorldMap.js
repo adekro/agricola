@@ -12,6 +12,8 @@ const styles = [
   "CanvasDark",
   "OrdnanceSurvey",
 ];
+export const DEFAULT_CENTER = [9.0953328, 45.4628246];
+
 const layers = [];
 const WorldMap = () => {
   const mapRef = useRef(null);
