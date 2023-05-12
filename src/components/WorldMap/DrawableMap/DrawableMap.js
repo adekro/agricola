@@ -16,6 +16,7 @@ import { unByKey } from "ol/Observable.js";
 import { DEFAULT_CENTER } from "../WorldMap";
 import { useState } from "react";
 import Loader from "../../UI/Loader/Loader";
+// import { Button } from "@mui/material";
 // import { Button, Typography } from "@mui/material";
 
 const layers = [];
@@ -152,8 +153,8 @@ const DrawableMap = ({ onDrawCompleted }) => {
         map.un("pointermove", pointerMoveHandler);
 
         onDrawCompleted({
-          area: area,
-          perimeter: perimeter,
+          area: area.split(" ")[0],
+          perimeter: perimeter.split(" ")[0],
           coordinates: coordinates,
         });
       });
@@ -214,14 +215,14 @@ const DrawableMap = ({ onDrawCompleted }) => {
   }, []);
 
   // TO be completed if we want a delete draw button
-  //   const clearDrawClickHandler = () => {
-  //     draw.abortDrawing();
-  //     map.getLayers().getArray()[1].getSource().clear();
-  //     map.removeOverlay(measureTooltip);
-  //     map.addInteraction(draw);
-  //     map.addOverlay(helpTooltip);
-  //     map.on("pointermove", pointerMoveHandler);
-  //   };
+  // const clearDrawClickHandler = () => {
+  //   draw.abortDrawing();
+  //   map.getLayers().getArray()[1].getSource().clear();
+  //   map.removeOverlay(measureTooltip);
+  //   map.addInteraction(draw);
+  //   map.addOverlay(helpTooltip);
+  //   map.on("pointermove", pointerMoveHandler);
+  // };
 
   return center ? (
     <div>
