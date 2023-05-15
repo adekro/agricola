@@ -5,10 +5,10 @@ import {
   Typography,
   Button,
   TextField,
-  Select,
-  MenuItem,
-  InputLabel,
   FormControl,
+  Autocomplete,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import FullScreenDialog from "../UI/FullScreenDialog/FullScreenDialog";
@@ -20,19 +20,14 @@ import farmlandLoader from "../../data/farmlandLoader";
 import { useFormik } from "formik";
 import { useEffect } from "react";
 import useCompanies from "../../hooks/useCompanies";
-import * as Yup from "yup";
-
-const ValidateSchema = Yup.object().shape({
-  area: Yup.string().required("Required"),
-  perimeter: Yup.string().required("Required"),
-  owner: Yup.object().required("Required"),
-});
 
 const NewFarmlandScreen = ({ onClose, farmlandId }) => {
   const [open, setOpen] = useState(true);
   const [area, setArea] = useState();
   const [perimeter, setPerimeter] = useState();
   const [coordinates, setCoordinates] = useState();
+  const [error, setError] = useState();
+  const [owner, setOwner] = useState(null);
   const { companies } = useCompanies();
 
   const handleOnClose = useCallback(() => {
@@ -40,16 +35,20 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
     onClose("farmlands");
   }, [onClose]);
 
-  const onSaveFarmHandler = () => {
+  const onSaveFarmHandler = useCallback(() => {
     const data = farmlandLoader.getItems();
     const newFarmland = {
       ...formik.values,
-      ownerDisplayName: formik.values.owner.name,
+      ownerDisplayName: owner,
       coordinates: coordinates,
     };
+    if (!newFarmland.area || !newFarmland.perimeter) {
+      setError("Please fill all the required data");
+      return;
+    }
     farmlandLoader.storeItems([...data, newFarmland]);
     handleOnClose();
-  };
+  }, [owner, coordinates]);
 
   const drawCompletedHandler = useCallback(
     ({ area, perimeter, coordinates }) => {
@@ -71,9 +70,7 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
       perimeter: "",
       type: "",
       notes: "",
-      owner: "",
     },
-    ValidateSchema: ValidateSchema,
     onSubmit: (values) => {
       alert(JSON.stringify(values, null, 2));
     },
@@ -96,9 +93,17 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
       formik.setFieldValue("perimeter", farm?.perimeter || "");
       formik.setFieldValue("type", farm?.type || "");
       formik.setFieldValue("notes", farm?.notes || "");
-      formik.setFieldValue("owner", farm?.owner || "");
     }
   }, [farmlandId]);
+
+  const changeCompanyHandler = useCallback(
+    (_event, newValue) => setOwner(newValue),
+    []
+  );
+
+  const closeHandler = useCallback(() => {
+    setError();
+  }, []);
 
   return (
     <FullScreenDialog open={open} handleOnClose={handleOnClose}>
@@ -122,7 +127,6 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
       </AppBar>
       <div className={classes.MapForm}>
         {optimizedMap}
-        {/* <NewFarmlandForm area={area} perimeter={perimeter} /> */}
         <form
           className={classes.NewFarmlandForm}
           onSubmit={formik.handleSubmit}
@@ -130,7 +134,7 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
           <TextField
             onChange={formik.handleChange}
             value={formik.values.area}
-            label="Area"
+            label="Area (ettari)"
             name="area"
             disabled
             className={classes.Input}
@@ -140,7 +144,7 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
           <TextField
             onChange={formik.handleChange}
             value={formik.values.perimeter}
-            label="Perimeter"
+            label="Perimeter (m)"
             name="perimeter"
             disabled
             className={classes.Input}
@@ -165,9 +169,8 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
             fullWidth
             error={formik.touched.notes && Boolean(formik.errors.email)}
           />
-          {/* <TextField label="Location" name="location" /> */}
           <FormControl fullWidth className={classes.Input}>
-            <InputLabel id="owner-label">Owner</InputLabel>
+            {/* <InputLabel id="owner-label">Owner</InputLabel>
             <Select
               labelId="owner-label"
               name="owner"
@@ -181,11 +184,28 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
                   {company.name}
                 </MenuItem>
               ))}
-            </Select>
+            </Select> */}
+            <Autocomplete
+              name="owner"
+              value={owner}
+              onChange={changeCompanyHandler}
+              options={companies.map((company) => company.name)}
+              renderInput={(params) => (
+                <TextField {...params} label="Company name" />
+              )}
+            ></Autocomplete>
           </FormControl>
           <div className={classes.buttons}></div>
         </form>
       </div>
+      <Snackbar
+        severity="error"
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={closeHandler}
+      >
+        <Alert severity="error">{error}</Alert>
+      </Snackbar>
     </FullScreenDialog>
   );
 };
