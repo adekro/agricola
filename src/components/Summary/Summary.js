@@ -2,15 +2,13 @@ import React from "react";
 import styles from "./Summary.module.css";
 
 const Summary = ({ farmlands }) => {
-  const numberfields = farmlands.length;
-  const area = farmlands.reduce(
-    (prevVal, currVal) => prevVal + currVal.area,
-    0
-  );
-  const perimeter = farmlands.reduce(
-    (prevVal, currVal) => prevVal + currVal.perimeter,
-    0
-  );
+  const numberfields = farmlands ? farmlands.length : 0;
+  const area = farmlands
+    ? farmlands.reduce((prevVal, currVal) => prevVal + currVal.area, 0)
+    : 0;
+  const perimeter = farmlands
+    ? farmlands.reduce((prevVal, currVal) => prevVal + currVal.perimeter, 0)
+    : 0;
 
   return (
     <div className={styles.content}>

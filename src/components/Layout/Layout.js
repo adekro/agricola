@@ -25,13 +25,15 @@ const Layout = () => {
 
   const filterResultsList = useCallback(
     (list) => {
-      return list.filter((item) => {
-        const valueToSearch = `${item?.type} 
-          ${item?.name} 
-          ${item?.ownerDisplayName}`.toLowerCase();
+      try {
+        return list.filter((item) => {
+          const valueToSearch = `${item?.type} 
+            ${item?.name} 
+            ${item?.ownerDisplayName}`.toLowerCase();
 
-        return valueToSearch.indexOf(filterString) > -1;
-      });
+          return valueToSearch.indexOf(filterString) > -1;
+        });
+      } catch (error) {}
     },
     [filterString]
   );
