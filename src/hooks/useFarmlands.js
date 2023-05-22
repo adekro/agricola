@@ -10,6 +10,10 @@ const useFarmlands = () => {
     setFarmlands(farmlandLoader.getItems());
   }, []);
 
+  const reloadFarmland = useCallback(() => {
+    setFarmlands(farmlandLoader.getItems());
+  }, []);
+
   const addFarmland = useCallback((newFarmland) => {
     setFarmlands((previousFarmlands) => {
       const updated = previousFarmlands.concat(newFarmland);
@@ -42,7 +46,13 @@ const useFarmlands = () => {
     });
   }, []);
 
-  return { farmlands, addFarmland, removeFarmland, updateFarmland };
+  return {
+    farmlands,
+    addFarmland,
+    removeFarmland,
+    updateFarmland,
+    reloadFarmland,
+  };
 };
 
 export default useFarmlands;

@@ -10,13 +10,14 @@ import NewFarmlandScreen from "../NewFarmlandScreen/NewFarmlandScreen";
 import NewCompanyScreen from "../NewCompanyScreen/NewCompanyScreen";
 
 const Layout = () => {
-  const { farmlands } = useFarmlands();
+  const { farmlands, reloadFarmland } = useFarmlands();
   const [filterString, setFilterString] = useState("");
   const [viewFarmland, setViewFarmland] = useState(null);
   const [createMode, setCreateMode] = useState();
 
   const handlerSelectSide = useCallback(() => {
     setViewFarmland(null);
+    reloadFarmland();
   }, []);
 
   const handlerFarmlandOnClick = useCallback((id) => {
