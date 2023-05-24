@@ -104,26 +104,19 @@ const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
     setError();
   }, []);
 
+  const callToAction = (
+    <Button autoFocus color="inherit" onClick={onSaveFarmHandler}>
+      save
+    </Button>
+  );
+
   return (
-    <FullScreenDialog open={open} handleOnClose={handleOnClose}>
-      <AppBar sx={{ position: "relative" }}>
-        <Toolbar>
-          <IconButton
-            edge="start"
-            color="inherit"
-            onClick={handleOnClose}
-            aria-label="close"
-          >
-            <CloseIcon />
-          </IconButton>
-          <Typography sx={{ ml: 2, flex: 1 }} variant="h6" component="div">
-            Create new farmland
-          </Typography>
-          <Button autoFocus color="inherit" onClick={onSaveFarmHandler}>
-            save
-          </Button>
-        </Toolbar>
-      </AppBar>
+    <FullScreenDialog
+      open={open}
+      handleOnClose={handleOnClose}
+      title="Create new farmland"
+      buttonComponent={callToAction}
+    >
       <div className={classes.MapForm}>
         {optimizedMap}
         <form
