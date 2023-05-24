@@ -14,7 +14,7 @@ import { useMemo } from "react";
 import farmlandLoader from "../../data/farmlandLoader";
 import { useFormik } from "formik";
 import { useEffect } from "react";
-import useCompanies from "../../hooks/useCompanies";
+import useFarmlands from "../../hooks/useFarmlands";
 
 const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
   const [open, setOpen] = useState(true);
@@ -22,8 +22,8 @@ const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
   const [perimeter, setPerimeter] = useState();
   const [coordinates, setCoordinates] = useState();
   const [error, setError] = useState();
-  const [owner, setOwner] = useState(null);
-  const { companies } = useCompanies();
+  const [owner, setOwner] = useState("");
+  const { companies } = useFarmlands();
 
   const formik = useFormik({
     initialValues: {
@@ -54,7 +54,7 @@ const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
     }
     onCreate(newFarmland);
     handleOnClose();
-  }, [owner, coordinates, onCreate, handleOnClose]);
+  }, [owner, coordinates, onCreate, handleOnClose, formik.values]);
 
   const drawCompletedHandler = useCallback(
     ({ area, perimeter, coordinates }) => {
@@ -90,10 +90,9 @@ const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
     }
   }, [farmlandId]);
 
-  const changeCompanyHandler = useCallback(
-    (_event, newValue) => setOwner(newValue),
-    []
-  );
+  const changeCompanyHandler = useCallback((_event, newValue) => {
+    setOwner(newValue);
+  }, []);
 
   const closeHandler = useCallback(() => {
     setError();
@@ -173,10 +172,13 @@ const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
               ))}
             </Select> */}
             <Autocomplete
+              freeSolo
               name="owner"
               value={owner}
+              inputValue={owner}
               onChange={changeCompanyHandler}
-              options={companies.map((company) => company.name)}
+              onInputChange={changeCompanyHandler}
+              options={companies}
               renderInput={(params) => (
                 <TextField {...params} label="Company name" />
               )}

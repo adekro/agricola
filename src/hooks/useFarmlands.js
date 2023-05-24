@@ -4,6 +4,7 @@ import farmlandLoader from "../data/farmlandLoader";
 
 const useFarmlands = () => {
   const [farmlands, setFarmlands] = useState([]);
+  const [companies, setCompanies] = useState([]);
 
   useEffect(() => {
     if (!farmlandLoader.getItems()) {
@@ -11,6 +12,22 @@ const useFarmlands = () => {
     }
     setFarmlands(farmlandLoader.getItems());
   }, []);
+
+  useEffect(() => {
+    if (farmlands) {
+      let companiesFound = [];
+      const filteredCompanies = farmlands
+        .reduce((accumulator, current) => {
+          if (!accumulator.find((item) => item === current.ownerDisplayName)) {
+            accumulator = accumulator.concat(current.ownerDisplayName);
+          }
+          return accumulator;
+        }, companiesFound)
+        .filter(Boolean);
+
+      setCompanies(filteredCompanies);
+    }
+  }, [farmlands]);
 
   const addFarmland = useCallback((newFarmland) => {
     setFarmlands((previousFarmlands) => {
@@ -49,7 +66,7 @@ const useFarmlands = () => {
     });
   }, []);
 
-  return { farmlands, addFarmland, removeFarmland, updateFarmland };
+  return { farmlands, addFarmland, removeFarmland, updateFarmland, companies };
 };
 
 export default useFarmlands;
