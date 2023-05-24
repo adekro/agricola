@@ -1,8 +1,4 @@
 import {
-  AppBar,
-  IconButton,
-  Toolbar,
-  Typography,
   Button,
   TextField,
   FormControl,
@@ -10,7 +6,6 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
 import FullScreenDialog from "../UI/FullScreenDialog/FullScreenDialog";
 import { useState, useCallback } from "react";
 import classes from "./NewFarmlandScreen.module.scss";
@@ -30,6 +25,18 @@ const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
   const [owner, setOwner] = useState(null);
   const { companies } = useCompanies();
 
+  const formik = useFormik({
+    initialValues: {
+      area: "",
+      perimeter: "",
+      type: "",
+      notes: "",
+    },
+    onSubmit: (values) => {
+      alert(JSON.stringify(values, null, 2));
+    },
+  });
+
   const handleOnClose = useCallback(() => {
     setOpen(false);
     onClose("farmlands");
@@ -47,7 +54,7 @@ const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
     }
     onCreate(newFarmland);
     handleOnClose();
-  }, [owner, coordinates]);
+  }, [owner, coordinates, onCreate, handleOnClose]);
 
   const drawCompletedHandler = useCallback(
     ({ area, perimeter, coordinates }) => {
@@ -62,18 +69,6 @@ const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
     () => <DrawableMap onDrawCompleted={drawCompletedHandler} />,
     [drawCompletedHandler]
   );
-
-  const formik = useFormik({
-    initialValues: {
-      area: "",
-      perimeter: "",
-      type: "",
-      notes: "",
-    },
-    onSubmit: (values) => {
-      alert(JSON.stringify(values, null, 2));
-    },
-  });
 
   useEffect(() => {
     if (area && perimeter) {

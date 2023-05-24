@@ -1,14 +1,6 @@
 import React from "react";
 import CloseIcon from "@mui/icons-material/Close";
-import {
-  AppBar,
-  IconButton,
-  Toolbar,
-  Typography,
-  Button,
-  Dialog,
-  Slide,
-} from "@mui/material";
+import { AppBar, IconButton, Toolbar, Typography, Dialog } from "@mui/material";
 
 const FullScreenDialog = ({
   children,
