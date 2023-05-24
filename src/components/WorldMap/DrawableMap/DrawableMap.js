@@ -13,22 +13,16 @@ import classes from "../WordMap.module.css";
 import "./Tooltip.scss";
 import { formatArea, formatLength } from "../utils";
 import { unByKey } from "ol/Observable.js";
-import { DEFAULT_CENTER } from "../WorldMap";
-import { useState } from "react";
 import Loader from "../../UI/Loader/Loader";
+import { useGeolocation } from "../../../hooks/useGeolocation";
 // import { Button } from "@mui/material";
 // import { Button, Typography } from "@mui/material";
 
 const layers = [];
-const geoOptions = Object.freeze({
-  enableHighAccuracy: true,
-  timeout: 5000,
-  maximumAge: 0,
-});
 
 const DrawableMap = ({ onDrawCompleted }) => {
   const mapRef = useRef(null);
-  const [center, setCenter] = useState();
+  const { position } = useGeolocation();
   let map,
     draw,
     vector,
@@ -51,9 +45,7 @@ const DrawableMap = ({ onDrawCompleted }) => {
     });
     let sketch;
     let helpTooltipElement;
-    // let helpTooltip;
     let measureTooltipElement;
-    // let measureTooltip;
     const continuePolygonMsg = "Click to continue drawing the polygon";
 
     pointerMoveHandler = function (evt) {
@@ -87,7 +79,7 @@ const DrawableMap = ({ onDrawCompleted }) => {
       layers: layers,
       target: mapRef.current.id,
       view: new View({
-        center: fromLonLat(center),
+        center: fromLonLat(position),
         zoom: 15,
       }),
       controls: defaultControls({
@@ -136,12 +128,15 @@ const DrawableMap = ({ onDrawCompleted }) => {
       draw.on("drawend", function (evt) {
         measureTooltipElement.className = "ol-tooltip ol-tooltip-static";
         measureTooltip.setOffset([0, -7]);
-        const geometry = sketch.getGeometry();
+        let geometry = sketch.getGeometry();
+
         const area = formatArea(geometry);
         const perimeter = formatLength(geometry);
+        // Change format of geometry to be able to get coordinates in the right projection
+        geometry = geometry.clone().transform("EPSG:3857", "EPSG:4326");
         const coordinates = geometry.getCoordinates()[0];
 
-        console.log(area, perimeter, coordinates);
+        // console.log(area, perimeter, coordinates);
         // unset sketch
         sketch = null;
         // unset tooltip so that a new one can be created
@@ -197,22 +192,10 @@ const DrawableMap = ({ onDrawCompleted }) => {
   };
 
   useEffect(() => {
-    if (center) {
+    if (position) {
       initMap();
     }
-  }, [initMap, center]);
-
-  useEffect(() => {
-    const onSuccess = (pos) => {
-      setCenter([pos.coords.longitude, pos.coords.latitude]);
-    };
-
-    const onError = (err) => {
-      setCenter(DEFAULT_CENTER);
-      console.log(err);
-    };
-    navigator.geolocation.getCurrentPosition(onSuccess, onError, geoOptions);
-  }, []);
+  }, [initMap, position]);
 
   // TO be completed if we want a delete draw button
   // const clearDrawClickHandler = () => {
@@ -224,7 +207,7 @@ const DrawableMap = ({ onDrawCompleted }) => {
   //   map.on("pointermove", pointerMoveHandler);
   // };
 
-  return center ? (
+  return position ? (
     <div>
       {/* <Button onClick={clearDrawClickHandler}>Clear</Button> */}
       <div id="genMap" className={classes.genMap}>
