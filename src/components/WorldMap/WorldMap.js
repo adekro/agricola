@@ -99,6 +99,13 @@ const WorldMap = ({ coordinates }) => {
     if (position) {
       initMap();
     }
+
+    return () => {
+      // Important to cleanup the map after unmounting the components
+      if (map) {
+        map.setTarget(undefined);
+      }
+    };
   }, [initMap, position]);
 
   return position ? (

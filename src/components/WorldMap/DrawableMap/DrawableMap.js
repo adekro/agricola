@@ -195,6 +195,13 @@ const DrawableMap = ({ onDrawCompleted }) => {
     if (position) {
       initMap();
     }
+
+    return () => {
+      // Important to cleanup the map after unmounting the components
+      if (map) {
+        map.setTarget(undefined);
+      }
+    };
   }, [initMap, position]);
 
   // TO be completed if we want a delete draw button
