@@ -6,13 +6,20 @@ const useFarmlands = () => {
   const [farmlands, setFarmlands] = useState([]);
 
   useEffect(() => {
-    farmlandLoader.init();
+    if (!farmlandLoader.getItems()) {
+      farmlandLoader.init();
+    }
     setFarmlands(farmlandLoader.getItems());
   }, []);
 
   const addFarmland = useCallback((newFarmland) => {
     setFarmlands((previousFarmlands) => {
-      const updated = previousFarmlands.concat(newFarmland);
+      const newFieldWithId = newFarmland.id
+        ? newFarmland
+        : { ...newFarmland, id: `${new Date().getTime()}` };
+      const updated = previousFarmlands.concat(newFieldWithId);
+
+      farmlandLoader.storeItems(updated);
 
       return updated;
     });

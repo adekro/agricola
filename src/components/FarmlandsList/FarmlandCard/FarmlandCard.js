@@ -12,7 +12,6 @@ const FarmlandCard = ({
 }) => {
   const onViewButtonClickHandler = () => {
     onView(id);
-    console.log("card" + id);
   };
   return (
     <div className={styles["FarmlandCard-container"]}>

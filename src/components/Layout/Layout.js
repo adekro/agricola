@@ -8,9 +8,10 @@ import Summary from "../Summary/Summary";
 import { Button } from "@mui/material";
 import NewFarmlandScreen from "../NewFarmlandScreen/NewFarmlandScreen";
 import NewCompanyScreen from "../NewCompanyScreen/NewCompanyScreen";
+import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
 
 const Layout = () => {
-  const { farmlands } = useFarmlands();
+  const { farmlands, addFarmland } = useFarmlands();
   const [filterString, setFilterString] = useState("");
   const [viewFarmland, setViewFarmland] = useState(null);
   const [createMode, setCreateMode] = useState();
@@ -23,18 +24,15 @@ const Layout = () => {
     setViewFarmland(id);
   }, []);
 
-  const filterResultsList = useCallback(
-    (list) => {
-      return list.filter((item) => {
-        const valueToSearch = `${item?.type} 
+  const filterFarmlandsList = useCallback(() => {
+    return farmlands.filter((item) => {
+      const valueToSearch = `${item?.type} 
           ${item?.name} 
           ${item?.ownerDisplayName}`.toLowerCase();
 
-        return valueToSearch.indexOf(filterString) > -1;
-      });
-    },
-    [filterString]
-  );
+      return valueToSearch.indexOf(filterString) > -1;
+    });
+  }, [filterString, farmlands]);
 
   const searchChangeHandler = useCallback((value) => {
     setFilterString(value);
@@ -46,6 +44,10 @@ const Layout = () => {
 
   const closeCreateScreenHandler = useCallback(() => {
     setCreateMode();
+  }, []);
+
+  const addFarmlandHandler = useCallback((newFarmland) => {
+    addFarmland(newFarmland);
   }, []);
 
   return (
@@ -68,14 +70,14 @@ const Layout = () => {
             <div className={classes.layoutSide}>
               <div className={classes.layoutSidecontent}>
                 {viewFarmland === null && (
-                  <Summary farmlands={filterResultsList(farmlands)} />
+                  <Summary farmlands={filterFarmlandsList()} />
                 )}
               </div>
             </div>
             <div className={classes.layoutContent}>
               {viewFarmland === null && (
                 <FarmlandsList
-                  farmlands={filterResultsList(farmlands)}
+                  farmlands={filterFarmlandsList()}
                   onClick={handlerFarmlandOnClick}
                 />
               )}
@@ -83,14 +85,17 @@ const Layout = () => {
           </>
         )}
         {viewFarmland != null && (
-          <NewFarmlandScreen
+          <FarmlandScreen
             farmlandId={viewFarmland}
             onClose={handlerSelectSide}
           />
         )}
       </div>
       {createMode === "farmland" ? (
-        <NewFarmlandScreen onClose={closeCreateScreenHandler} />
+        <NewFarmlandScreen
+          onClose={closeCreateScreenHandler}
+          onCreate={addFarmlandHandler}
+        />
       ) : null}
       {createMode === "company" ? (
         <NewCompanyScreen onClose={closeCreateScreenHandler} />

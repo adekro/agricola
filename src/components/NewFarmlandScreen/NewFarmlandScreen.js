@@ -21,7 +21,7 @@ import { useFormik } from "formik";
 import { useEffect } from "react";
 import useCompanies from "../../hooks/useCompanies";
 
-const NewFarmlandScreen = ({ onClose, farmlandId }) => {
+const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
   const [open, setOpen] = useState(true);
   const [area, setArea] = useState();
   const [perimeter, setPerimeter] = useState();
@@ -36,7 +36,6 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
   }, [onClose]);
 
   const onSaveFarmHandler = useCallback(() => {
-    const data = farmlandLoader.getItems();
     const newFarmland = {
       ...formik.values,
       ownerDisplayName: owner,
@@ -46,7 +45,7 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
       setError("Please fill all the required data");
       return;
     }
-    farmlandLoader.storeItems([...data, newFarmland]);
+    onCreate(newFarmland);
     handleOnClose();
   }, [owner, coordinates]);
 
