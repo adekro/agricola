@@ -88,6 +88,7 @@ const Layout = () => {
           <FarmlandScreen
             farmlandId={viewFarmland}
             onClose={handlerSelectSide}
+            farmland={farmlands.find((farm) => farm.id === viewFarmland)}
           />
         )}
       </div>

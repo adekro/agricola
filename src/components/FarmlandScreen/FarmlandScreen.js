@@ -1,19 +1,21 @@
 import WorldMap from "../WorldMap/WorldMap";
 import classes from "./FarmlandScreen.module.css";
-import farmlandLoader from "../../data/farmlandLoader";
 import FullScreenDialog from "../UI/FullScreenDialog/FullScreenDialog";
+import { useCallback, useMemo, useState } from "react";
+import { FarmDetails } from "./FarmDetails/FarmDetails";
 
-import { useState } from "react";
-
-const FarmlandScreen = ({ farmlandId, onClose }) => {
+const FarmlandScreen = ({ onClose, farmlandId, farmland }) => {
   const [open, setOpen] = useState(true);
-  const data = farmlandLoader.getItems();
-  const farm = data.find((farm) => farm.id === farmlandId);
 
-  const handleOnClose = () => {
+  const handleOnClose = useCallback(() => {
     setOpen(false);
     onClose();
-  };
+  }, [onClose]);
+
+  const map = useMemo(
+    () => <WorldMap coordinates={farmland.coordinates} />,
+    [farmland]
+  );
 
   return (
     <FullScreenDialog
@@ -23,7 +25,8 @@ const FarmlandScreen = ({ farmlandId, onClose }) => {
     >
       <div className={classes.layoutBody}>
         <div className={classes.layoutContent}>
-          <WorldMap coordinates={farm.coordinates} />
+          {map}
+          <FarmDetails farmland={farmland} />
         </div>
       </div>
     </FullScreenDialog>
