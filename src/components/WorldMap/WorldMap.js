@@ -1,31 +1,38 @@
 import React, { useEffect, useRef } from "react";
 import BingMaps from "ol/source/BingMaps";
+import { defaults as defaultControls } from "ol/control.js";
 import Map from "ol/Map.js";
+import { Vector as VectorSource, OSM } from "ol/source.js";
+import { fromLonLat } from "ol/proj";
 import TileLayer from "ol/layer/Tile.js";
 import View from "ol/View.js";
+import { Vector as VectorLayer } from "ol/layer.js";
 import classes from "./WordMap.module.css";
 
-const styles = [
-  "RoadOnDemand",
-  "Aerial",
-  "AerialWithLabelsOnDemand",
-  "CanvasDark",
-  "OrdnanceSurvey",
-];
+import { useGeolocation } from "../../hooks/useGeolocation";
+import Loader from "../UI/Loader/Loader";
+import { Polygon } from "ol/geom";
+import { Feature } from "ol";
+
 export const DEFAULT_CENTER = [9.0953328, 45.4628246];
 
 const layers = [];
-const WorldMap = () => {
+
+const WorldMap = ({ coordinates }) => {
   const mapRef = useRef(null);
+  const { position } = useGeolocation();
+  let map, source;
 
   const initMap = () => {
+    source = new VectorSource({ wrapX: false });
+
     layers.push(
       new TileLayer({
         visible: true,
         preload: Infinity,
         source: new BingMaps({
           key: `${process.env.REACT_APP_MAP_KEY}`,
-          imagerySet: styles[2],
+          imagerySet: "AerialWithLabelsOnDemand",
           // use maxZoom 19 to see stretched tiles instead of the BingMaps
           // "no photos at this zoom level" tiles
           // maxZoom: 19
@@ -33,23 +40,83 @@ const WorldMap = () => {
       })
     );
 
-    mapRef.current.innerHTML = "<div id='map' class=" + classes.map + "></div>";
+    const transformedCoords = coordinates.map((coord) => fromLonLat(coord));
 
-    const map = new Map({
+    const geometry = new Polygon([transformedCoords]);
+    const polygon = new Feature({
+      type: "Polygon",
+      geometry: geometry,
+    });
+
+    const pointInsideTheField = geometry.getInteriorPoint();
+
+    // Another way to draw one (or more) polygon
+    // const geojsonObject = {
+    //   type: "FeatureCollection",
+    //   features: [
+    //     {
+    //       type: "Feature",
+    //       geometry: {
+    //         type: "Polygon",
+    //         coordinates: [transformedCoords],
+    //       },
+    //     },
+    //   ],
+    // };
+
+    const polygonLayer = new VectorLayer({
+      source: new VectorSource({
+        // features: new GeoJSON().readFeatures(geojsonObject),
+        features: [polygon],
+      }),
+      style: {
+        "fill-color": "rgba(255, 255, 255, 0.2)",
+        "stroke-color": "#ffcc33",
+        "stroke-width": 2,
+        "circle-radius": 7,
+        "circle-fill-color": "#ffcc33",
+      },
+    });
+
+    layers.push(polygonLayer);
+
+    map = new Map({
       layers: layers,
-      target: "map",
+      target: mapRef.current.id,
       view: new View({
-        center: [-6655.5402445057125, 6709968.258934638],
-        zoom: 13,
+        center: pointInsideTheField
+          ? pointInsideTheField.getCoordinates()
+          : fromLonLat(position),
+        zoom: 15,
+      }),
+      controls: defaultControls({
+        attribution: false,
       }),
     });
   };
 
   useEffect(() => {
-    initMap();
-  });
+    if (position) {
+      initMap();
+    }
 
-  return <div id="genMap" ref={mapRef} className={classes.genMap}></div>;
+    return () => {
+      // Important to cleanup the map after unmounting the components
+      if (map) {
+        map.setTarget(undefined);
+      }
+    };
+  }, [initMap, position]);
+
+  return position ? (
+    <div>
+      <div id="genMap" className={classes.genMap}>
+        <div id="map" ref={mapRef} className={classes.map}></div>
+      </div>
+    </div>
+  ) : (
+    <Loader />
+  );
 };
 
 export default WorldMap;

@@ -4,11 +4,30 @@ import farmlandLoader from "../data/farmlandLoader";
 
 const useFarmlands = () => {
   const [farmlands, setFarmlands] = useState([]);
+  const [companies, setCompanies] = useState([]);
 
   useEffect(() => {
-    farmlandLoader.init();
+    if (!farmlandLoader.getItems()) {
+      farmlandLoader.init();
+    }
     setFarmlands(farmlandLoader.getItems());
   }, []);
+
+  useEffect(() => {
+    if (farmlands) {
+      let companiesFound = [];
+      const filteredCompanies = farmlands
+        .reduce((accumulator, current) => {
+          if (!accumulator.find((item) => item === current.ownerDisplayName)) {
+            accumulator = accumulator.concat(current.ownerDisplayName);
+          }
+          return accumulator;
+        }, companiesFound)
+        .filter(Boolean);
+
+      setCompanies(filteredCompanies);
+    }
+  }, [farmlands]);
 
   const reloadFarmland = useCallback(() => {
     setFarmlands(farmlandLoader.getItems());
@@ -16,7 +35,12 @@ const useFarmlands = () => {
 
   const addFarmland = useCallback((newFarmland) => {
     setFarmlands((previousFarmlands) => {
-      const updated = previousFarmlands.concat(newFarmland);
+      const newFieldWithId = newFarmland.id
+        ? newFarmland
+        : { ...newFarmland, id: `${new Date().getTime()}` };
+      const updated = previousFarmlands.concat(newFieldWithId);
+
+      farmlandLoader.storeItems(updated);
 
       return updated;
     });
@@ -27,6 +51,8 @@ const useFarmlands = () => {
       const updated = previousFarmlands.filter(
         (farmland) => farmland.id !== id
       );
+
+      farmlandLoader.storeItems(updated);
 
       return updated;
     });
@@ -52,6 +78,7 @@ const useFarmlands = () => {
     removeFarmland,
     updateFarmland,
     reloadFarmland,
+    companies,
   };
 };
 

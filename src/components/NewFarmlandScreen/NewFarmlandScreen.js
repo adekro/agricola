@@ -1,19 +1,11 @@
 import {
-  AppBar,
-  IconButton,
-  Toolbar,
-  Typography,
   Button,
   TextField,
   FormControl,
   Autocomplete,
   Snackbar,
   Alert,
-  Dialog,
-  Card,
-  CardContent,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
 import FullScreenDialog from "../UI/FullScreenDialog/FullScreenDialog";
 import { useState, useCallback } from "react";
 import classes from "./NewFarmlandScreen.module.scss";
@@ -22,30 +14,35 @@ import { useMemo } from "react";
 import farmlandLoader from "../../data/farmlandLoader";
 import { useFormik } from "formik";
 import { useEffect } from "react";
-import useCompanies from "../../hooks/useCompanies";
+import useFarmlands from "../../hooks/useFarmlands";
 
-const NewFarmlandScreen = ({ onClose, farmlandId }) => {
-  const [isNewFarmland, setIsNewFarmland] = useState(farmlandId ? false : true);
-  const [isDelFarmland, setIsDelFarmland] = useState(false);
+const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
   const [open, setOpen] = useState(true);
   const [area, setArea] = useState();
   const [perimeter, setPerimeter] = useState();
   const [coordinates, setCoordinates] = useState();
   const [error, setError] = useState();
-  const [owner, setOwner] = useState(null);
-  const { companies } = useCompanies();
+  const [owner, setOwner] = useState("");
+  const { companies } = useFarmlands();
+
+  const formik = useFormik({
+    initialValues: {
+      area: "",
+      perimeter: "",
+      type: "",
+      notes: "",
+    },
+    onSubmit: (values) => {
+      alert(JSON.stringify(values, null, 2));
+    },
+  });
 
   const handleOnClose = useCallback(() => {
     setOpen(false);
     onClose("farmlands");
   }, [onClose]);
 
-  const handleDelOnClose = useCallback(() => {
-    setIsDelFarmland(false);
-  }, [isDelFarmland]);
-
   const onSaveFarmHandler = useCallback(() => {
-    const data = farmlandLoader.getItems();
     const newFarmland = {
       ...formik.values,
       ownerDisplayName: owner,
@@ -55,23 +52,9 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
       setError("Please fill all the required data");
       return;
     }
-    farmlandLoader.storeItems([...data, newFarmland]);
+    onCreate(newFarmland);
     handleOnClose();
-  }, [owner, coordinates]);
-
-  const deleteHandler = useCallback(() => {
-    setIsDelFarmland(true);
-  }, []);
-  const confirmDelete = useCallback(() => {
-    setIsDelFarmland(false);
-    setOpen(false);
-    onClose("farmlands");
-
-    const data = farmlandLoader.getItems();
-    const updated = data.filter((farmland) => farmland.id !== farmlandId);
-    farmlandLoader.storeItems(updated);
-    handleOnClose();
-  }, []);
+  }, [owner, coordinates, onCreate, handleOnClose, formik.values]);
 
   const drawCompletedHandler = useCallback(
     ({ area, perimeter, coordinates }) => {
@@ -86,18 +69,6 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
     () => <DrawableMap onDrawCompleted={drawCompletedHandler} />,
     [drawCompletedHandler]
   );
-
-  const formik = useFormik({
-    initialValues: {
-      area: "",
-      perimeter: "",
-      type: "",
-      notes: "",
-    },
-    onSubmit: (values) => {
-      alert(JSON.stringify(values, null, 2));
-    },
-  });
 
   useEffect(() => {
     if (area && perimeter) {
@@ -119,35 +90,27 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
     }
   }, [farmlandId]);
 
-  const changeCompanyHandler = useCallback(
-    (_event, newValue) => setOwner(newValue),
-    []
-  );
+  const changeCompanyHandler = useCallback((_event, newValue) => {
+    setOwner(newValue);
+  }, []);
 
   const closeHandler = useCallback(() => {
     setError();
   }, []);
 
+  const callToAction = (
+    <Button autoFocus color="inherit" onClick={onSaveFarmHandler}>
+      save
+    </Button>
+  );
+
   return (
-    <FullScreenDialog open={open} handleOnClose={handleOnClose}>
-      <AppBar sx={{ position: "relative" }}>
-        <Toolbar>
-          <IconButton
-            edge="start"
-            color="inherit"
-            onClick={handleOnClose}
-            aria-label="close"
-          >
-            <CloseIcon />
-          </IconButton>
-          <Typography sx={{ ml: 2, flex: 1 }} variant="h6" component="div">
-            Create new farmland
-          </Typography>
-          <Button autoFocus color="inherit" onClick={onSaveFarmHandler}>
-            save
-          </Button>
-        </Toolbar>
-      </AppBar>
+    <FullScreenDialog
+      open={open}
+      handleOnClose={handleOnClose}
+      title="Create new farmland"
+      buttonComponent={callToAction}
+    >
       <div className={classes.MapForm}>
         {optimizedMap}
         <form
@@ -209,54 +172,21 @@ const NewFarmlandScreen = ({ onClose, farmlandId }) => {
               ))}
             </Select> */}
             <Autocomplete
+              freeSolo
               name="owner"
               value={owner}
+              inputValue={owner}
               onChange={changeCompanyHandler}
-              options={companies.map((company) => company.name)}
+              onInputChange={changeCompanyHandler}
+              options={companies}
               renderInput={(params) => (
                 <TextField {...params} label="Company name" />
               )}
             ></Autocomplete>
           </FormControl>
-          <div className={classes.buttons}>
-            <Button onClick={deleteHandler}>delete farmland</Button>
-          </div>
         </form>
       </div>
-      {isDelFarmland && (
-        <Dialog
-          open={open}
-          onClose={handleDelOnClose}
-          // TransitionComponent={Transition}
-        >
-          <Card>
-            <AppBar sx={{ position: "relative" }}>
-              <Toolbar>
-                <IconButton
-                  edge="start"
-                  color="inherit"
-                  onClick={handleDelOnClose}
-                  aria-label="close"
-                >
-                  <CloseIcon />
-                </IconButton>
-                <Typography
-                  sx={{ ml: 2, flex: 1 }}
-                  variant="h6"
-                  component="div"
-                >
-                  Delete farmland
-                </Typography>
-              </Toolbar>
-            </AppBar>
-            <CardContent>
-              <h2>Do you want to delete this farmland?</h2>
 
-              <Button onClick={confirmDelete}>delete</Button>
-            </CardContent>
-          </Card>
-        </Dialog>
-      )}
       <Snackbar
         severity="error"
         open={!!error}

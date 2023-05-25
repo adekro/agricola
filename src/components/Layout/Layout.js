@@ -8,36 +8,38 @@ import Summary from "../Summary/Summary";
 import { Button } from "@mui/material";
 import NewFarmlandScreen from "../NewFarmlandScreen/NewFarmlandScreen";
 import NewCompanyScreen from "../NewCompanyScreen/NewCompanyScreen";
+import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
 
 const Layout = () => {
-  const { farmlands, reloadFarmland } = useFarmlands();
+  const { farmlands, addFarmland, reloadFarmland, removeFarmland } =
+    useFarmlands();
   const [filterString, setFilterString] = useState("");
   const [viewFarmland, setViewFarmland] = useState(null);
   const [createMode, setCreateMode] = useState();
 
   const handlerSelectSide = useCallback(() => {
     setViewFarmland(null);
-    reloadFarmland();
+    // reloadFarmland();
   }, []);
 
   const handlerFarmlandOnClick = useCallback((id) => {
     setViewFarmland(id);
   }, []);
 
-  const filterResultsList = useCallback(
-    (list) => {
-      try {
-        return list.filter((item) => {
-          const valueToSearch = `${item?.type} 
+  const filterFarmlandsList = useCallback(() => {
+    try {
+      return farmlands.filter((item) => {
+        const valueToSearch = `${item?.type} 
             ${item?.name} 
             ${item?.ownerDisplayName}`.toLowerCase();
 
-          return valueToSearch.indexOf(filterString) > -1;
-        });
-      } catch (error) {}
-    },
-    [filterString]
-  );
+        return valueToSearch.indexOf(filterString) > -1;
+      });
+    } catch (error) {
+      // Do something
+      console.log(error);
+    }
+  }, [filterString, farmlands]);
 
   const searchChangeHandler = useCallback((value) => {
     setFilterString(value);
@@ -49,6 +51,14 @@ const Layout = () => {
 
   const closeCreateScreenHandler = useCallback(() => {
     setCreateMode();
+  }, []);
+
+  const addFarmlandHandler = useCallback((newFarmland) => {
+    addFarmland(newFarmland);
+  }, []);
+
+  const removeFarmlandHandler = useCallback((farm) => {
+    removeFarmland(farm);
   }, []);
 
   return (
@@ -71,14 +81,14 @@ const Layout = () => {
             <div className={classes.layoutSide}>
               <div className={classes.layoutSidecontent}>
                 {viewFarmland === null && (
-                  <Summary farmlands={filterResultsList(farmlands)} />
+                  <Summary farmlands={filterFarmlandsList()} />
                 )}
               </div>
             </div>
             <div className={classes.layoutContent}>
               {viewFarmland === null && (
                 <FarmlandsList
-                  farmlands={filterResultsList(farmlands)}
+                  farmlands={filterFarmlandsList()}
                   onClick={handlerFarmlandOnClick}
                 />
               )}
@@ -86,14 +96,19 @@ const Layout = () => {
           </>
         )}
         {viewFarmland != null && (
-          <NewFarmlandScreen
+          <FarmlandScreen
             farmlandId={viewFarmland}
             onClose={handlerSelectSide}
+            farmland={farmlands.find((farm) => farm.id === viewFarmland)}
+            onDelete={removeFarmlandHandler}
           />
         )}
       </div>
       {createMode === "farmland" ? (
-        <NewFarmlandScreen onClose={closeCreateScreenHandler} />
+        <NewFarmlandScreen
+          onClose={closeCreateScreenHandler}
+          onCreate={addFarmlandHandler}
+        />
       ) : null}
       {createMode === "company" ? (
         <NewCompanyScreen onClose={closeCreateScreenHandler} />
