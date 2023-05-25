@@ -1,3 +1,5 @@
+import { postData } from "../lib/lib";
+
 export default (() => {
   const localStorageKeyName = "farmlands";
   const getItems = () => {
@@ -7,6 +9,10 @@ export default (() => {
     localStorage.setItem(localStorageKeyName, JSON.stringify(farmlands));
   };
   const init = () => {
+    /*   const response = fetch(`${process.env.REACT_APP_SERVERAPI}/farmlands.json`);
+    response.then((data) => {
+      storeItems(data);
+    }); */
     storeItems(mockData);
   };
 

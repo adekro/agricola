@@ -11,13 +11,15 @@ import NewCompanyScreen from "../NewCompanyScreen/NewCompanyScreen";
 import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
 
 const Layout = () => {
-  const { farmlands, addFarmland } = useFarmlands();
+  const { farmlands, addFarmland, reloadFarmland, removeFarmland } =
+    useFarmlands();
   const [filterString, setFilterString] = useState("");
   const [viewFarmland, setViewFarmland] = useState(null);
   const [createMode, setCreateMode] = useState();
 
   const handlerSelectSide = useCallback(() => {
     setViewFarmland(null);
+    // reloadFarmland();
   }, []);
 
   const handlerFarmlandOnClick = useCallback((id) => {
@@ -25,13 +27,18 @@ const Layout = () => {
   }, []);
 
   const filterFarmlandsList = useCallback(() => {
-    return farmlands.filter((item) => {
-      const valueToSearch = `${item?.type} 
-          ${item?.name} 
-          ${item?.ownerDisplayName}`.toLowerCase();
+    try {
+      return farmlands.filter((item) => {
+        const valueToSearch = `${item?.type} 
+            ${item?.name} 
+            ${item?.ownerDisplayName}`.toLowerCase();
 
-      return valueToSearch.indexOf(filterString) > -1;
-    });
+        return valueToSearch.indexOf(filterString) > -1;
+      });
+    } catch (error) {
+      // Do something
+      console.log(error);
+    }
   }, [filterString, farmlands]);
 
   const searchChangeHandler = useCallback((value) => {
@@ -48,6 +55,10 @@ const Layout = () => {
 
   const addFarmlandHandler = useCallback((newFarmland) => {
     addFarmland(newFarmland);
+  }, []);
+
+  const removeFarmlandHandler = useCallback((farm) => {
+    removeFarmland(farm);
   }, []);
 
   return (
@@ -89,6 +100,7 @@ const Layout = () => {
             farmlandId={viewFarmland}
             onClose={handlerSelectSide}
             farmland={farmlands.find((farm) => farm.id === viewFarmland)}
+            onDelete={removeFarmlandHandler}
           />
         )}
       </div>

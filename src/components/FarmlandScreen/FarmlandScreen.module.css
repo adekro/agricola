@@ -13,3 +13,10 @@
   align-items: center;
   border-top-left-radius: 10px;
 }
+
+.detailsWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}

@@ -29,6 +29,10 @@ const useFarmlands = () => {
     }
   }, [farmlands]);
 
+  const reloadFarmland = useCallback(() => {
+    setFarmlands(farmlandLoader.getItems());
+  }, []);
+
   const addFarmland = useCallback((newFarmland) => {
     setFarmlands((previousFarmlands) => {
       const newFieldWithId = newFarmland.id
@@ -48,6 +52,8 @@ const useFarmlands = () => {
         (farmland) => farmland.id !== id
       );
 
+      farmlandLoader.storeItems(updated);
+
       return updated;
     });
   }, []);
@@ -66,7 +72,14 @@ const useFarmlands = () => {
     });
   }, []);
 
-  return { farmlands, addFarmland, removeFarmland, updateFarmland, companies };
+  return {
+    farmlands,
+    addFarmland,
+    removeFarmland,
+    updateFarmland,
+    reloadFarmland,
+    companies,
+  };
 };
 
 export default useFarmlands;

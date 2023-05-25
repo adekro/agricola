@@ -184,9 +184,9 @@ const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
               )}
             ></Autocomplete>
           </FormControl>
-          <div className={classes.buttons}></div>
         </form>
       </div>
+
       <Snackbar
         severity="error"
         open={!!error}
