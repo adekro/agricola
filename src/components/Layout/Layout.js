@@ -10,13 +10,14 @@ import NewFarmlandScreen from "../NewFarmlandScreen/NewFarmlandScreen";
 import NewCompanyScreen from "../NewCompanyScreen/NewCompanyScreen";
 
 const Layout = () => {
-  const { farmlands } = useFarmlands();
+  const { farmlands, reloadFarmland } = useFarmlands();
   const [filterString, setFilterString] = useState("");
   const [viewFarmland, setViewFarmland] = useState(null);
   const [createMode, setCreateMode] = useState();
 
   const handlerSelectSide = useCallback(() => {
     setViewFarmland(null);
+    reloadFarmland();
   }, []);
 
   const handlerFarmlandOnClick = useCallback((id) => {
@@ -25,13 +26,15 @@ const Layout = () => {
 
   const filterResultsList = useCallback(
     (list) => {
-      return list.filter((item) => {
-        const valueToSearch = `${item?.type} 
-          ${item?.name} 
-          ${item?.ownerDisplayName}`.toLowerCase();
+      try {
+        return list.filter((item) => {
+          const valueToSearch = `${item?.type} 
+            ${item?.name} 
+            ${item?.ownerDisplayName}`.toLowerCase();
 
-        return valueToSearch.indexOf(filterString) > -1;
-      });
+          return valueToSearch.indexOf(filterString) > -1;
+        });
+      } catch (error) {}
     },
     [filterString]
   );
