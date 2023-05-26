@@ -15,6 +15,7 @@ import farmlandLoader from "../../data/farmlandLoader";
 import { useFormik } from "formik";
 import { useEffect } from "react";
 import useFarmlands from "../../hooks/useFarmlands";
+import { ResponsiveDiv } from "../FarmlandScreen/FarmlandScreen";
 
 const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
   const [open, setOpen] = useState(true);
@@ -111,7 +112,7 @@ const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
       title="Create new farmland"
       buttonComponent={callToAction}
     >
-      <div className={classes.MapForm}>
+      <ResponsiveDiv className={classes.MapForm}>
         {optimizedMap}
         <form
           className={classes.NewFarmlandForm}
@@ -185,7 +186,7 @@ const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
             ></Autocomplete>
           </FormControl>
         </form>
-      </div>
+      </ResponsiveDiv>
 
       <Snackbar
         severity="error"

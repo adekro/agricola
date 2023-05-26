@@ -1,4 +1,5 @@
 import React from "react";
+import { formatPerimeter } from "../WorldMap/utils";
 import styles from "./Summary.module.css";
 
 const Summary = ({ farmlands }) => {

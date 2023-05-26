@@ -5,7 +5,7 @@ import FarmlandsList from "../FarmlandsList/FarmlandsList";
 import Header from "../Header/Header";
 import Search from "../Header/Search/Search";
 import Summary from "../Summary/Summary";
-import { Button } from "@mui/material";
+import { Button, styled } from "@mui/material";
 import NewFarmlandScreen from "../NewFarmlandScreen/NewFarmlandScreen";
 import NewCompanyScreen from "../NewCompanyScreen/NewCompanyScreen";
 import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
@@ -61,6 +61,35 @@ const Layout = () => {
     removeFarmland(farm);
   }, []);
 
+  const ResponsiveLayout = styled("div")(({ theme }) => ({
+    [theme.breakpoints.down("md")]: {
+      flexDirection: "column",
+      justifyContent: "flex-start",
+      alignItems: "center",
+    },
+    [theme.breakpoints.up("md")]: {
+      flexDirection: "row",
+    },
+    [theme.breakpoints.up("lg")]: {
+      flexDirection: "row",
+    },
+  }));
+
+  const ResponsiveContainer = styled("div")(({ theme }) => ({
+    [theme.breakpoints.down("md")]: {
+      width: "100%",
+      borderRadius: "initial",
+      marginRight: "initial",
+      marginBottom: "12px",
+    },
+    // [theme.breakpoints.up("md")]: {
+    //   flexDirection: "row",
+    // },
+    // [theme.breakpoints.up("lg")]: {
+    //   flexDirection: "row",
+    // },
+  }));
+
   return (
     <React.Fragment>
       <Header>
@@ -75,35 +104,35 @@ const Layout = () => {
           </Button>
         </div>
       </Header>
-      <div className={classes.layoutBody}>
+      <ResponsiveLayout className={classes.layoutBody}>
         {viewFarmland === null && (
           <>
-            <div className={classes.layoutSide}>
+            <ResponsiveContainer className={classes.layoutSide}>
               <div className={classes.layoutSidecontent}>
                 {viewFarmland === null && (
                   <Summary farmlands={filterFarmlandsList()} />
                 )}
               </div>
-            </div>
-            <div className={classes.layoutContent}>
+            </ResponsiveContainer>
+            <ResponsiveContainer className={classes.layoutContent}>
               {viewFarmland === null && (
                 <FarmlandsList
                   farmlands={filterFarmlandsList()}
                   onClick={handlerFarmlandOnClick}
                 />
               )}
-            </div>
+            </ResponsiveContainer>
           </>
         )}
-        {viewFarmland != null && (
-          <FarmlandScreen
-            farmlandId={viewFarmland}
-            onClose={handlerSelectSide}
-            farmland={farmlands.find((farm) => farm.id === viewFarmland)}
-            onDelete={removeFarmlandHandler}
-          />
-        )}
-      </div>
+      </ResponsiveLayout>
+      {viewFarmland != null && (
+        <FarmlandScreen
+          farmlandId={viewFarmland}
+          onClose={handlerSelectSide}
+          farmland={farmlands.find((farm) => farm.id === viewFarmland)}
+          onDelete={removeFarmlandHandler}
+        />
+      )}
       {createMode === "farmland" ? (
         <NewFarmlandScreen
           onClose={closeCreateScreenHandler}
