@@ -3,6 +3,7 @@
   display: flex;
   justify-content: center;
   /* min-height: calc(100vh - 60px); */
+  margin: 24px 0 0 0;
 }
 
 .layoutContent {

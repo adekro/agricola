@@ -1,3 +1,4 @@
+import { styled } from "@mui/material";
 import Button from "../../UI/Button/Button";
 import styles from "./FarmlandCard.module.scss";
 
@@ -13,12 +14,31 @@ const FarmlandCard = ({
   const onViewButtonClickHandler = () => {
     onView(id);
   };
+
+  const ResponsiveCard = styled("div")(({ theme }) => ({
+    [theme.breakpoints.down("md")]: {
+      width: "85%",
+    },
+    [theme.breakpoints.up("md")]: {
+      width: "initial",
+    },
+    [theme.breakpoints.up("lg")]: {
+      width: "700px",
+    },
+  }));
+
+  const ResponsiveH2 = styled("h2")(({ theme }) => ({
+    [theme.breakpoints.down("md")]: {
+      fontSize: "16px",
+    },
+  }));
+
   return (
-    <div className={styles["FarmlandCard-container"]}>
+    <ResponsiveCard className={styles["FarmlandCard-container"]}>
       <div className={styles["FarmlandCard-primaryInfo"]}>
         <div>
           <h6 className={styles.label}>Farming</h6>
-          <h2 className={styles.value}>{type}</h2>
+          <ResponsiveH2 className={styles.value}>{type}</ResponsiveH2>
         </div>
         <div>
           <div className={`${styles.label} ${styles.labelSmall}`}>
@@ -33,7 +53,9 @@ const FarmlandCard = ({
         <div className={styles["FarmlandCard-detailsInner"]}>
           <div className={styles["FarmlandCard-owner"]}>
             <h6 className={`${styles.label} ${styles.labelVariant}`}>Owner</h6>
-            <h2 className={styles.value}>{ownerDisplayName}</h2>
+            <ResponsiveH2 className={styles.value}>
+              {ownerDisplayName}
+            </ResponsiveH2>
           </div>
           <div className={styles["FarmlandCard-location"]}>
             <span
@@ -45,7 +67,7 @@ const FarmlandCard = ({
         </div>
         <Button onClick={onViewButtonClickHandler}>View</Button>
       </div>
-    </div>
+    </ResponsiveCard>
   );
 };
 

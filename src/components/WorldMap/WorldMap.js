@@ -13,10 +13,17 @@ import { useGeolocation } from "../../hooks/useGeolocation";
 import Loader from "../UI/Loader/Loader";
 import { Polygon } from "ol/geom";
 import { Feature } from "ol";
+import { styled } from "@mui/material";
 
 export const DEFAULT_CENTER = [9.0953328, 45.4628246];
 
 const layers = [];
+
+export const ResponsiveMap = styled("div")(({ theme }) => ({
+  [theme.breakpoints.down("md")]: {
+    width: "90vw;",
+  },
+}));
 
 const WorldMap = ({ coordinates }) => {
   const mapRef = useRef(null);
@@ -111,7 +118,11 @@ const WorldMap = ({ coordinates }) => {
   return position ? (
     <div>
       <div id="genMap" className={classes.genMap}>
-        <div id="map" ref={mapRef} className={classes.map}></div>
+        <ResponsiveMap
+          id="map"
+          ref={mapRef}
+          className={classes.map}
+        ></ResponsiveMap>
       </div>
     </div>
   ) : (

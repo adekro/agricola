@@ -4,10 +4,10 @@
   display: flex;
   justify-content: center;
 }
+
 .map {
   position: relative;
   width: 50vw;
-  top: 5vh;
   border-radius: 10px;
   overflow: hidden;
 }

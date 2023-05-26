@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   CardContent,
+  styled,
 } from "@mui/material";
 import WorldMap from "../WorldMap/WorldMap";
 import classes from "./FarmlandScreen.module.css";
@@ -14,6 +15,20 @@ import FullScreenDialog from "../UI/FullScreenDialog/FullScreenDialog";
 import { useCallback, useMemo, useState } from "react";
 import { FarmDetails } from "./FarmDetails/FarmDetails";
 import Modal from "../UI/Modal/Modal";
+
+export const ResponsiveDiv = styled("div")(({ theme }) => ({
+  [theme.breakpoints.down("md")]: {
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // [theme.breakpoints.up("md")]: {
+  //   width: "initial",
+  // },
+  // [theme.breakpoints.up("lg")]: {
+  //   width: "700px",
+  // },
+}));
 
 const FarmlandScreen = ({ onClose, farmlandId, farmland, onDelete }) => {
   const [open, setOpen] = useState(true);
@@ -50,13 +65,13 @@ const FarmlandScreen = ({ onClose, farmlandId, farmland, onDelete }) => {
       title="Farmland details"
     >
       <div className={classes.layoutBody}>
-        <div className={classes.layoutContent}>
+        <ResponsiveDiv className={classes.layoutContent}>
           {map}
           <div className={classes.detailsWrapper}>
             <FarmDetails farmland={farmland} />
             <Button onClick={deleteHandler}>Delete farmland</Button>
           </div>
-        </div>
+        </ResponsiveDiv>
       </div>
       {isDelFarmland && (
         <Modal

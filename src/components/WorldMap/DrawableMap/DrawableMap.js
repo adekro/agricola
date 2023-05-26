@@ -15,6 +15,7 @@ import { formatArea, formatLength } from "../utils";
 import { unByKey } from "ol/Observable.js";
 import Loader from "../../UI/Loader/Loader";
 import { useGeolocation } from "../../../hooks/useGeolocation";
+import { ResponsiveMap } from "../WorldMap";
 // import { Button } from "@mui/material";
 // import { Button, Typography } from "@mui/material";
 
@@ -218,7 +219,11 @@ const DrawableMap = ({ onDrawCompleted }) => {
     <div>
       {/* <Button onClick={clearDrawClickHandler}>Clear</Button> */}
       <div id="genMap" className={classes.genMap}>
-        <div id="map" ref={mapRef} className={classes.map}></div>
+        <ResponsiveMap
+          id="map"
+          ref={mapRef}
+          className={classes.map}
+        ></ResponsiveMap>
       </div>
     </div>
   ) : (

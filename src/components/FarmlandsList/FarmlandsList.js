@@ -1,11 +1,33 @@
+import { styled } from "@mui/material";
 import FarmlandCard from "./FarmlandCard/FarmlandCard";
+
+import styles from "./FarmlandList.module.scss";
 
 const FarmlandsList = ({ farmlands, onClick }) => {
   const onViewHandler = (id) => {
     onClick(id);
   };
+
+  const ResponsiveList = styled("div")(({ theme }) => ({
+    // [theme.breakpoints.down("md")]: {
+    //   display: "flex",
+    //   flexDirection: "column",
+    //   flexWrap: "no-wrap",
+    // },
+    // [theme.breakpoints.up("md")]: {
+    //   display: "flex",
+    //   flexDirection: "column",
+    //   flexWrap: "no-wrap",
+    // },
+    // [theme.breakpoints.up("lg")]: {
+    //   display: "flex",
+    //   flexDirection: "row",
+    //   flexWrap: "wrap",
+    // },
+  }));
+
   return (
-    <div>
+    <ResponsiveList className={styles.FarmlandList}>
       {farmlands &&
         farmlands.map((farm) => (
           <FarmlandCard
@@ -19,7 +41,7 @@ const FarmlandsList = ({ farmlands, onClick }) => {
             onView={onViewHandler}
           />
         ))}
-    </div>
+    </ResponsiveList>
   );
 };
 
