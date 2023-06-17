@@ -6,13 +6,16 @@ import Header from "../Header/Header";
 import Search from "../Header/Search/Search";
 import Summary from "../Summary/Summary";
 import { Button, styled } from "@mui/material";
-import NewFarmlandScreen from "../NewFarmlandScreen/NewFarmlandScreen";
-import NewCompanyScreen from "../NewCompanyScreen/NewCompanyScreen";
 import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
 
 const Layout = () => {
-  const { farmlands, addFarmland, reloadFarmland, removeFarmland } =
-    useFarmlands();
+  const {
+    farmlands,
+    addFarmland,
+    updateFarmland,
+    reloadFarmland,
+    removeFarmland,
+  } = useFarmlands();
   const [filterString, setFilterString] = useState("");
   const [viewFarmland, setViewFarmland] = useState(null);
   const [createMode, setCreateMode] = useState();
@@ -55,6 +58,9 @@ const Layout = () => {
 
   const addFarmlandHandler = useCallback((newFarmland) => {
     addFarmland(newFarmland);
+  }, []);
+  const updateFarmlandHeader = useCallback((idFarmland, modFarmland) => {
+    updateFarmland(idFarmland, modFarmland);
   }, []);
 
   const removeFarmlandHandler = useCallback((farm) => {
@@ -131,17 +137,19 @@ const Layout = () => {
           onClose={handlerSelectSide}
           farmland={farmlands.find((farm) => farm.id === viewFarmland)}
           onDelete={removeFarmlandHandler}
+          onUpdate={updateFarmlandHeader}
         />
       )}
       {createMode === "farmland" ? (
-        <NewFarmlandScreen
+        <FarmlandScreen
           onClose={closeCreateScreenHandler}
           onCreate={addFarmlandHandler}
         />
       ) : null}
-      {createMode === "company" ? (
+      {/*       {createMode === "company" ? (
         <NewCompanyScreen onClose={closeCreateScreenHandler} />
       ) : null}
+ */}{" "}
     </React.Fragment>
   );
 };

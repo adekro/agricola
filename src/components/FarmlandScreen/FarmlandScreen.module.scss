@@ -1,0 +1,32 @@
+.MapForm {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin: 24px 0 0 0;
+
+  .MapContent {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 24px 0 0 0;
+
+    .FarmlandForm {
+      margin: 0 2em;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+
+      .Input {
+        margin: 12px;
+      }
+
+      .buttons {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+    }
+  }
+}
