@@ -72,7 +72,7 @@ const FarmlandScreen = ({
     const newFarmland = {
       ...formik.values,
       ownerDisplayName: owner,
-      coordinates: coordinates,
+      coordinates: farmland ? farmland.coordinates : coordinates,
     };
     if (!newFarmland.area || !newFarmland.perimeter) {
       setError("Please fill all the required data");
@@ -147,7 +147,11 @@ const FarmlandScreen = ({
   }, []);
 
   const changeCompanyHandler = useCallback((_event, newValue) => {
-    setOwner(newValue);
+    if (newValue) {
+      setOwner(newValue);
+    } else {
+      setOwner("");
+    }
   }, []);
 
   const closeHandler = useCallback(() => {
