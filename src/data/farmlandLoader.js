@@ -11,7 +11,7 @@ export default (() => {
   const init = () => {
     /*   const response = fetch(`${process.env.REACT_APP_SERVERAPI}/farmlands.json`);
     response.then((data) => {
-      storeItems(data);
+      storeItems(data); s
     }); */
     storeItems(mockData);
   };
