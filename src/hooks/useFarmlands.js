@@ -68,6 +68,8 @@ const useFarmlands = () => {
         farmland.id === id ? farmlandToUpdate : farmland
       );
 
+      farmlandLoader.storeItems(updated);
+
       return updated;
     });
   }, []);

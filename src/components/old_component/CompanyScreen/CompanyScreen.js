@@ -4,8 +4,8 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
-import companyLoader from "../../data/companyLoader";
-import BackButton from "../UI/BackButton/BackButton";
+import companyLoader from "../../../data/companyLoader";
+import BackButton from "../../UI/BackButton/BackButton";
 
 const ValidateSchema = Yup.object().shape({
   name: Yup.string()

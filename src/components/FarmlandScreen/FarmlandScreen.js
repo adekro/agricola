@@ -1,20 +1,23 @@
 import {
-  AppBar,
-  IconButton,
-  Toolbar,
-  Typography,
-  Dialog,
   Button,
-  Card,
-  CardContent,
+  TextField,
+  FormControl,
+  Autocomplete,
+  Snackbar,
+  Alert,
   styled,
 } from "@mui/material";
-import WorldMap from "../WorldMap/WorldMap";
-import classes from "./FarmlandScreen.module.css";
 import FullScreenDialog from "../UI/FullScreenDialog/FullScreenDialog";
-import { useCallback, useMemo, useState } from "react";
-import { FarmDetails } from "./FarmDetails/FarmDetails";
+import { useState, useCallback } from "react";
+import classes from "./FarmlandScreen.module.scss";
+import DrawableMap from "../WorldMap/DrawableMap/DrawableMap";
+import { useMemo } from "react";
+import farmlandLoader from "../../data/farmlandLoader";
+import { useFormik } from "formik";
+import { useEffect } from "react";
+import useFarmlands from "../../hooks/useFarmlands";
 import Modal from "../UI/Modal/Modal";
+import WorldMap from "../WorldMap/WorldMap";
 
 export const ResponsiveDiv = styled("div")(({ theme }) => ({
   [theme.breakpoints.down("md")]: {
@@ -30,18 +33,67 @@ export const ResponsiveDiv = styled("div")(({ theme }) => ({
   // },
 }));
 
-const FarmlandScreen = ({ onClose, farmlandId, farmland, onDelete }) => {
+const FarmlandScreen = ({
+  onClose,
+  farmlandId,
+  onCreate,
+  onUpdate,
+  farmland,
+  onDelete,
+}) => {
   const [open, setOpen] = useState(true);
+  const [area, setArea] = useState();
+  const [perimeter, setPerimeter] = useState();
+  const [coordinates, setCoordinates] = useState();
+  const [error, setError] = useState();
+  const [owner, setOwner] = useState("");
+  const { companies } = useFarmlands();
   const [isDelFarmland, setIsDelFarmland] = useState(false);
+
+  const formik = useFormik({
+    initialValues: farmland || {
+      area: "",
+      perimeter: "",
+      type: "",
+      notes: "",
+      owner: "",
+    },
+    onSubmit: (values) => {
+      alert(JSON.stringify(values, null, 2));
+    },
+  });
 
   const handleOnClose = useCallback(() => {
     setOpen(false);
     onClose();
   }, [onClose]);
 
-  const map = useMemo(
-    () => <WorldMap coordinates={farmland.coordinates} />,
-    [farmland]
+  const onSaveFarmHandler = useCallback(() => {
+    const newFarmland = {
+      ...formik.values,
+      ownerDisplayName: owner,
+      coordinates: farmland ? farmland.coordinates : coordinates,
+    };
+    if (!newFarmland.area || !newFarmland.perimeter) {
+      setError("Please fill all the required data");
+      return;
+    }
+    if (farmland) {
+      onUpdate(farmlandId, newFarmland);
+    } else {
+      onCreate(newFarmland);
+    }
+
+    handleOnClose();
+  }, [owner, coordinates, onCreate, handleOnClose, formik.values]);
+
+  const drawCompletedHandler = useCallback(
+    ({ area, perimeter, coordinates }) => {
+      setArea(area);
+      setPerimeter(perimeter);
+      setCoordinates(coordinates);
+    },
+    []
   );
 
   const deleteHandler = useCallback(() => {
@@ -58,21 +110,157 @@ const FarmlandScreen = ({ onClose, farmlandId, farmland, onDelete }) => {
     handleOnClose();
   }, [farmland, onDelete, handleOnClose]);
 
+  const optimizedMap = useMemo(
+    () => <DrawableMap onDrawCompleted={drawCompletedHandler} />,
+    [drawCompletedHandler]
+  );
+
+  const map = useMemo(
+    () => <WorldMap coordinates={farmland ? farmland.coordinates : null} />,
+    [farmland]
+  );
+
+  useEffect(() => {
+    if (area && perimeter) {
+      formik.setFieldValue("area", area);
+      formik.setFieldValue("perimeter", perimeter);
+    }
+  }, [area, perimeter]);
+
+  useEffect(() => {
+    if (farmlandId) {
+      const farm = farmlandLoader
+        .getItems()
+        .find((farm) => farm.id === farmlandId);
+
+      formik.setFieldValue("area", farm?.area || "");
+      formik.setFieldValue("perimeter", farm?.perimeter || "");
+      formik.setFieldValue("type", farm?.type || "");
+      formik.setFieldValue("notes", farm?.notes || "");
+    }
+  }, [farmlandId]);
+
+  useEffect(() => {
+    if (farmland) {
+      setOwner(farmland.ownerDisplayName);
+    }
+  }, []);
+
+  const changeCompanyHandler = useCallback((_event, newValue) => {
+    if (newValue) {
+      setOwner(newValue);
+    } else {
+      setOwner("");
+    }
+  }, []);
+
+  const closeHandler = useCallback(() => {
+    setError();
+  }, []);
+
+  const callToAction = (
+    <Button autoFocus color="inherit" onClick={onSaveFarmHandler}>
+      save
+    </Button>
+  );
+
   return (
     <FullScreenDialog
       open={open}
       handleOnClose={handleOnClose}
-      title="Farmland details"
+      title="Create new farmland"
+      buttonComponent={callToAction}
     >
-      <div className={classes.layoutBody}>
-        <ResponsiveDiv className={classes.layoutContent}>
-          {map}
+      <ResponsiveDiv className={classes.MapForm}>
+        <div className={classes.MapContent}>
+          {!farmland && optimizedMap}
+          {farmland && map}
+          <form className={classes.FarmlandForm} onSubmit={formik.handleSubmit}>
+            <TextField
+              onChange={formik.handleChange}
+              value={formik.values.area}
+              label="Area (ettari)"
+              name="area"
+              disabled
+              className={classes.Input}
+              fullWidth
+              error={formik.touched.area && Boolean(formik.errors.email)}
+            />
+            <TextField
+              onChange={formik.handleChange}
+              value={formik.values.perimeter}
+              label="Perimeter (m)"
+              name="perimeter"
+              disabled
+              className={classes.Input}
+              fullWidth
+              error={formik.touched.perimeter && Boolean(formik.errors.email)}
+            />
+            <TextField
+              onChange={formik.handleChange}
+              value={formik.values.type}
+              label="Type of farming"
+              name="type"
+              className={classes.Input}
+              fullWidth
+              error={formik.touched.type && Boolean(formik.errors.email)}
+            />
+            <TextField
+              onChange={formik.handleChange}
+              value={formik.values.notes}
+              label="Notes"
+              name="notes"
+              className={classes.Input}
+              fullWidth
+              error={formik.touched.notes && Boolean(formik.errors.email)}
+            />
+            <FormControl fullWidth className={classes.Input}>
+              {/* <InputLabel id="owner-label">Owner</InputLabel>
+              <Select
+                labelId="owner-label"
+                name="owner"
+                label="Owner"
+                value={formik.values.owner}
+                onChange={formik.handleChange}
+                error={formik.touched.owner && Boolean(formik.errors.email)}
+              >
+                {companies.map((company) => (
+                  <MenuItem key={company.name} value={company}>
+                    {company.name}
+                  </MenuItem>
+                ))}
+              </Select> */}
+              <Autocomplete
+                freeSolo
+                name="owner"
+                value={formik.values.owner}
+                inputValue={owner}
+                onChange={changeCompanyHandler}
+                onInputChange={changeCompanyHandler}
+                options={companies}
+                renderInput={(params) => (
+                  <TextField {...params} label="Company name" />
+                )}
+              ></Autocomplete>
+            </FormControl>
+          </form>
+        </div>
+        {farmland && (
           <div className={classes.detailsWrapper}>
-            <FarmDetails farmland={farmland} />
             <Button onClick={deleteHandler}>Delete farmland</Button>
           </div>
-        </ResponsiveDiv>
-      </div>
+        )}
+      </ResponsiveDiv>
+
+      <Snackbar
+        severity="error"
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={closeHandler}
+      >
+        <Alert severity="error">{error}</Alert>
+      </Snackbar>
+
       {isDelFarmland && (
         <Modal
           open={isDelFarmland}
@@ -87,4 +275,5 @@ const FarmlandScreen = ({ onClose, farmlandId, farmland, onDelete }) => {
     </FullScreenDialog>
   );
 };
+
 export default FarmlandScreen;
