@@ -1,8 +1,8 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import BingMaps from "ol/source/BingMaps";
 import { defaults as defaultControls } from "ol/control.js";
 import Map from "ol/Map.js";
-import { Vector as VectorSource } from "ol/source.js";
+import { Vector as VectorSource, TileWMS } from "ol/source.js";
 import Draw from "ol/interaction/Draw.js";
 import { fromLonLat } from "ol/proj";
 import TileLayer from "ol/layer/Tile.js";
@@ -19,11 +19,13 @@ import { ResponsiveMap } from "../WorldMap";
 // import { Button } from "@mui/material";
 // import { Button, Typography } from "@mui/material";
 
-const layers = [];
+// const layers = []; // Remove or comment out the global layers array
 
 const DrawableMap = ({ onDrawCompleted }) => {
   const mapRef = useRef(null);
   const { position } = useGeolocation();
+  const [cadastralLayerVisible, setCadastralLayerVisible] = useState(true);
+  const cadastralLayerRef = useRef(null);
   let map,
     draw,
     vector,
@@ -33,6 +35,7 @@ const DrawableMap = ({ onDrawCompleted }) => {
     measureTooltip;
 
   const initMap = () => {
+    const layers = []; // Initialize layers array here for each map instance
     source = new VectorSource({ wrapX: false });
     vector = new VectorLayer({
       source: source,
@@ -64,6 +67,7 @@ const DrawableMap = ({ onDrawCompleted }) => {
       helpTooltipElement.classList.remove("hidden");
     };
 
+    // Base Bing Maps layer
     layers.push(
       new TileLayer({
         visible: true,
@@ -74,7 +78,26 @@ const DrawableMap = ({ onDrawCompleted }) => {
         }),
       })
     );
-    layers.push(vector);
+
+    // Add WMS layer for cadastral maps
+    const cadastralLayer = new TileLayer({
+      source: new TileWMS({
+        url: "https://wms.cartografia.agenziaentrate.gov.it/inspire/wms/ows01/wmsinspirecatasto.asp",
+        params: {
+          LAYERS: "CP.CadastralParcel,Fabbricati", // Cadastral Parcels and Buildings
+          TILED: true,
+          VERSION: "1.3.0",
+        },
+        serverType: "geoserver",
+        crossOrigin: "anonymous",
+      }),
+      visible: cadastralLayerVisible, // Controlled by state
+      opacity: 0.7,
+    });
+    cadastralLayerRef.current = cadastralLayer; // Store layer reference
+    layers.push(cadastralLayer);
+
+    layers.push(vector); // This is the drawing layer, should be on top of cadastral
 
     map = new Map({
       layers: layers,
@@ -203,7 +226,18 @@ const DrawableMap = ({ onDrawCompleted }) => {
         map.setTarget(undefined);
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initMap, position]);
+
+  useEffect(() => {
+    if (cadastralLayerRef.current) {
+      cadastralLayerRef.current.setVisible(cadastralLayerVisible);
+    }
+  }, [cadastralLayerVisible]);
+
+  const toggleCadastralLayer = () => {
+    setCadastralLayerVisible(!cadastralLayerVisible);
+  };
 
   // TO be completed if we want a delete draw button
   // const clearDrawClickHandler = () => {
@@ -218,12 +252,23 @@ const DrawableMap = ({ onDrawCompleted }) => {
   return position ? (
     <div>
       {/* <Button onClick={clearDrawClickHandler}>Clear</Button> */}
+      {/* <Button onClick={clearDrawClickHandler}>Clear</Button> */}
       <div id="genMap" className={classes.genMap}>
         <ResponsiveMap
           id="map"
           ref={mapRef}
           className={classes.map}
         ></ResponsiveMap>
+      </div>
+      <div style={{ marginTop: "10px", textAlign: "center" }}>
+        <label>
+          <input
+            type="checkbox"
+            checked={cadastralLayerVisible}
+            onChange={toggleCadastralLayer}
+          />
+          Mostra Layer Catastale
+        </label>
       </div>
     </div>
   ) : (
