@@ -1,8 +1,8 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import BingMaps from "ol/source/BingMaps";
 import { defaults as defaultControls } from "ol/control.js";
 import Map from "ol/Map.js";
-import { Vector as VectorSource, OSM } from "ol/source.js";
+import { Vector as VectorSource, OSM, TileWMS } from "ol/source.js";
 import { fromLonLat } from "ol/proj";
 import TileLayer from "ol/layer/Tile.js";
 import View from "ol/View.js";
@@ -17,7 +17,7 @@ import { styled } from "@mui/material";
 
 export const DEFAULT_CENTER = [9.0953328, 45.4628246];
 
-const layers = [];
+// const layers = []; // Remove or comment out the global layers array
 
 export const ResponsiveMap = styled("div")(({ theme }) => ({
   [theme.breakpoints.down("md")]: {
@@ -28,11 +28,15 @@ export const ResponsiveMap = styled("div")(({ theme }) => ({
 const WorldMap = ({ coordinates }) => {
   const mapRef = useRef(null);
   const { position } = useGeolocation();
+  const [cadastralLayerVisible, setCadastralLayerVisible] = useState(true);
+  const cadastralLayerRef = useRef(null); // To store reference to the layer
   let map, source;
 
   const initMap = () => {
+    const layers = []; // Initialize layers array here for each map instance
     source = new VectorSource({ wrapX: false });
 
+    // Base Bing Maps layer
     layers.push(
       new TileLayer({
         visible: true,
@@ -46,6 +50,24 @@ const WorldMap = ({ coordinates }) => {
         }),
       })
     );
+
+    // Add WMS layer for cadastral maps
+    const cadastralLayer = new TileLayer({
+      source: new TileWMS({
+        url: "https://wms.cartografia.agenziaentrate.gov.it/inspire/wms/ows01/wmsinspirecatasto.asp",
+        params: {
+          LAYERS: "CP.CadastralParcel,Fabbricati", // Cadastral Parcels and Buildings
+          TILED: true,
+          VERSION: "1.3.0", // Using 1.3.0 as it's common for INSPIRE
+        },
+        serverType: "geoserver", // This might need adjustment based on the actual server
+        crossOrigin: "anonymous",
+      }),
+      visible: cadastralLayerVisible, // Controlled by state
+      opacity: 0.7, // Set opacity to see through to the base map
+    });
+    cadastralLayerRef.current = cadastralLayer; // Store layer reference
+    layers.push(cadastralLayer);
 
     const transformedCoords = coordinates.map((coord) => fromLonLat(coord));
 
@@ -113,7 +135,18 @@ const WorldMap = ({ coordinates }) => {
         map.setTarget(undefined);
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initMap, position]);
+
+  useEffect(() => {
+    if (cadastralLayerRef.current) {
+      cadastralLayerRef.current.setVisible(cadastralLayerVisible);
+    }
+  }, [cadastralLayerVisible]);
+
+  const toggleCadastralLayer = () => {
+    setCadastralLayerVisible(!cadastralLayerVisible);
+  };
 
   return position ? (
     <div>
@@ -123,6 +156,16 @@ const WorldMap = ({ coordinates }) => {
           ref={mapRef}
           className={classes.map}
         ></ResponsiveMap>
+      </div>
+      <div style={{ marginTop: "10px", textAlign: "center" }}>
+        <label>
+          <input
+            type="checkbox"
+            checked={cadastralLayerVisible}
+            onChange={toggleCadastralLayer}
+          />
+          Mostra Layer Catastale
+        </label>
       </div>
     </div>
   ) : (
