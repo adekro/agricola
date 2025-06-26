@@ -54,7 +54,7 @@ const WorldMap = ({ coordinates }) => {
     // Add WMS layer for cadastral maps
     const cadastralLayer = new TileLayer({
       source: new TileWMS({
-        url: "https://wms.cartografia.agenziaentrate.gov.it/inspire/wms/ows01/wmsinspirecatasto.asp",
+        url: "/api/wms-proxy", // Use the local proxy
         params: {
           LAYERS: "CP.CadastralParcel,Fabbricati", // Cadastral Parcels and Buildings
           TILED: true,
