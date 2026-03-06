@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/fitosanitari-api/(.*)",
-      "destination": "https://www.dati.salute.gov.it/$1"
+      "destination": "/api/proxy?path=$1"
     },
     {
       "source": "/((?!fitosanitari-api/).*)",
