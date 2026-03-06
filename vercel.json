@@ -6,7 +6,7 @@
       "destination": "https://www.dati.salute.gov.it/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!fitosanitari-api/).*)",
       "destination": "/index.html"
     }
   ]
