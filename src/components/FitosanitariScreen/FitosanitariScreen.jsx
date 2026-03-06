@@ -47,11 +47,8 @@ const FitosanitariScreen = () => {
     while (!found && daysToTry > 0) {
       const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
       const fileName = `PROD_FTS_6_${dateStr}.json`;
-
-      // Proviamo ad usare un proxy CORS pubblico per aggirare il blocco del server governativo
-      const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(
-        `https://www.dati.salute.gov.it/sites/default/files/opendata/${fileName}`,
-      )}`;
+      // Utilizziamo il proxy configurato in vite.config.js
+      const url = `/fitosanitari-api/sites/default/files/opendata/${fileName}`;
 
       try {
         const response = await fetch(url);
