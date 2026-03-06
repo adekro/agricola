@@ -2,6 +2,9 @@
   "name": "agricola",
   "version": "1.1.0",
   "private": true,
+  "engines": {
+    "node": ">=24.x"
+  },
   "dependencies": {
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
@@ -21,7 +24,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build --outDir build",
     "preview": "vite preview",
     "test": "react-scripts test",
     "eject": "react-scripts eject",

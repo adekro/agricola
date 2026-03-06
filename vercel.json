@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/fitosanitari-api/(.*)",
+      "destination": "https://www.dati.salute.gov.it/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
