@@ -125,9 +125,13 @@ const FitosanitariScreen = () => {
                 <TableCell style={{ fontWeight: "bold" }}>
                   {p.denominazione_prodotto || p.NOME_PRODOTTO || "-"}
                 </TableCell>
-                <TableCell>{p.sostanze_attive || p.SOSTANZA_ATTIVA || "-"}</TableCell>
+                <TableCell>
+                  {p.sostanze_attive || p.SOSTANZA_ATTIVA || "-"}
+                </TableCell>
                 <TableCell>{p.ragione_sociale || p.IMPRESA || "-"}</TableCell>
-                <TableCell>{p.num_registrazione || p.NUMERO_REGISTRAZIONE || "-"}</TableCell>
+                <TableCell>
+                  {p.num_registrazione || p.NUMERO_REGISTRAZIONE || "-"}
+                </TableCell>
                 <TableCell>
                   <Chip
                     label={p.stato_amministrativo || "-"}

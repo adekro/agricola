@@ -5,7 +5,10 @@ export const openDB = () => {
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
       if (!db.objectStoreNames.contains("products")) {
-        db.createObjectStore("products", { keyPath: "id", autoIncrement: true });
+        db.createObjectStore("products", {
+          keyPath: "id",
+          autoIncrement: true,
+        });
       }
       if (!db.objectStoreNames.contains("metadata")) {
         db.createObjectStore("metadata", { keyPath: "key" });
@@ -26,7 +29,11 @@ export const saveProducts = async (products, fileName) => {
 
     productStore.clear();
     products.forEach((p) => productStore.add(p));
-    metadataStore.put({ key: "lastFile", value: fileName, date: new Date().toISOString() });
+    metadataStore.put({
+      key: "lastFile",
+      value: fileName,
+      date: new Date().toISOString(),
+    });
 
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);

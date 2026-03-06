@@ -121,7 +121,9 @@ const Layout = () => {
         <ResponsiveContainer className={classes.layoutSide}>
           <div className={classes.layoutSidecontent}>
             {isListView && <Summary farmlands={filterFarmlandsList()} />}
-            <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1 }}>
+            <Box
+              sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1 }}
+            >
               <Button
                 fullWidth
                 variant="outlined"
