@@ -48,12 +48,10 @@ const FitosanitariScreen = () => {
       const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
       const fileName = `PROD_FTS_6_${dateStr}.json`;
 
-      // In produzione su Vercel i proxy server-side spesso falliscono con file grandi (502 Bad Gateway)
-      // Proviamo la richiesta diretta se siamo su Vercel, altrimenti usiamo il proxy locale
-      const isVercel = window.location.hostname.includes("vercel.app");
-      const url = isVercel
-        ? `https://www.dati.salute.gov.it/sites/default/files/opendata/${fileName}`
-        : `/fitosanitari-api/sites/default/files/opendata/${fileName}`;
+      // Proviamo ad usare un proxy CORS pubblico per aggirare il blocco del server governativo
+      const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(
+        `https://www.dati.salute.gov.it/sites/default/files/opendata/${fileName}`,
+      )}`;
 
       try {
         const response = await fetch(url);
