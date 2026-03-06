@@ -1,49 +1,132 @@
+.sideContainer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: var(--background-color);
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.sideHeader {
+  margin-bottom: 25px;
+}
+
+.riepilogoTitle {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--primary-color-dark);
+  margin-bottom: 4px;
+}
+
+.riepilogoSubtitle {
+  font-size: 0.85rem;
+  color: #8c96a3;
+}
+
+.statsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 25px;
+}
+
+.statCard {
+  display: flex;
+  align-items: center;
+  background-color: var(--background-secondary);
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 12px 15px;
+}
+
+.statIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+}
+
+.greenIcon {
+  color: var(--secondary-color);
+}
+
+.statText {
+  display: flex;
+  flex-direction: column;
+}
+
+.statLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #8c96a3;
+  letter-spacing: 0.5px;
+}
+
+.statValue {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--primary-color-dark);
+}
+
+.fitosanitariBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--secondary-color);
+  color: var(--secondary-color-text);
+  border: none;
+  border-radius: 8px;
+  padding: 14px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-bottom: 25px;
+  transition: opacity 0.2s;
+}
+
+.fitosanitariBtn:hover {
+  opacity: 0.9;
+}
+
 .sidecontent {
   display: flex;
   flex-direction: column;
-  justify-content: baseline;
-  width: 100%;
-  min-height: 200px;
-  font-size: calc(10px + 1vmin);
+  gap: 8px;
 }
+
 .sideItem {
-  margin: 5px;
-  padding: 2px;
-  padding-left: 10px;
-  padding-right: 20px;
   display: flex;
-  width: 80%;
-  min-width: 100px;
-  justify-content: space-between;
-  border: 1px solid transparent;
-  border-radius: 50px;
+  align-items: center;
+  padding: 12px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #64748b;
+  font-weight: 500;
+  transition: all 0.2s;
 }
 
 .sideItem:hover {
-  background-color: var(--secondary-color);
-  color: var(--secondary-color-text);
-  cursor: pointer;
+  background-color: #e0e0e0;
 }
+
 .siteItemActive {
-  background-color: var(--secondary-color-dark);
-  -webkit-font-smoothing: antialiased;
-  font-weight: 600;
-  letter-spacing: normal;
-  color: var(--secondary-color-dark-text);
-  text-shadow: none;
-}
-.siteItemActive:hover {
   background-color: var(--secondary-color-dark);
   color: var(--secondary-color-dark-text);
 }
 
-.sideItem img {
-  padding: 2px;
-  max-width: 25px;
+.iconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
 }
-.sideItem label {
-  padding: 2px;
+
+.icon {
+  font-size: 1.2rem !important;
 }
-.sideItem label:hover {
-  cursor: pointer;
+
+.label {
+  font-size: 0.95rem;
 }

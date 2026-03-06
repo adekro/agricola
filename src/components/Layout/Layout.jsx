@@ -1,22 +1,16 @@
 import React, { useCallback, useState } from "react";
 import classes from "./Layout.module.scss";
 import useFarmlands from "../../hooks/useFarmlands";
-// import FarmlandsList from "../FarmlandsList/FarmlandsList";
 import Header from "../Header/Header";
 import Search from "../Header/Search/Search";
-import Summary from "../Summary/Summary";
-import { Button, Box } from "@mui/material";
-// import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
-import { Outlet, useNavigate, useParams, useLocation } from "react-router-dom";
+import Side from "../Side/Side";
+import { Button } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 
 const Layout = () => {
-  const {
-    farmlands,
-    addFarmland,
-    updateFarmland,
-    reloadFarmland,
-    removeFarmland,
-  } = useFarmlands();
+  const { farmlands, addFarmland, updateFarmland, removeFarmland } =
+    useFarmlands();
   const [filterString, setFilterString] = useState("");
   const [createMode, setCreateMode] = useState();
   const navigate = useNavigate();
@@ -25,9 +19,14 @@ const Layout = () => {
   const isListView =
     location.pathname === "/" || location.pathname === "/farmlands";
 
-  const handlerSelectSide = useCallback(() => {
-    navigate("/");
-  }, [navigate]);
+  const handlerSelectSide = useCallback(
+    (target) => {
+      if (target === "dashboard") navigate("/");
+      else if (target === "farmlands") navigate("/farmlands");
+      else if (target === "fitosanitari") navigate("/fitosanitari");
+    },
+    [navigate],
+  );
 
   const handlerFarmlandOnClick = useCallback(
     (id) => {
@@ -46,7 +45,6 @@ const Layout = () => {
         return valueToSearch.indexOf(filterString) > -1;
       });
     } catch (error) {
-      // Do something
       console.log(error);
     }
   }, [filterString, farmlands]);
@@ -63,59 +61,68 @@ const Layout = () => {
     setCreateMode();
   }, []);
 
-  const addFarmlandHandler = useCallback((newFarmland) => {
-    addFarmland(newFarmland);
-  }, []);
-  const updateFarmlandHeader = useCallback((idFarmland, modFarmland) => {
-    updateFarmland(idFarmland, modFarmland);
-  }, []);
+  const addFarmlandHandler = useCallback(
+    (newFarmland) => {
+      addFarmland(newFarmland);
+    },
+    [addFarmland],
+  );
 
-  const removeFarmlandHandler = useCallback((farm) => {
-    removeFarmland(farm);
-  }, []);
+  const updateFarmlandHeader = useCallback(
+    (idFarmland, modFarmland) => {
+      updateFarmland(idFarmland, modFarmland);
+    },
+    [updateFarmland],
+  );
+
+  const removeFarmlandHandler = useCallback(
+    (farm) => {
+      removeFarmland(farm);
+    },
+    [removeFarmland],
+  );
 
   return (
-    <React.Fragment>
-      <Header>
-        <div className={classes.HeaderWrapper}>
-          <Search
-            className={classes.HeaderSearchbox}
-            mode={"farmlands"}
-            onChange={searchChangeHandler}
-          />
-          <Button variant="contained" onClick={onCreateButtonClickHandler}>
-            Create farmland
-          </Button>
-        </div>
-      </Header>
-      <div className={classes.layoutBody}>
-        <div className={classes.layoutSide}>
-          <div className={classes.layoutSidecontent}>
-            {isListView && <Summary farmlands={filterFarmlandsList()} />}
-            <Box
-              sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1 }}
+    <div className={classes.layoutRoot}>
+      <aside className={classes.layoutSide}>
+        <Side
+          onSelect={handlerSelectSide}
+          active={location.pathname === "/" ? "dashboard" : "farmlands"}
+        />
+      </aside>
+
+      <main className={classes.layoutMain}>
+        <Header className={classes.layoutHeader}>
+          <div className={classes.headerContent}>
+            <Search
+              className={classes.headerSearch}
+              mode={"farmlands"}
+              onChange={searchChangeHandler}
+            />
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={onCreateButtonClickHandler}
+              sx={{
+                bgcolor: "var(--secondary-color)",
+                "&:hover": { bgcolor: "var(--secondary-color-dark)" },
+                textTransform: "none",
+                fontWeight: "bold",
+                borderRadius: "8px",
+                px: 3,
+              }}
             >
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => navigate("/fitosanitari")}
-                sx={{
-                  color: "primary.main",
-                  borderColor: "primary.main",
-                  textTransform: "none",
-                }}
-              >
-                Gestione Fitosanitari
-              </Button>
-            </Box>
+              Nuovo Terreno
+            </Button>
           </div>
-        </div>
-        <div className={classes.layoutContent}>
+        </Header>
+
+        <section className={classes.layoutContent}>
           <Outlet
             context={{
               farmlands: filterFarmlandsList(),
               onClick: handlerFarmlandOnClick,
-              onClose: handlerSelectSide,
+              onClose: () => navigate("/"),
               onDelete: removeFarmlandHandler,
               onUpdate: updateFarmlandHeader,
               onCreate: addFarmlandHandler,
@@ -123,15 +130,9 @@ const Layout = () => {
               createMode: createMode,
             }}
           />
-        </div>
-      </div>
-      {createMode === "farmland" ? (
-        <FarmlandScreen
-          onClose={closeCreateScreenHandler}
-          onCreate={addFarmlandHandler}
-        />
-      ) : null}
-    </React.Fragment>
+        </section>
+      </main>
+    </div>
   );
 };
 export default Layout;

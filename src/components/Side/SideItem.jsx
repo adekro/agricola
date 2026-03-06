@@ -2,6 +2,7 @@ import React from "react";
 import classes from "./Side.module.css";
 
 const SideItem = (props) => {
+  const Icon = props.icon;
   const isActive = props.active;
 
   const handlerClick = () => {
@@ -9,17 +10,18 @@ const SideItem = (props) => {
   };
 
   return (
-    <React.Fragment>
-      <div
-        onClick={handlerClick}
-        className={`${classes.sideItem} ${
-          isActive ? classes.siteItemActive : ""
-        }`}
-      >
-        <img src={props.ico} alt="" />
-        <label>{props.label}</label>
+    <div
+      onClick={handlerClick}
+      className={`${classes.sideItem} ${
+        isActive ? classes.siteItemActive : ""
+      }`}
+    >
+      <div className={classes.iconWrapper}>
+        <Icon className={classes.icon} />
       </div>
-    </React.Fragment>
+      <span className={classes.label}>{props.label}</span>
+    </div>
   );
 };
+
 export default SideItem;
