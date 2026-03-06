@@ -34,6 +34,10 @@
   align-items: center;
   padding: 0 30px;
   flex-shrink: 0;
+
+  @media (max-width: 600px) {
+    padding: 0 15px;
+  }
 }
 
 .headerContent {
@@ -42,6 +46,17 @@
   justify-content: space-between;
   align-items: center;
   gap: 20px;
+}
+
+.desktopOnly {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-grow: 1;
+
+  @media (max-width: 600px) {
+    display: none;
+  }
 }
 
 .headerSearch {

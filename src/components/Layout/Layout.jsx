@@ -4,6 +4,7 @@ import useFarmlands from "../../hooks/useFarmlands";
 import Header from "../Header/Header";
 import Search from "../Header/Search/Search";
 import Side from "../Side/Side";
+import MobileMenu from "./MobileMenu";
 import { Button } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
@@ -94,26 +95,35 @@ const Layout = () => {
       <main className={classes.layoutMain}>
         <Header className={classes.layoutHeader}>
           <div className={classes.headerContent}>
-            <Search
-              className={classes.headerSearch}
-              mode={"farmlands"}
-              onChange={searchChangeHandler}
+            <div className={classes.desktopOnly}>
+              <Search
+                className={classes.headerSearch}
+                mode={"farmlands"}
+                onChange={searchChangeHandler}
+              />
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={onCreateButtonClickHandler}
+                sx={{
+                  bgcolor: "var(--secondary-color)",
+                  "&:hover": { bgcolor: "var(--secondary-color-dark)" },
+                  textTransform: "none",
+                  fontWeight: "bold",
+                  borderRadius: "8px",
+                  px: 3,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Nuovo Terreno
+              </Button>
+            </div>
+            <MobileMenu
+              farmlands={farmlands}
+              onSearchChange={searchChangeHandler}
+              onCreateFarmland={onCreateButtonClickHandler}
+              onFitosanitariClick={() => handlerSelectSide("fitosanitari")}
             />
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={onCreateButtonClickHandler}
-              sx={{
-                bgcolor: "var(--secondary-color)",
-                "&:hover": { bgcolor: "var(--secondary-color-dark)" },
-                textTransform: "none",
-                fontWeight: "bold",
-                borderRadius: "8px",
-                px: 3,
-              }}
-            >
-              Nuovo Terreno
-            </Button>
           </div>
         </Header>
 
