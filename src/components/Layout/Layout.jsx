@@ -5,7 +5,7 @@ import useFarmlands from "../../hooks/useFarmlands";
 import Header from "../Header/Header";
 import Search from "../Header/Search/Search";
 import Summary from "../Summary/Summary";
-import { Button, styled, Box } from "@mui/material";
+import { Button, Box } from "@mui/material";
 // import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
 import { Outlet, useNavigate, useParams, useLocation } from "react-router-dom";
 
@@ -74,35 +74,6 @@ const Layout = () => {
     removeFarmland(farm);
   }, []);
 
-  const ResponsiveLayout = styled("div")(({ theme }) => ({
-    [theme.breakpoints.down("md")]: {
-      flexDirection: "column",
-      justifyContent: "flex-start",
-      alignItems: "center",
-    },
-    [theme.breakpoints.up("md")]: {
-      flexDirection: "row",
-    },
-    [theme.breakpoints.up("lg")]: {
-      flexDirection: "row",
-    },
-  }));
-
-  const ResponsiveContainer = styled("div")(({ theme }) => ({
-    [theme.breakpoints.down("md")]: {
-      width: "100%",
-      borderRadius: "initial",
-      marginRight: "initial",
-      marginBottom: "12px",
-    },
-    // [theme.breakpoints.up("md")]: {
-    //   flexDirection: "row",
-    // },
-    // [theme.breakpoints.up("lg")]: {
-    //   flexDirection: "row",
-    // },
-  }));
-
   return (
     <React.Fragment>
       <Header>
@@ -117,8 +88,8 @@ const Layout = () => {
           </Button>
         </div>
       </Header>
-      <ResponsiveLayout className={classes.layoutBody}>
-        <ResponsiveContainer className={classes.layoutSide}>
+      <div className={classes.layoutBody}>
+        <div className={classes.layoutSide}>
           <div className={classes.layoutSidecontent}>
             {isListView && <Summary farmlands={filterFarmlandsList()} />}
             <Box
@@ -138,8 +109,8 @@ const Layout = () => {
               </Button>
             </Box>
           </div>
-        </ResponsiveContainer>
-        <ResponsiveContainer className={classes.layoutContent}>
+        </div>
+        <div className={classes.layoutContent}>
           <Outlet
             context={{
               farmlands: filterFarmlandsList(),
@@ -152,8 +123,8 @@ const Layout = () => {
               createMode: createMode,
             }}
           />
-        </ResponsiveContainer>
-      </ResponsiveLayout>
+        </div>
+      </div>
       {createMode === "farmland" ? (
         <FarmlandScreen
           onClose={closeCreateScreenHandler}

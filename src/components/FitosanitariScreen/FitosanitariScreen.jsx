@@ -107,16 +107,35 @@ const FitosanitariScreen = () => {
         onChange={(e) => setFilter(e.target.value)}
       />
 
-      <TableContainer component={Paper} sx={{ maxHeight: "70vh" }}>
-        <Table stickyHeader>
+      <TableContainer
+        component={Paper}
+        sx={{ maxHeight: "70vh", overflowX: "auto" }}
+      >
+        <Table stickyHeader size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Nome Prodotto</TableCell>
-              <TableCell>Sostanza Attiva</TableCell>
-              <TableCell>Ragione Sociale</TableCell>
-              <TableCell>N° Reg.</TableCell>
+              <TableCell sx={{ minWidth: 150 }}>Nome Prodotto</TableCell>
+              <TableCell
+                sx={{
+                  display: { xs: "none", md: "table-cell" },
+                  minWidth: 150,
+                }}
+              >
+                Sostanza Attiva
+              </TableCell>
+              <TableCell
+                sx={{
+                  display: { xs: "none", sm: "table-cell" },
+                  minWidth: 150,
+                }}
+              >
+                Ragione Sociale
+              </TableCell>
+              <TableCell sx={{ minWidth: 80 }}>N° Reg.</TableCell>
               <TableCell>Stato</TableCell>
-              <TableCell>Data Reg.</TableCell>
+              <TableCell sx={{ display: { xs: "none", lg: "table-cell" } }}>
+                Data Reg.
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -125,10 +144,12 @@ const FitosanitariScreen = () => {
                 <TableCell style={{ fontWeight: "bold" }}>
                   {p.denominazione_prodotto || p.NOME_PRODOTTO || "-"}
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ display: { xs: "none", md: "table-cell" } }}>
                   {p.sostanze_attive || p.SOSTANZA_ATTIVA || "-"}
                 </TableCell>
-                <TableCell>{p.ragione_sociale || p.IMPRESA || "-"}</TableCell>
+                <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>
+                  {p.ragione_sociale || p.IMPRESA || "-"}
+                </TableCell>
                 <TableCell>
                   {p.num_registrazione || p.NUMERO_REGISTRAZIONE || "-"}
                 </TableCell>
@@ -143,7 +164,9 @@ const FitosanitariScreen = () => {
                     }
                   />
                 </TableCell>
-                <TableCell>{p.data_registrazione || "-"}</TableCell>
+                <TableCell sx={{ display: { xs: "none", lg: "table-cell" } }}>
+                  {p.data_registrazione || "-"}
+                </TableCell>
               </TableRow>
             ))}
             {filteredProducts.length === 0 && (

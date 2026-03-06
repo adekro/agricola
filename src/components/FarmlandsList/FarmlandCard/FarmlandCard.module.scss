@@ -3,18 +3,21 @@
   border-radius: 10px;
   box-shadow: 0 10px 10px rgba(0, 0, 0, 0.2);
   display: flex;
-  max-width: 100%;
   margin: 20px;
   overflow: hidden;
-  width: 700px;
   text-align: left;
   min-height: 180px;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+    width: 100%;
+    margin: 10px 0;
+  }
 
   .label {
     color: #fff;
     font-size: 12px;
     opacity: 0.6;
-    margin: 30px 0 0 0;
     margin: 0;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -38,11 +41,18 @@
     color: #fff;
     padding: 20px;
     width: 250px;
-    /* min-width: 120px; */
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     justify-content: space-between;
+
+    @media (max-width: 600px) {
+      width: 100%;
+      box-sizing: border-box;
+      flex-direction: row;
+      align-items: center;
+      padding: 15px 20px;
+    }
   }
 
   .FarmlandCard-details {
@@ -54,11 +64,21 @@
     align-items: center;
     justify-content: space-between;
 
+    @media (max-width: 600px) {
+      box-sizing: border-box;
+    }
+
     .FarmlandCard-detailsInner {
       display: flex;
       justify-content: space-between;
       align-items: center;
       width: 100%;
+
+      @media (max-width: 400px) {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+      }
     }
     .FarmlandCard-locationContainer {
       display: flex;

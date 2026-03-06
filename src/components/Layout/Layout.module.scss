@@ -7,6 +7,11 @@ header {
   display: flex;
   justify-content: center;
   min-height: calc(100vh - 60px);
+
+  @media (max-width: 900px) {
+    flex-direction: column;
+    align-items: center;
+  }
 }
 
 .layoutSide {
@@ -17,11 +22,19 @@ header {
   background: var(--background-secondary);
   margin-right: 1%;
   border-top-right-radius: 10px;
+
+  @media (max-width: 900px) {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 12px;
+    border-radius: 0;
+  }
 }
 
 .layoutSidecontent {
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
 
 .layoutContent {
@@ -30,15 +43,29 @@ header {
   justify-content: center;
   background-color: var(--background-secondary);
   border-top-left-radius: 10px;
+
+  @media (max-width: 900px) {
+    width: 100%;
+    border-radius: 0;
+  }
 }
 
 .HeaderWrapper {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 80%;
+  gap: 15px;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+    width: 100%;
+  }
 
   .HeaderSearchbox {
-    margin: 0 2em;
+    margin: 0;
+
+    @media (max-width: 600px) {
+      width: 100%;
+    }
   }
 }

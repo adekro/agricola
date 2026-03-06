@@ -5,7 +5,6 @@ import {
   Autocomplete,
   Snackbar,
   Alert,
-  styled,
 } from "@mui/material";
 import FullScreenDialog from "../UI/FullScreenDialog/FullScreenDialog";
 import { useState, useCallback } from "react";
@@ -19,20 +18,6 @@ import useFarmlands from "../../hooks/useFarmlands";
 import Modal from "../UI/Modal/Modal";
 import WorldMap from "../WorldMap/WorldMap";
 import { useOutletContext, useParams } from "react-router-dom";
-
-export const ResponsiveDiv = styled("div")(({ theme }) => ({
-  [theme.breakpoints.down("md")]: {
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // [theme.breakpoints.up("md")]: {
-  //   width: "initial",
-  // },
-  // [theme.breakpoints.up("lg")]: {
-  //   width: "700px",
-  // },
-}));
 
 const FarmlandScreen = (props) => {
   const { id } = useParams();
@@ -181,10 +166,12 @@ const FarmlandScreen = (props) => {
       title="Create new farmland"
       buttonComponent={callToAction}
     >
-      <ResponsiveDiv className={classes.MapForm}>
+      <div className={classes.MapForm}>
         <div className={classes.MapContent}>
-          {!farmland && optimizedMap}
-          {farmland && map}
+          <div className={classes.MapWrapper}>
+            {!farmland && optimizedMap}
+            {farmland && map}
+          </div>
           <form className={classes.FarmlandForm} onSubmit={formik.handleSubmit}>
             <TextField
               onChange={formik.handleChange}
@@ -260,7 +247,7 @@ const FarmlandScreen = (props) => {
             <Button onClick={deleteHandler}>Delete farmland</Button>
           </div>
         )}
-      </ResponsiveDiv>
+      </div>
 
       <Snackbar
         severity="error"
