@@ -1,12 +1,13 @@
 import React, { useCallback, useState } from "react";
 import classes from "./Layout.module.scss";
 import useFarmlands from "../../hooks/useFarmlands";
-import FarmlandsList from "../FarmlandsList/FarmlandsList";
+// import FarmlandsList from "../FarmlandsList/FarmlandsList";
 import Header from "../Header/Header";
 import Search from "../Header/Search/Search";
 import Summary from "../Summary/Summary";
-import { Button, styled } from "@mui/material";
-import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
+import { Button, styled, Box } from "@mui/material";
+// import FarmlandScreen from "../FarmlandScreen/FarmlandScreen";
+import { Outlet, useNavigate, useParams, useLocation } from "react-router-dom";
 
 const Layout = () => {
   const {
@@ -17,17 +18,23 @@ const Layout = () => {
     removeFarmland,
   } = useFarmlands();
   const [filterString, setFilterString] = useState("");
-  const [viewFarmland, setViewFarmland] = useState(null);
   const [createMode, setCreateMode] = useState();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const isListView =
+    location.pathname === "/" || location.pathname === "/farmlands";
 
   const handlerSelectSide = useCallback(() => {
-    setViewFarmland(null);
-    // reloadFarmland();
-  }, []);
+    navigate("/");
+  }, [navigate]);
 
-  const handlerFarmlandOnClick = useCallback((id) => {
-    setViewFarmland(id);
-  }, []);
+  const handlerFarmlandOnClick = useCallback(
+    (id) => {
+      navigate(`/farmland/${id}`);
+    },
+    [navigate],
+  );
 
   const filterFarmlandsList = useCallback(() => {
     try {
@@ -111,45 +118,46 @@ const Layout = () => {
         </div>
       </Header>
       <ResponsiveLayout className={classes.layoutBody}>
-        {viewFarmland === null && (
-          <>
-            <ResponsiveContainer className={classes.layoutSide}>
-              <div className={classes.layoutSidecontent}>
-                {viewFarmland === null && (
-                  <Summary farmlands={filterFarmlandsList()} />
-                )}
-              </div>
-            </ResponsiveContainer>
-            <ResponsiveContainer className={classes.layoutContent}>
-              {viewFarmland === null && (
-                <FarmlandsList
-                  farmlands={filterFarmlandsList()}
-                  onClick={handlerFarmlandOnClick}
-                />
-              )}
-            </ResponsiveContainer>
-          </>
-        )}
+        <ResponsiveContainer className={classes.layoutSide}>
+          <div className={classes.layoutSidecontent}>
+            {isListView && <Summary farmlands={filterFarmlandsList()} />}
+            <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1 }}>
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={() => navigate("/fitosanitari")}
+                sx={{
+                  color: "primary.main",
+                  borderColor: "primary.main",
+                  textTransform: "none",
+                }}
+              >
+                Gestione Fitosanitari
+              </Button>
+            </Box>
+          </div>
+        </ResponsiveContainer>
+        <ResponsiveContainer className={classes.layoutContent}>
+          <Outlet
+            context={{
+              farmlands: filterFarmlandsList(),
+              onClick: handlerFarmlandOnClick,
+              onClose: handlerSelectSide,
+              onDelete: removeFarmlandHandler,
+              onUpdate: updateFarmlandHeader,
+              onCreate: addFarmlandHandler,
+              closeCreateScreen: closeCreateScreenHandler,
+              createMode: createMode,
+            }}
+          />
+        </ResponsiveContainer>
       </ResponsiveLayout>
-      {viewFarmland != null && (
-        <FarmlandScreen
-          farmlandId={viewFarmland}
-          onClose={handlerSelectSide}
-          farmland={farmlands.find((farm) => farm.id === viewFarmland)}
-          onDelete={removeFarmlandHandler}
-          onUpdate={updateFarmlandHeader}
-        />
-      )}
       {createMode === "farmland" ? (
         <FarmlandScreen
           onClose={closeCreateScreenHandler}
           onCreate={addFarmlandHandler}
         />
       ) : null}
-      {/*       {createMode === "company" ? (
-        <NewCompanyScreen onClose={closeCreateScreenHandler} />
-      ) : null}
- */}{" "}
     </React.Fragment>
   );
 };

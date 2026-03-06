@@ -39,3 +39,13 @@ export const formatArea = function (polygon) {
   // output = Math.round((area / 1000000) * 100) + " " + "ettari";
   return output;
 };
+
+/**
+ * Format perimeter output.
+ * @param {LineString|Polygon} geometry The geometry.
+ * @return {string} The formatted perimeter.
+ */
+export const formatPerimeter = function (geometry) {
+  const length = getLength(geometry);
+  return Math.round(length * 100) / 100 + " m";
+};

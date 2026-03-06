@@ -9,7 +9,7 @@ export default (() => {
     localStorage.setItem(localStorageKeyName, JSON.stringify(farmlands));
   };
   const init = () => {
-    /*   const response = fetch(`${process.env.REACT_APP_SERVERAPI}/farmlands.json`);
+    /*   const response = fetch(`${import.meta.env.VITE_SERVERAPI}/farmlands.json`);
     response.then((data) => {
       storeItems(data); s
     }); */

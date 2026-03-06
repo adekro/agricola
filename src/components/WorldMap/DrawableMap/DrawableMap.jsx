@@ -69,10 +69,10 @@ const DrawableMap = ({ onDrawCompleted }) => {
         visible: true,
         preload: Infinity,
         source: new BingMaps({
-          key: `${process.env.REACT_APP_MAP_KEY}`,
+          key: `${import.meta.env.VITE_MAP_KEY || ""}`,
           imagerySet: "AerialWithLabelsOnDemand",
         }),
-      })
+      }),
     );
     layers.push(vector);
 

@@ -38,13 +38,13 @@ const WorldMap = ({ coordinates }) => {
         visible: true,
         preload: Infinity,
         source: new BingMaps({
-          key: `${process.env.REACT_APP_MAP_KEY}`,
+          key: `${import.meta.env.VITE_MAP_KEY || ""}`,
           imagerySet: "AerialWithLabelsOnDemand",
           // use maxZoom 19 to see stretched tiles instead of the BingMaps
           // "no photos at this zoom level" tiles
           // maxZoom: 19
         }),
-      })
+      }),
     );
 
     const transformedCoords = coordinates.map((coord) => fromLonLat(coord));

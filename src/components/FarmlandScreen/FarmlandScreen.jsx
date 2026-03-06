@@ -18,6 +18,7 @@ import { useEffect } from "react";
 import useFarmlands from "../../hooks/useFarmlands";
 import Modal from "../UI/Modal/Modal";
 import WorldMap from "../WorldMap/WorldMap";
+import { useOutletContext, useParams } from "react-router-dom";
 
 export const ResponsiveDiv = styled("div")(({ theme }) => ({
   [theme.breakpoints.down("md")]: {
@@ -33,14 +34,23 @@ export const ResponsiveDiv = styled("div")(({ theme }) => ({
   // },
 }));
 
-const FarmlandScreen = ({
-  onClose,
-  farmlandId,
-  onCreate,
-  onUpdate,
-  farmland,
-  onDelete,
-}) => {
+const FarmlandScreen = (props) => {
+  const { id } = useParams();
+  const context = useOutletContext() || {};
+
+  const onClose = props.onClose || context.onClose;
+  const farmlandId =
+    props.farmlandId || (id !== undefined ? parseInt(id) : undefined);
+  const onCreate = props.onCreate || context.onCreate;
+  const onUpdate = props.onUpdate || context.onUpdate;
+  const onDelete = props.onDelete || context.onDelete;
+  const createMode = context.createMode;
+  const closeCreateScreen = context.closeCreateScreen;
+
+  const farmlands = context.farmlands || [];
+  const farmland =
+    props.farmland || farmlands.find((farm) => farm.id === farmlandId);
+
   const [open, setOpen] = useState(true);
   const [area, setArea] = useState();
   const [perimeter, setPerimeter] = useState();
@@ -93,7 +103,7 @@ const FarmlandScreen = ({
       setPerimeter(perimeter);
       setCoordinates(coordinates);
     },
-    []
+    [],
   );
 
   const deleteHandler = useCallback(() => {
@@ -112,12 +122,12 @@ const FarmlandScreen = ({
 
   const optimizedMap = useMemo(
     () => <DrawableMap onDrawCompleted={drawCompletedHandler} />,
-    [drawCompletedHandler]
+    [drawCompletedHandler],
   );
 
   const map = useMemo(
     () => <WorldMap coordinates={farmland ? farmland.coordinates : null} />,
-    [farmland]
+    [farmland],
   );
 
   useEffect(() => {

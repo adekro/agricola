@@ -2,8 +2,13 @@ import { styled } from "@mui/material";
 import FarmlandCard from "./FarmlandCard/FarmlandCard";
 
 import styles from "./FarmlandList.module.scss";
+import { useOutletContext } from "react-router-dom";
 
-const FarmlandsList = ({ farmlands, onClick }) => {
+const FarmlandsList = (props) => {
+  const context = useOutletContext() || {};
+  const farmlands = props.farmlands || context.farmlands || [];
+  const onClick = props.onClick || context.onClick || (() => {});
+
   const onViewHandler = (id) => {
     onClick(id);
   };

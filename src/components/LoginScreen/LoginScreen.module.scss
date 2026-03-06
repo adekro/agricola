@@ -1,0 +1,28 @@
+.loginContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 20px;
+  background-color: #f5f5f5;
+}
+
+.loginCard {
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 400px;
+  border-radius: 12px;
+}
+
+.logoWrapper {
+  width: 280px;
+  height: auto;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
