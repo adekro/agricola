@@ -13,7 +13,7 @@ const FarmlandsList = (props) => {
   };
 
   return (
-    <div className={styles.FarmlandList}>
+    <div>
       {farmlands &&
         farmlands.map((farm) => (
           <FarmlandCard

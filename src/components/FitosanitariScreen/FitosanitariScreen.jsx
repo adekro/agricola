@@ -86,17 +86,18 @@ const FitosanitariScreen = () => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          flexWrap: "wrap",
         }}
       >
         <Typography variant="h5">Prodotti Fitosanitari</Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          {lastFile && (
-            <Chip label={`File: ${lastFile}`} color="info" variant="outlined" />
-          )}
           <Button variant="contained" onClick={handleUpdate} disabled={loading}>
             {loading ? <CircularProgress size={24} /> : "Aggiorna Dati"}
           </Button>
         </Box>
+        {lastFile && (
+          <Chip label={`File: ${lastFile}`} color="info" variant="outlined" />
+        )}
       </Box>
 
       <TextField
