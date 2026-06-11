@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from "react";
-import BingMaps from "ol/source/BingMaps";
+import OSM from "ol/source/OSM";
 import { defaults as defaultControls } from "ol/control.js";
 import Map from "ol/Map.js";
-import { Vector as VectorSource, OSM } from "ol/source.js";
+import { Vector as VectorSource } from "ol/source.js";
 import { fromLonLat } from "ol/proj";
 import TileLayer from "ol/layer/Tile.js";
 import View from "ol/View.js";
@@ -17,8 +17,6 @@ import { styled } from "@mui/material";
 
 export const DEFAULT_CENTER = [9.0953328, 45.4628246];
 
-const layers = [];
-
 export const ResponsiveMap = styled("div")(({ theme }) => ({
   [theme.breakpoints.down("md")]: {
     width: "90vw;",
@@ -28,27 +26,21 @@ export const ResponsiveMap = styled("div")(({ theme }) => ({
 const WorldMap = ({ coordinates }) => {
   const mapRef = useRef(null);
   const { position } = useGeolocation();
-  let map, source;
 
-  const initMap = () => {
-    source = new VectorSource({ wrapX: false });
+  useEffect(() => {
+    if (!position || !mapRef.current) {
+      return;
+    }
 
-    layers.push(
-      new TileLayer({
-        visible: true,
-        preload: Infinity,
-        source: new BingMaps({
-          key: `${import.meta.env.VITE_MAP_KEY || ""}`,
-          imagerySet: "AerialWithLabelsOnDemand",
-          // use maxZoom 19 to see stretched tiles instead of the BingMaps
-          // "no photos at this zoom level" tiles
-          // maxZoom: 19
-        }),
+    const baseLayer = new TileLayer({
+      visible: true,
+      preload: Infinity,
+      source: new OSM({
+        attributions: "© OpenStreetMap contributors",
       }),
-    );
+    });
 
     const transformedCoords = coordinates.map((coord) => fromLonLat(coord));
-
     const geometry = new Polygon([transformedCoords]);
     const polygon = new Feature({
       type: "Polygon",
@@ -57,23 +49,8 @@ const WorldMap = ({ coordinates }) => {
 
     const pointInsideTheField = geometry.getInteriorPoint();
 
-    // Another way to draw one (or more) polygon
-    // const geojsonObject = {
-    //   type: "FeatureCollection",
-    //   features: [
-    //     {
-    //       type: "Feature",
-    //       geometry: {
-    //         type: "Polygon",
-    //         coordinates: [transformedCoords],
-    //       },
-    //     },
-    //   ],
-    // };
-
     const polygonLayer = new VectorLayer({
       source: new VectorSource({
-        // features: new GeoJSON().readFeatures(geojsonObject),
         features: [polygon],
       }),
       style: {
@@ -85,10 +62,8 @@ const WorldMap = ({ coordinates }) => {
       },
     });
 
-    layers.push(polygonLayer);
-
-    map = new Map({
-      layers: layers,
+    const map = new Map({
+      layers: [baseLayer, polygonLayer],
       target: mapRef.current.id,
       view: new View({
         center: pointInsideTheField
@@ -97,23 +72,14 @@ const WorldMap = ({ coordinates }) => {
         zoom: 15,
       }),
       controls: defaultControls({
-        attribution: false,
+        attribution: true,
       }),
     });
-  };
-
-  useEffect(() => {
-    if (position) {
-      initMap();
-    }
 
     return () => {
-      // Important to cleanup the map after unmounting the components
-      if (map) {
-        map.setTarget(undefined);
-      }
+      map.setTarget(undefined);
     };
-  }, [initMap, position]);
+  }, [coordinates, position]);
 
   return position ? (
     <div>
