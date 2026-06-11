@@ -1,77 +1,124 @@
-import { useCallback, useEffect } from "react";
-import { useState } from "react";
-import farmlandLoader from "../data/farmlandLoader";
+import { useCallback, useEffect, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
 
 const useFarmlands = () => {
   const [farmlands, setFarmlands] = useState([]);
   const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (!farmlandLoader.getItems()) {
-      farmlandLoader.init();
+  const mapFromSupabase = (item) => ({
+    id: item.id,
+    type: item.type,
+    area: item.area,
+    perimeter: item.perimeter,
+    notes: item.notes,
+    location: item.location,
+    ownerDisplayName: item.owner_display_name,
+    coordinates: item.coordinates,
+    createdAt: item.created_at,
+  });
+
+  const mapToSupabase = (item) => ({
+    type: item.type,
+    area: item.area,
+    perimeter: item.perimeter,
+    notes: item.notes,
+    location: item.location,
+    owner_display_name: item.ownerDisplayName,
+    coordinates: item.coordinates,
+  });
+
+  const fetchFarmlands = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("farmlands")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setFarmlands(data.map(mapFromSupabase));
+    } catch (err) {
+      console.error("Error fetching farmlands:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-    setFarmlands(farmlandLoader.getItems());
   }, []);
 
   useEffect(() => {
-    if (farmlands) {
-      let companiesFound = [];
-      const filteredCompanies = farmlands
-        .reduce((accumulator, current) => {
-          if (!accumulator.find((item) => item === current.ownerDisplayName)) {
-            accumulator = accumulator.concat(current.ownerDisplayName);
-          }
-          return accumulator;
-        }, companiesFound)
-        .filter(Boolean);
+    fetchFarmlands();
+  }, [fetchFarmlands]);
 
-      setCompanies(filteredCompanies);
+  useEffect(() => {
+    if (farmlands.length > 0) {
+      const uniqueCompanies = [
+        ...new Set(
+          farmlands
+            .map((f) => f.ownerDisplayName)
+            .filter(Boolean)
+        ),
+      ];
+      setCompanies(uniqueCompanies);
     }
   }, [farmlands]);
 
-  const reloadFarmland = useCallback(() => {
-    setFarmlands(farmlandLoader.getItems());
+  const addFarmland = useCallback(async (newFarmland) => {
+    try {
+      const { data, error } = await supabase
+        .from("farmlands")
+        .insert([mapToSupabase(newFarmland)])
+        .select();
+
+      if (error) throw error;
+
+      const addedItem = mapFromSupabase(data[0]);
+      setFarmlands((prev) => [addedItem, ...prev]);
+      return addedItem;
+    } catch (err) {
+      console.error("Error adding farmland:", err);
+      setError(err.message);
+      throw err;
+    }
   }, []);
 
-  const addFarmland = useCallback((newFarmland) => {
-    setFarmlands((previousFarmlands) => {
-      const newFieldWithId = newFarmland.id
-        ? newFarmland
-        : { ...newFarmland, id: `${new Date().getTime()}` };
-      const updated = previousFarmlands.concat(newFieldWithId);
+  const removeFarmland = useCallback(async (id) => {
+    try {
+      const { error } = await supabase
+        .from("farmlands")
+        .delete()
+        .eq("id", id);
 
-      farmlandLoader.storeItems(updated);
-
-      return updated;
-    });
+      if (error) throw error;
+      setFarmlands((prev) => prev.filter((f) => f.id !== id));
+    } catch (err) {
+      console.error("Error removing farmland:", err);
+      setError(err.message);
+      throw err;
+    }
   }, []);
 
-  const removeFarmland = useCallback((id) => {
-    setFarmlands((previousFarmlands) => {
-      const updated = previousFarmlands.filter(
-        (farmland) => farmland.id !== id
+  const updateFarmland = useCallback(async (id, updatedFarmland) => {
+    try {
+      const { data, error } = await supabase
+        .from("farmlands")
+        .update(mapToSupabase(updatedFarmland))
+        .eq("id", id)
+        .select();
+
+      if (error) throw error;
+
+      const updatedItem = mapFromSupabase(data[0]);
+      setFarmlands((prev) =>
+        prev.map((f) => (f.id === id ? updatedItem : f))
       );
-
-      farmlandLoader.storeItems(updated);
-
-      return updated;
-    });
-  }, []);
-
-  const updateFarmland = useCallback((id, updatedFarmland) => {
-    setFarmlands((previousFarmlands) => {
-      const farmlandToUpdate = {
-        ...previousFarmlands.find((farmland) => farmland.id === id),
-        ...updatedFarmland,
-      };
-      const updated = previousFarmlands.map((farmland) =>
-        farmland.id === id ? farmlandToUpdate : farmland
-      );
-
-      farmlandLoader.storeItems(updated);
-
-      return updated;
-    });
+      return updatedItem;
+    } catch (err) {
+      console.error("Error updating farmland:", err);
+      setError(err.message);
+      throw err;
+    }
   }, []);
 
   return {
@@ -79,8 +126,10 @@ const useFarmlands = () => {
     addFarmland,
     removeFarmland,
     updateFarmland,
-    reloadFarmland,
+    reloadFarmland: fetchFarmlands,
     companies,
+    loading,
+    error,
   };
 };
 
