@@ -77,21 +77,30 @@ const DrawableMap = ({
     if (satelliteLayerKey !== "none") {
       const satConfig = SATELLITE_LAYERS.find((l) => l.key === satelliteLayerKey);
       if (satConfig) {
+        const source =
+          satConfig.type === "wmts" || satConfig.type === "xyz"
+            ? new XYZ({
+                url: satConfig.url,
+                attributions: satConfig.attribution,
+                crossOrigin: "anonymous",
+              })
+            : new TileWMS({
+                url: satConfig.url,
+                params: {
+                  LAYERS: satConfig.layers,
+                  TILED: true,
+                  FORMAT: "image/png",
+                  TRANSPARENT: true,
+                },
+                serverType: "geoserver",
+                crossOrigin: "anonymous",
+                attributions: satConfig.attribution,
+              });
+
         const satLayer = new TileLayer({
           visible: true,
           opacity: satelliteOpacity,
-          source: new TileWMS({
-            url: satConfig.url,
-            params: {
-              LAYERS: satConfig.layers,
-              TILED: true,
-              FORMAT: "image/png",
-              TRANSPARENT: true,
-            },
-            serverType: "geoserver",
-            crossOrigin: "anonymous",
-            attributions: satConfig.attribution,
-          }),
+          source: source,
         });
         satelliteLayerRef.current = satLayer;
         layers.push(satLayer);
@@ -302,21 +311,30 @@ const DrawableMap = ({
     if (satelliteLayerKey !== "none") {
       const satConfig = SATELLITE_LAYERS.find((l) => l.key === satelliteLayerKey);
       if (satConfig) {
+        const source =
+          satConfig.type === "wmts" || satConfig.type === "xyz"
+            ? new XYZ({
+                url: satConfig.url,
+                attributions: satConfig.attribution,
+                crossOrigin: "anonymous",
+              })
+            : new TileWMS({
+                url: satConfig.url,
+                params: {
+                  LAYERS: satConfig.layers,
+                  TILED: true,
+                  FORMAT: "image/png",
+                  TRANSPARENT: true,
+                },
+                serverType: "geoserver",
+                crossOrigin: "anonymous",
+                attributions: satConfig.attribution,
+              });
+
         const satLayer = new TileLayer({
           visible: true,
           opacity: satelliteOpacity,
-          source: new TileWMS({
-            url: satConfig.url,
-            params: {
-              LAYERS: satConfig.layers,
-              TILED: true,
-              FORMAT: "image/png",
-              TRANSPARENT: true,
-            },
-            serverType: "geoserver",
-            crossOrigin: "anonymous",
-            attributions: satConfig.attribution,
-          }),
+          source: source,
         });
 
         // Insert before vector layer (which is the last one)

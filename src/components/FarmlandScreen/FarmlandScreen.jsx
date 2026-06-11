@@ -105,7 +105,7 @@ const FarmlandScreen = (props) => {
       setPerimeter(perimeter);
       setCoordinates(coordinates);
     },
-    [],
+    [setArea, setPerimeter, setCoordinates],
   );
 
   const deleteHandler = useCallback(() => {
@@ -122,38 +122,22 @@ const FarmlandScreen = (props) => {
     handleOnClose();
   }, [farmland, onDelete, handleOnClose]);
 
-  const optimizedMap = useMemo(
-    () => (
-      <DrawableMap
-        onDrawCompleted={drawCompletedHandler}
-        mapProviderKey={selectedMapProvider}
-        satelliteLayerKey={selectedSatelliteLayer}
-        satelliteOpacity={satelliteOpacity}
-      />
-    ),
-    [
-      drawCompletedHandler,
-      selectedMapProvider,
-      selectedSatelliteLayer,
-      satelliteOpacity,
-    ],
+  const optimizedMap = (
+    <DrawableMap
+      onDrawCompleted={drawCompletedHandler}
+      mapProviderKey={selectedMapProvider}
+      satelliteLayerKey={selectedSatelliteLayer}
+      satelliteOpacity={satelliteOpacity}
+    />
   );
 
-  const map = useMemo(
-    () => (
-      <WorldMap
-        coordinates={farmland ? farmland.coordinates : null}
-        mapProviderKey={selectedMapProvider}
-        satelliteLayerKey={selectedSatelliteLayer}
-        satelliteOpacity={satelliteOpacity}
-      />
-    ),
-    [
-      farmland,
-      selectedMapProvider,
-      selectedSatelliteLayer,
-      satelliteOpacity,
-    ],
+  const map = (
+    <WorldMap
+      coordinates={farmland ? farmland.coordinates : null}
+      mapProviderKey={selectedMapProvider}
+      satelliteLayerKey={selectedSatelliteLayer}
+      satelliteOpacity={satelliteOpacity}
+    />
   );
 
   useEffect(() => {

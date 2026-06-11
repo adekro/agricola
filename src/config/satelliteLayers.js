@@ -1,36 +1,16 @@
-
-const sentinelHubInstanceId = import.meta.env.VITE_SENTINEL_HUB_INSTANCE_ID;
-const copernicusBaseUrl =
-  import.meta.env.VITE_COPERNICUS_BASE_URL ||
-  "https://sh.dataspace.copernicus.eu";
+/**
+ * Satellite layers configuration.
+ * Using open/public services where possible.
+ */
 
 export const SATELLITE_LAYERS = [
   {
-    key: "sentinel2TrueColor",
-    label: "ESA Sentinel-2 True Color",
-    type: "wms",
-    url: `${copernicusBaseUrl}/ogc/wms/${sentinelHubInstanceId}`,
-    layers: "TRUE_COLOR",
-    attribution: "© Copernicus Sentinel data",
-    enabled: Boolean(sentinelHubInstanceId),
-  },
-  {
-    key: "sentinel2Ndvi",
-    label: "ESA Sentinel-2 NDVI",
-    type: "wms",
-    url: `${copernicusBaseUrl}/ogc/wms/${sentinelHubInstanceId}`,
-    layers: "NDVI",
-    attribution: "© Copernicus Sentinel data",
-    enabled: Boolean(sentinelHubInstanceId),
-  },
-  {
-    key: "sentinel1Radar",
-    label: "ESA Sentinel-1 Radar",
-    type: "wms",
-    url: `${copernicusBaseUrl}/ogc/wms/${sentinelHubInstanceId}`,
-    layers: "SENTINEL1_RADAR",
-    attribution: "© Copernicus Sentinel data",
-    enabled: Boolean(sentinelHubInstanceId),
+    key: "s2cloudless",
+    label: "Sentinel-2 Cloudless (EOX)",
+    type: "wmts",
+    url: "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg",
+    attribution: "Sentinel-2 cloudless - https://s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2020)",
+    enabled: true,
   },
 ];
 
