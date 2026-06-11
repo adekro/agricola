@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { DEFAULT_CENTER } from "../components/WorldMap/WorldMap";
 
 const geoOptions = Object.freeze({
@@ -22,5 +22,5 @@ export const useGeolocation = () => {
     navigator.geolocation.getCurrentPosition(onSuccess, onError, geoOptions);
   }, []);
 
-  return { position };
+  return useMemo(() => ({ position }), [position]);
 };
