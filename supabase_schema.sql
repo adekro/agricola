@@ -9,26 +9,24 @@ CREATE TABLE IF NOT EXISTS farmlands (
   location TEXT,
   owner_display_name TEXT,
   coordinates JSONB,
-  owner_id UUID -- Optional: for linking to a users table if needed
+  owner_id UUID -- Mandatory for linking to authenticated users
 );
 
 -- Set up Row Level Security (RLS)
--- For now, we'll allow public access for demonstration, but in a real app,
--- you'd restrict this to authenticated users.
 ALTER TABLE farmlands ENABLE ROW LEVEL SECURITY;
 
--- Policy: Allow anyone to read farmlands (change to authenticated as needed)
-CREATE POLICY "Allow public read access" ON farmlands
-  FOR SELECT USING (true);
+-- Policy: Allow users to read their own farmlands
+CREATE POLICY "Allow users to read their own farmlands" ON farmlands
+  FOR SELECT USING (auth.uid() = owner_id);
 
--- Policy: Allow anyone to insert farmlands (change to authenticated as needed)
-CREATE POLICY "Allow public insert access" ON farmlands
-  FOR INSERT WITH CHECK (true);
+-- Policy: Allow users to insert their own farmlands
+CREATE POLICY "Allow users to insert their own farmlands" ON farmlands
+  FOR INSERT WITH CHECK (auth.uid() = owner_id);
 
--- Policy: Allow anyone to update farmlands (change to authenticated as needed)
-CREATE POLICY "Allow public update access" ON farmlands
-  FOR UPDATE USING (true);
+-- Policy: Allow users to update their own farmlands
+CREATE POLICY "Allow users to update their own farmlands" ON farmlands
+  FOR UPDATE USING (auth.uid() = owner_id);
 
--- Policy: Allow anyone to delete farmlands (change to authenticated as needed)
-CREATE POLICY "Allow public delete access" ON farmlands
-  FOR DELETE USING (true);
+-- Policy: Allow users to delete their own farmlands
+CREATE POLICY "Allow users to delete their own farmlands" ON farmlands
+  FOR DELETE USING (auth.uid() = owner_id);

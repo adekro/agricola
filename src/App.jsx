@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import "./constants.css";
 import "./App.css";
 import Layout from "./components/Layout/Layout";
@@ -13,10 +13,11 @@ import FarmlandsList from "./components/FarmlandsList/FarmlandsList";
 import FarmlandScreen from "./components/FarmlandScreen/FarmlandScreen";
 import LoginScreen from "./components/LoginScreen/LoginScreen";
 import FitosanitariScreen from "./components/FitosanitariScreen/FitosanitariScreen";
+import { supabase } from "./lib/supabaseClient";
 
-const ProtectedRoute = ({ children }) => {
-  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-  if (!isLoggedIn) {
+const ProtectedRoute = ({ session, loading, children }) => {
+  if (loading) return null; // Or a loading spinner
+  if (!session) {
     return <Navigate to="/login" replace />;
   }
   return children;
@@ -38,15 +39,38 @@ const theme = createTheme({
 });
 
 const App = () => {
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <ThemeProvider theme={theme}>
       <Router>
         <Routes>
-          <Route path="/login" element={<LoginScreen />} />
+          <Route
+            path="/login"
+            element={
+              session ? <Navigate to="/" replace /> : <LoginScreen />
+            }
+          />
           <Route
             path="/"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute session={session} loading={loading}>
                 <Layout />
               </ProtectedRoute>
             }
