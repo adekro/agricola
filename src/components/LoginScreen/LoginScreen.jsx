@@ -1,18 +1,51 @@
 import React, { useState } from "react";
-import { TextField, Button, Paper, Typography, Box } from "@mui/material";
+import {
+  TextField,
+  Button,
+  Paper,
+  Typography,
+  Box,
+  Link,
+  Alert,
+} from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabaseClient";
 import styles from "./LoginScreen.module.scss";
 
 const LoginScreen = () => {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleAuth = async (e) => {
     e.preventDefault();
-    // Simple logic: store login state in localStorage and redirect
-    localStorage.setItem("isLoggedIn", "true");
-    navigate("/");
+    setError(null);
+    setLoading(true);
+
+    try {
+      if (isRegistering) {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        if (error) throw error;
+        alert("Controlla la tua email per confermare la registrazione!");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        navigate("/");
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -32,9 +65,19 @@ const LoginScreen = () => {
               style={{ width: "100%", height: "auto" }}
             />
           </div>
+          <Typography variant="h5" sx={{ mb: 2 }}>
+            {isRegistering ? "Registrati" : "Accedi"}
+          </Typography>
         </Box>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
         <form
-          onSubmit={handleLogin}
+          onSubmit={handleAuth}
           style={{
             display: "flex",
             flexDirection: "column",
@@ -43,17 +86,20 @@ const LoginScreen = () => {
           }}
         >
           <TextField
-            label="Username"
+            label="Email"
+            type="email"
             variant="outlined"
             fullWidth
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
           <TextField
             label="Password"
             type="password"
             variant="outlined"
             fullWidth
+            required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -63,10 +109,27 @@ const LoginScreen = () => {
             size="large"
             type="submit"
             fullWidth
+            disabled={loading}
           >
-            Accedi
+            {loading
+              ? "Caricamento..."
+              : isRegistering
+                ? "Registrati"
+                : "Accedi"}
           </Button>
         </form>
+
+        <Box sx={{ mt: 2, textAlign: "center" }}>
+          <Link
+            component="button"
+            variant="body2"
+            onClick={() => setIsRegistering(!isRegistering)}
+          >
+            {isRegistering
+              ? "Hai già un account? Accedi"
+              : "Non hai un account? Registrati"}
+          </Link>
+        </Box>
       </Paper>
     </div>
   );

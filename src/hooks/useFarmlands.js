@@ -19,7 +19,7 @@ const useFarmlands = () => {
     createdAt: item.created_at,
   });
 
-  const mapToSupabase = (item) => ({
+  const mapToSupabase = (item, userId) => ({
     type: item.type,
     area: item.area,
     perimeter: item.perimeter,
@@ -27,14 +27,21 @@ const useFarmlands = () => {
     location: item.location,
     owner_display_name: item.ownerDisplayName,
     coordinates: item.coordinates,
+    owner_id: userId,
   });
 
   const fetchFarmlands = useCallback(async () => {
     setLoading(true);
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data, error } = await supabase
         .from("farmlands")
         .select("*")
+        .eq("owner_id", user.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -66,9 +73,14 @@ const useFarmlands = () => {
 
   const addFarmland = useCallback(async (newFarmland) => {
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
       const { data, error } = await supabase
         .from("farmlands")
-        .insert([mapToSupabase(newFarmland)])
+        .insert([mapToSupabase(newFarmland, user.id)])
         .select();
 
       if (error) throw error;
@@ -101,9 +113,14 @@ const useFarmlands = () => {
 
   const updateFarmland = useCallback(async (id, updatedFarmland) => {
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
       const { data, error } = await supabase
         .from("farmlands")
-        .update(mapToSupabase(updatedFarmland))
+        .update(mapToSupabase(updatedFarmland, user.id))
         .eq("id", id)
         .select();
 

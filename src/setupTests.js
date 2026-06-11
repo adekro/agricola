@@ -15,5 +15,14 @@ vi.mock('./lib/supabaseClient', () => ({
       delete: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
     })),
+    auth: {
+      getSession: vi.fn(() => Promise.resolve({ data: { session: null } })),
+      onAuthStateChange: vi.fn(() => ({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      })),
+      getUser: vi.fn(() => Promise.resolve({ data: { user: null } })),
+      signInWithPassword: vi.fn(),
+      signUp: vi.fn(),
+    },
   },
 }));
