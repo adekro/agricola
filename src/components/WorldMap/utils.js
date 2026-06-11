@@ -31,12 +31,7 @@ export const formatArea = function (polygon) {
   //   output = Math.round(area * 100) / 100 + " " + "m2";
   // }
   // Always use km2
-  output =
-    new Intl.NumberFormat("default", {
-      minimumFractionDigits: 3,
-      maximumFractionDigits: 3,
-    }).format((area / 1000000) * 100) + " ettari";
-  // output = Math.round((area / 1000000) * 100) + " " + "ettari";
+  output = ((area / 1000000) * 100).toFixed(3) + " ettari";
   return output;
 };
 

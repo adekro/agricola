@@ -8,20 +8,10 @@ const FarmlandsList = (props) => {
   const context = useOutletContext() || {};
   const farmlands = props.farmlands || context.farmlands || [];
   const onClick = props.onClick || context.onClick || (() => {});
-  const createMode = context.createMode;
 
   const onViewHandler = (id) => {
     onClick(id);
   };
-
-  if (createMode === "farmland") {
-    return (
-      <FarmlandScreen
-        onCreate={context.onCreate}
-        onClose={context.closeCreateScreen}
-      />
-    );
-  }
 
   return (
     <div className={styles.farmlandList}>

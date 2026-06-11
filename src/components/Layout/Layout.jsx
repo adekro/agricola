@@ -13,7 +13,6 @@ const Layout = () => {
   const { farmlands, addFarmland, updateFarmland, removeFarmland } =
     useFarmlands();
   const [filterString, setFilterString] = useState("");
-  const [createMode, setCreateMode] = useState();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -55,12 +54,8 @@ const Layout = () => {
   }, []);
 
   const onCreateButtonClickHandler = useCallback(() => {
-    setCreateMode("farmland");
-  }, []);
-
-  const closeCreateScreenHandler = useCallback(() => {
-    setCreateMode();
-  }, []);
+    navigate("/farmland/new");
+  }, [navigate]);
 
   const addFarmlandHandler = useCallback(
     (newFarmland) => {
@@ -136,8 +131,6 @@ const Layout = () => {
               onDelete: removeFarmlandHandler,
               onUpdate: updateFarmlandHeader,
               onCreate: addFarmlandHandler,
-              closeCreateScreen: closeCreateScreenHandler,
-              createMode: createMode,
             }}
           />
         </section>

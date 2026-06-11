@@ -18,7 +18,6 @@ import { useState, useCallback } from "react";
 import classes from "./FarmlandScreen.module.scss";
 import DrawableMap from "../WorldMap/DrawableMap/DrawableMap";
 import { useMemo } from "react";
-import farmlandLoader from "../../data/farmlandLoader";
 import { useFormik } from "formik";
 import { useEffect } from "react";
 import useFarmlands from "../../hooks/useFarmlands";
@@ -33,17 +32,15 @@ const FarmlandScreen = (props) => {
   const context = useOutletContext() || {};
 
   const onClose = props.onClose || context.onClose;
-  const farmlandId =
-    props.farmlandId || (id !== undefined ? parseInt(id) : undefined);
+  const farmlandId = props.farmlandId || id;
   const onCreate = props.onCreate || context.onCreate;
   const onUpdate = props.onUpdate || context.onUpdate;
   const onDelete = props.onDelete || context.onDelete;
-  const createMode = context.createMode;
-  const closeCreateScreen = context.closeCreateScreen;
 
   const farmlands = context.farmlands || [];
+  const isNew = farmlandId === "new";
   const farmland =
-    props.farmland || farmlands.find((farm) => farm.id === farmlandId);
+    props.farmland || (isNew ? null : farmlands.find((farm) => farm.id === farmlandId));
 
   const [open, setOpen] = useState(true);
   const [area, setArea] = useState();
@@ -148,17 +145,13 @@ const FarmlandScreen = (props) => {
   }, [area, perimeter]);
 
   useEffect(() => {
-    if (farmlandId) {
-      const farm = farmlandLoader
-        .getItems()
-        .find((farm) => farm.id === farmlandId);
-
-      formik.setFieldValue("area", farm?.area || "");
-      formik.setFieldValue("perimeter", farm?.perimeter || "");
-      formik.setFieldValue("type", farm?.type || "");
-      formik.setFieldValue("notes", farm?.notes || "");
+    if (farmland) {
+      formik.setFieldValue("area", farmland.area || "");
+      formik.setFieldValue("perimeter", farmland.perimeter || "");
+      formik.setFieldValue("type", farmland.type || "");
+      formik.setFieldValue("notes", farmland.notes || "");
     }
-  }, [farmlandId]);
+  }, [farmland]);
 
   useEffect(() => {
     if (farmland) {
