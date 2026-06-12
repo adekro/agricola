@@ -306,13 +306,13 @@ const FarmlandScreen = (props) => {
                 </>
               )}
             </Box>
+            {farmland && (
+              <div className={classes.detailsWrapper}>
+                <Button onClick={deleteHandler}>Delete farmland</Button>
+              </div>
+            )}
           </div>
         </div>
-        {farmland && (
-          <div className={classes.detailsWrapper}>
-            <Button onClick={deleteHandler}>Delete farmland</Button>
-          </div>
-        )}
       </div>
 
       <Snackbar
