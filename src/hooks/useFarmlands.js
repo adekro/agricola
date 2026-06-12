@@ -17,6 +17,8 @@ const useFarmlands = () => {
     ownerDisplayName: item.owner_display_name,
     coordinates: item.coordinates,
     createdAt: item.created_at,
+    cadastralParcel: item.cadastral_parcel,
+    currentCrop: item.current_crop,
   });
 
   const mapToSupabase = (item, userId) => ({
@@ -28,6 +30,8 @@ const useFarmlands = () => {
     owner_display_name: item.ownerDisplayName,
     coordinates: item.coordinates,
     owner_id: userId,
+    cadastral_parcel: item.cadastralParcel,
+    current_crop: item.currentCrop,
   });
 
   const fetchFarmlands = useCallback(async () => {

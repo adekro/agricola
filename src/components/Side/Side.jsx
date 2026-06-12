@@ -8,6 +8,10 @@ import ScienceIcon from "@mui/icons-material/Science";
 import GridViewIcon from "@mui/icons-material/GridView";
 import StraightenIcon from "@mui/icons-material/Straighten";
 import HubIcon from "@mui/icons-material/Hub";
+import BusinessIcon from "@mui/icons-material/Business";
+import InventoryIcon from "@mui/icons-material/Inventory";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import BookIcon from "@mui/icons-material/Book";
 
 const Side = ({ onSelect, active, farmlands = [] }) => {
   const [itemActive, setItemActive] = useState(active);
@@ -74,8 +78,35 @@ const Side = ({ onSelect, active, farmlands = [] }) => {
         className={classes.fitosanitariBtn}
         onClick={() => handlerClick("fitosanitari")}
       >
-        <ScienceIcon /> GESTIONE FITOSANITARI
+        <ScienceIcon /> BANCA DATI FITOSANITARI
       </button>
+
+      <div className={classes.notebookSection}>
+        <div className={classes.sectionTitle}>
+          <BookIcon fontSize="small" /> QUADERNO DI CAMPAGNA
+        </div>
+        <SideItem
+          onClick={handlerClick}
+          label="Anagrafica Azienda"
+          target="notebook-company"
+          icon={BusinessIcon}
+          active={itemActive === "notebook-company"}
+        />
+        <SideItem
+          onClick={handlerClick}
+          label="Registro Attività"
+          target="notebook-operations"
+          icon={AssignmentIcon}
+          active={itemActive === "notebook-operations"}
+        />
+        <SideItem
+          onClick={handlerClick}
+          label="Magazzino"
+          target="notebook-inventory"
+          icon={InventoryIcon}
+          active={itemActive === "notebook-inventory"}
+        />
+      </div>
 
       <nav className={classes.sidecontent}>
         <SideItem
