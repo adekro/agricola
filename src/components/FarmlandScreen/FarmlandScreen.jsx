@@ -26,6 +26,8 @@ import WorldMap from "../WorldMap/WorldMap";
 import { useOutletContext, useParams } from "react-router-dom";
 import { getEnabledMapProviders } from "../../config/mapProviders";
 import { getEnabledSatelliteLayers } from "../../config/satelliteLayers";
+import SatelliteIndices from "./SatelliteIndices/SatelliteIndices";
+import { satelliteService } from "../../services/satelliteService";
 
 const FarmlandScreen = (props) => {
   const { id } = useParams();
@@ -55,6 +57,10 @@ const FarmlandScreen = (props) => {
   const [selectedMapProvider, setSelectedMapProvider] = useState("osm");
   const [selectedSatelliteLayer, setSelectedSatelliteLayer] = useState("none");
   const [satelliteOpacity, setSatelliteOpacity] = useState(0.75);
+
+  // Satellite Indices
+  const [satelliteIndices, setSatelliteIndices] = useState(null);
+  const [satelliteLoading, setSatelliteLoading] = useState(false);
 
   const enabledMapProviders = useMemo(() => getEnabledMapProviders(), []);
   const enabledSatelliteLayers = useMemo(() => getEnabledSatelliteLayers(), []);
@@ -104,6 +110,29 @@ const FarmlandScreen = (props) => {
     },
     [setArea, setPerimeter, setCoordinates],
   );
+
+  useEffect(() => {
+    const fetchSatelliteIndices = async () => {
+      // Use current coordinates if available (from drawing),
+      // otherwise fall back to farmland coordinates
+      const coords = coordinates || (farmland ? farmland.coordinates : null);
+      if (coords && coords.length > 0) {
+        setSatelliteLoading(true);
+        try {
+          const data = await satelliteService.getSatelliteIndices(coords);
+          setSatelliteIndices(data);
+        } catch (err) {
+          console.error("Error fetching satellite indices:", err);
+        } finally {
+          setSatelliteLoading(false);
+        }
+      } else {
+        setSatelliteIndices(null);
+      }
+    };
+
+    fetchSatelliteIndices();
+  }, [farmland, coordinates]);
 
   const deleteHandler = useCallback(() => {
     setIsDelFarmland(true);
@@ -306,11 +335,16 @@ const FarmlandScreen = (props) => {
                 </>
               )}
             </Box>
+ 
+
+            <SatelliteIndices indices={satelliteIndices} loading={satelliteLoading} />
+ 
             {farmland && (
               <div className={classes.detailsWrapper}>
                 <Button onClick={deleteHandler}>Delete farmland</Button>
               </div>
             )}
+ 
           </div>
         </div>
       </div>
