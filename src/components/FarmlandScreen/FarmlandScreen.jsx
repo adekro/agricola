@@ -335,15 +335,18 @@ const FarmlandScreen = (props) => {
                 </>
               )}
             </Box>
+ 
 
             <SatelliteIndices indices={satelliteIndices} loading={satelliteLoading} />
+ 
+            {farmland && (
+              <div className={classes.detailsWrapper}>
+                <Button onClick={deleteHandler}>Delete farmland</Button>
+              </div>
+            )}
+ 
           </div>
         </div>
-        {farmland && (
-          <div className={classes.detailsWrapper}>
-            <Button onClick={deleteHandler}>Delete farmland</Button>
-          </div>
-        )}
       </div>
 
       <Snackbar

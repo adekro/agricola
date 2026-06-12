@@ -9,7 +9,7 @@ import GridViewIcon from "@mui/icons-material/GridView";
 import StraightenIcon from "@mui/icons-material/Straighten";
 import HubIcon from "@mui/icons-material/Hub";
 
-const Side = ({ onSelect, active }) => {
+const Side = ({ onSelect, active, farmlands = [] }) => {
   const [itemActive, setItemActive] = useState(active);
 
   const handlerClick = (target) => {
@@ -17,11 +17,25 @@ const Side = ({ onSelect, active }) => {
     setItemActive(target);
   };
 
+  const numberfields = farmlands ? farmlands.length : 0;
+  const area = farmlands
+    ? farmlands.reduce((prevVal, currVal) => prevVal + (currVal.area || 0), 0)
+    : 0;
+  const perimeter = farmlands
+    ? farmlands.reduce(
+        (prevVal, currVal) => prevVal + (currVal.perimeter || 0),
+        0,
+      )
+    : 0;
+
   return (
     <div className={classes.sideContainer}>
       <div className={classes.sideHeader}>
-        <div className={classes.riepilogoTitle}>Riepilogo</div>
-        <div className={classes.riepilogoSubtitle}>Statistiche generali</div>
+        <img
+          src="/logolabel.png"
+          alt="Agricola logo"
+          className={classes.logoSidebar}
+        />
       </div>
 
       <div className={classes.statsContainer}>
@@ -31,7 +45,7 @@ const Side = ({ onSelect, active }) => {
           </div>
           <div className={classes.statText}>
             <div className={classes.statLabel}>NUMERO DI CAMPI</div>
-            <div className={classes.statValue}>3</div>
+            <div className={classes.statValue}>{numberfields}</div>
           </div>
         </div>
 
@@ -41,7 +55,7 @@ const Side = ({ onSelect, active }) => {
           </div>
           <div className={classes.statText}>
             <div className={classes.statLabel}>AREA TOTALE</div>
-            <div className={classes.statValue}>469m²</div>
+            <div className={classes.statValue}>{area}m²</div>
           </div>
         </div>
 
@@ -51,7 +65,7 @@ const Side = ({ onSelect, active }) => {
           </div>
           <div className={classes.statText}>
             <div className={classes.statLabel}>PERIMETRO</div>
-            <div className={classes.statValue}>124m</div>
+            <div className={classes.statValue}>{perimeter}m</div>
           </div>
         </div>
       </div>

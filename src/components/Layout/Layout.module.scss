@@ -43,7 +43,7 @@
 .headerContent {
   display: flex;
   width: 100%;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: 20px;
 }
@@ -52,6 +52,7 @@
   display: flex;
   align-items: center;
   gap: 20px;
+  justify-content: flex-end;
   flex-grow: 1;
 
   @media (max-width: 600px) {
@@ -60,8 +61,8 @@
 }
 
 .headerSearch {
-  flex-grow: 1;
-  max-width: 600px;
+  width: 100%;
+  max-width: 400px;
 }
 
 .layoutContent {

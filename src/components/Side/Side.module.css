@@ -10,18 +10,14 @@
 
 .sideHeader {
   margin-bottom: 25px;
+  display: flex;
+  justify-content: center;
 }
 
-.riepilogoTitle {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--primary-color-dark);
-  margin-bottom: 4px;
-}
-
-.riepilogoSubtitle {
-  font-size: 0.85rem;
-  color: #8c96a3;
+.logoSidebar {
+  max-width: 100%;
+  height: auto;
+  max-height: 50px;
 }
 
 .statsContainer {
