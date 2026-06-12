@@ -78,12 +78,15 @@ const Layout = () => {
     [removeFarmland],
   );
 
+  const filteredFarmlands = filterFarmlandsList();
+
   return (
     <div className={classes.layoutRoot}>
       <aside className={classes.layoutSide}>
         <Side
           onSelect={handlerSelectSide}
           active={location.pathname === "/" ? "dashboard" : "farmlands"}
+          farmlands={filteredFarmlands}
         />
       </aside>
 
@@ -114,7 +117,7 @@ const Layout = () => {
               </Button>
             </div>
             <MobileMenu
-              farmlands={farmlands}
+              farmlands={filteredFarmlands}
               onSearchChange={searchChangeHandler}
               onCreateFarmland={onCreateButtonClickHandler}
               onFitosanitariClick={() => handlerSelectSide("fitosanitari")}
@@ -125,7 +128,7 @@ const Layout = () => {
         <section className={classes.layoutContent}>
           <Outlet
             context={{
-              farmlands: filterFarmlandsList(),
+              farmlands: filteredFarmlands,
               onClick: handlerFarmlandOnClick,
               onClose: () => navigate("/"),
               onDelete: removeFarmlandHandler,
