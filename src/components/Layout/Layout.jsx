@@ -101,7 +101,6 @@ const Layout = () => {
               />
               <Button
                 variant="contained"
-                startIcon={<AddIcon />}
                 onClick={onCreateButtonClickHandler}
                 sx={{
                   bgcolor: "var(--secondary-color)",
@@ -109,11 +108,13 @@ const Layout = () => {
                   textTransform: "none",
                   fontWeight: "bold",
                   borderRadius: "8px",
-                  px: 3,
-                  whiteSpace: "nowrap",
+                  minWidth: "auto",
+                  width: "45px",
+                  height: "45px",
+                  padding: 0,
                 }}
               >
-                Nuovo Terreno
+                <AddIcon />
               </Button>
             </div>
             <MobileMenu

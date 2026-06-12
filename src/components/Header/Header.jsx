@@ -3,9 +3,6 @@ import styles from "./Header.module.scss";
 const Header = ({ children }) => {
   return (
     <header className={styles.Header}>
-      <a href="#default" className={styles.logo}>
-        <img src="/logolabel.png" alt="Logo of Agricola app" />
-      </a>
       {children}
       {/* <div className={styles["header-right"]}>
         <a className={styles.active} href="#home">

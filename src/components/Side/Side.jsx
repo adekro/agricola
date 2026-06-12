@@ -31,8 +31,11 @@ const Side = ({ onSelect, active, farmlands = [] }) => {
   return (
     <div className={classes.sideContainer}>
       <div className={classes.sideHeader}>
-        <div className={classes.riepilogoTitle}>Riepilogo</div>
-        <div className={classes.riepilogoSubtitle}>Statistiche generali</div>
+        <img
+          src="/logolabel.png"
+          alt="Agricola logo"
+          className={classes.logoSidebar}
+        />
       </div>
 
       <div className={classes.statsContainer}>
