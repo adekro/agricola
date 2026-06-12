@@ -24,6 +24,9 @@ const Layout = () => {
       if (target === "dashboard") navigate("/");
       else if (target === "farmlands") navigate("/farmlands");
       else if (target === "fitosanitari") navigate("/fitosanitari");
+      else if (target === "notebook-company") navigate("/notebook/company");
+      else if (target === "notebook-inventory") navigate("/notebook/inventory");
+      else if (target === "notebook-operations") navigate("/notebook/operations");
     },
     [navigate],
   );

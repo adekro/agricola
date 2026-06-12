@@ -28,6 +28,7 @@ import { getEnabledMapProviders } from "../../config/mapProviders";
 import { getEnabledSatelliteLayers } from "../../config/satelliteLayers";
 import SatelliteIndices from "./SatelliteIndices/SatelliteIndices";
 import { satelliteService } from "../../services/satelliteService";
+import { notebookService } from "../../services/notebookService";
 
 const FarmlandScreen = (props) => {
   const { id } = useParams();
@@ -62,6 +63,11 @@ const FarmlandScreen = (props) => {
   const [satelliteIndices, setSatelliteIndices] = useState(null);
   const [satelliteLoading, setSatelliteLoading] = useState(false);
 
+  // Crop History
+  const [cropHistory, setCropHistory] = useState([]);
+  const [openCropDialog, setOpenCropDialog] = useState(false);
+  const [newCrop, setNewCrop] = useState({ crop: "", start_date: "", end_date: "" });
+
   const enabledMapProviders = useMemo(() => getEnabledMapProviders(), []);
   const enabledSatelliteLayers = useMemo(() => getEnabledSatelliteLayers(), []);
 
@@ -72,6 +78,8 @@ const FarmlandScreen = (props) => {
       type: "",
       notes: "",
       owner: "",
+      cadastralParcel: "",
+      currentCrop: "",
     },
     onSubmit: (values) => {
       alert(JSON.stringify(values, null, 2));
@@ -110,6 +118,34 @@ const FarmlandScreen = (props) => {
     },
     [setArea, setPerimeter, setCoordinates],
   );
+
+  useEffect(() => {
+    const fetchCropHistory = async () => {
+      if (farmlandId && farmlandId !== "new") {
+        try {
+          const history = await notebookService.getCropHistory(farmlandId);
+          setCropHistory(history);
+        } catch (err) {
+          console.error("Error fetching crop history:", err);
+        }
+      }
+    };
+    fetchCropHistory();
+  }, [farmlandId]);
+
+  const handleAddCropHistory = async () => {
+    try {
+      await notebookService.saveCropHistory({
+        ...newCrop,
+        farmland_id: farmlandId,
+      });
+      const history = await notebookService.getCropHistory(farmlandId);
+      setCropHistory(history);
+      setOpenCropDialog(false);
+    } catch (err) {
+      console.error("Error saving crop history:", err);
+    }
+  };
 
   useEffect(() => {
     const fetchSatelliteIndices = async () => {
@@ -179,6 +215,8 @@ const FarmlandScreen = (props) => {
       formik.setFieldValue("perimeter", farmland.perimeter || "");
       formik.setFieldValue("type", farmland.type || "");
       formik.setFieldValue("notes", farmland.notes || "");
+      formik.setFieldValue("cadastralParcel", farmland.cadastralParcel || "");
+      formik.setFieldValue("currentCrop", farmland.currentCrop || "");
     }
   }, [farmland]);
 
@@ -249,6 +287,24 @@ const FarmlandScreen = (props) => {
                 className={classes.Input}
                 fullWidth
                 error={formik.touched.type && Boolean(formik.errors.type)}
+              />
+              <TextField
+                onChange={formik.handleChange}
+                value={formik.values.cadastralParcel}
+                label="Particella Catastale"
+                name="cadastralParcel"
+                className={classes.Input}
+                fullWidth
+                error={formik.touched.cadastralParcel && Boolean(formik.errors.cadastralParcel)}
+              />
+              <TextField
+                onChange={formik.handleChange}
+                value={formik.values.currentCrop}
+                label="Coltura Attuale"
+                name="currentCrop"
+                className={classes.Input}
+                fullWidth
+                error={formik.touched.currentCrop && Boolean(formik.errors.currentCrop)}
               />
               <TextField
                 onChange={formik.handleChange}
@@ -338,6 +394,44 @@ const FarmlandScreen = (props) => {
  
 
             <SatelliteIndices indices={satelliteIndices} loading={satelliteLoading} />
+
+            {farmland && (
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="h6" gutterBottom>Storico Colture</Typography>
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Coltura</TableCell>
+                        <TableCell>Periodo</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {cropHistory.map((h) => (
+                        <TableRow key={h.id}>
+                          <TableCell>{h.crop}</TableCell>
+                          <TableCell>
+                            {h.start_date || "?"} / {h.end_date || "oggi"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {cropHistory.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={2} align="center">Nessuno storico</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <Button
+                  size="small"
+                  sx={{ mt: 1 }}
+                  onClick={() => setOpenCropDialog(true)}
+                >
+                  Aggiungi Storico
+                </Button>
+              </Box>
+            )}
  
             {farmland && (
               <div className={classes.detailsWrapper}>
@@ -369,6 +463,40 @@ const FarmlandScreen = (props) => {
           <h2>Do you want to delete this farmland?</h2>
         </Modal>
       )}
+
+      <Dialog open={openCropDialog} onClose={() => setOpenCropDialog(false)}>
+        <DialogTitle>Aggiungi Storico Coltura</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Coltura"
+              fullWidth
+              value={newCrop.crop}
+              onChange={(e) => setNewCrop(prev => ({ ...prev, crop: e.target.value }))}
+            />
+            <TextField
+              label="Inizio"
+              type="date"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              value={newCrop.start_date}
+              onChange={(e) => setNewCrop(prev => ({ ...prev, start_date: e.target.value }))}
+            />
+            <TextField
+              label="Fine"
+              type="date"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              value={newCrop.end_date}
+              onChange={(e) => setNewCrop(prev => ({ ...prev, end_date: e.target.value }))}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCropDialog(false)}>Annulla</Button>
+          <Button onClick={handleAddCropHistory} variant="contained">Aggiungi</Button>
+        </DialogActions>
+      </Dialog>
     </FullScreenDialog>
   );
 };

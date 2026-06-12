@@ -13,6 +13,9 @@ import FarmlandsList from "./components/FarmlandsList/FarmlandsList";
 import FarmlandScreen from "./components/FarmlandScreen/FarmlandScreen";
 import LoginScreen from "./components/LoginScreen/LoginScreen";
 import FitosanitariScreen from "./components/FitosanitariScreen/FitosanitariScreen";
+import CompanyProfile from "./components/Notebook/CompanyProfile";
+import ProductInventory from "./components/Notebook/ProductInventory";
+import OperationsManager from "./components/Notebook/OperationsManager";
 import { supabase } from "./lib/supabaseClient";
 
 const ProtectedRoute = ({ session, loading, children }) => {
@@ -79,6 +82,11 @@ const App = () => {
             <Route path="farmlands" element={<FarmlandsList />} />
             <Route path="farmland/:id" element={<FarmlandScreen />} />
             <Route path="fitosanitari" element={<FitosanitariScreen />} />
+            <Route path="notebook">
+              <Route path="company" element={<CompanyProfile />} />
+              <Route path="inventory" element={<ProductInventory />} />
+              <Route path="operations" element={<OperationsManager />} />
+            </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
