@@ -12,6 +12,18 @@ import {
   Slider,
   Box,
   Divider,
+  TableContainer,
+  Paper,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Stack,
 } from "@mui/material";
 import FullScreenDialog from "../UI/FullScreenDialog/FullScreenDialog";
 import { useState, useCallback } from "react";
