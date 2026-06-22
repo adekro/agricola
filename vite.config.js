@@ -11,6 +11,11 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      "/api/cadastral-wms": {
+        target: "https://wms.cartografia.agenziaentrate.gov.it",
+        changeOrigin: true,
+        rewrite: () => "/inspire/wms/ows01.php",
+      },
       "/fitosanitari-api": {
         target: "https://www.dati.salute.gov.it",
         changeOrigin: true,

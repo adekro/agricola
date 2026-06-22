@@ -9,7 +9,7 @@ export const CADASTRAL_LAYERS = [
     key: "agenziaEntrateParcel",
     label: "Particelle catastali (Agenzia Entrate)",
     type: "wms",
-    url: "https://wms.cartografia.agenziaentrate.gov.it/inspire/wms/ows01.php",
+    url: "/api/cadastral-wms",
     layers: "CP.CadastralParcel",
     attribution: "Agenzia delle Entrate - Cartografia catastale WMS",
     enabled: true,
