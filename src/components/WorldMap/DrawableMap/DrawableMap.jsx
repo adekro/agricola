@@ -20,12 +20,15 @@ import { useGeolocation } from "../../../hooks/useGeolocation";
 import { ResponsiveMap } from "../WorldMap";
 import { MAP_PROVIDERS } from "../../../config/mapProviders";
 import { SATELLITE_LAYERS } from "../../../config/satelliteLayers";
+import { CADASTRAL_LAYERS } from "../../../config/cadastralLayers";
 
 const DrawableMap = ({
   onDrawCompleted,
   mapProviderKey = "osm",
   satelliteLayerKey = "none",
   satelliteOpacity = 0.75,
+  cadastralLayerKey = "none",
+  cadastralOpacity = 0.9,
 }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -34,6 +37,7 @@ const DrawableMap = ({
   // Reference for layers to update them without re-creating the map
   const baseLayerRef = useRef(null);
   const satelliteLayerRef = useRef(null);
+  const cadastralLayerRef = useRef(null);
 
   useEffect(() => {
     if (!position || !mapRef.current) {
@@ -104,6 +108,31 @@ const DrawableMap = ({
         });
         satelliteLayerRef.current = satLayer;
         layers.push(satLayer);
+      }
+    }
+
+    if (cadastralLayerKey !== "none") {
+      const cadastralConfig = CADASTRAL_LAYERS.find(
+        (l) => l.key === cadastralLayerKey,
+      );
+      if (cadastralConfig) {
+        const cadastralLayer = new TileLayer({
+          visible: true,
+          opacity: cadastralOpacity,
+          source: new TileWMS({
+            url: cadastralConfig.url,
+            params: {
+              LAYERS: cadastralConfig.layers,
+              TILED: true,
+              FORMAT: "image/png",
+              TRANSPARENT: true,
+            },
+            crossOrigin: "anonymous",
+            attributions: cadastralConfig.attribution,
+          }),
+        });
+        cadastralLayerRef.current = cadastralLayer;
+        layers.push(cadastralLayer);
       }
     }
 
@@ -339,11 +368,50 @@ const DrawableMap = ({
 
         // Insert before vector layer (which is the last one)
         const layers = mapInstanceRef.current.getLayers();
-        layers.insertAt(layers.getLength() - 1, satLayer);
+        const insertIndex = cadastralLayerRef.current
+          ? layers.getLength() - 2
+          : layers.getLength() - 1;
+        layers.insertAt(insertIndex, satLayer);
         satelliteLayerRef.current = satLayer;
       }
     }
   }, [satelliteLayerKey]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    if (cadastralLayerRef.current) {
+      mapInstanceRef.current.removeLayer(cadastralLayerRef.current);
+      cadastralLayerRef.current = null;
+    }
+
+    if (cadastralLayerKey !== "none") {
+      const cadastralConfig = CADASTRAL_LAYERS.find(
+        (l) => l.key === cadastralLayerKey,
+      );
+      if (cadastralConfig) {
+        const cadastralLayer = new TileLayer({
+          visible: true,
+          opacity: cadastralOpacity,
+          source: new TileWMS({
+            url: cadastralConfig.url,
+            params: {
+              LAYERS: cadastralConfig.layers,
+              TILED: true,
+              FORMAT: "image/png",
+              TRANSPARENT: true,
+            },
+            crossOrigin: "anonymous",
+            attributions: cadastralConfig.attribution,
+          }),
+        });
+
+        const layers = mapInstanceRef.current.getLayers();
+        layers.insertAt(layers.getLength() - 1, cadastralLayer);
+        cadastralLayerRef.current = cadastralLayer;
+      }
+    }
+  }, [cadastralLayerKey]);
 
   // Handle opacity changes
   useEffect(() => {
@@ -351,6 +419,12 @@ const DrawableMap = ({
       satelliteLayerRef.current.setOpacity(satelliteOpacity);
     }
   }, [satelliteOpacity]);
+
+  useEffect(() => {
+    if (cadastralLayerRef.current) {
+      cadastralLayerRef.current.setOpacity(cadastralOpacity);
+    }
+  }, [cadastralOpacity]);
 
   return position ? (
     <div>

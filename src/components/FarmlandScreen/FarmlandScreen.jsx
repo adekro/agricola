@@ -38,6 +38,7 @@ import WorldMap from "../WorldMap/WorldMap";
 import { useOutletContext, useParams } from "react-router-dom";
 import { getEnabledMapProviders } from "../../config/mapProviders";
 import { getEnabledSatelliteLayers } from "../../config/satelliteLayers";
+import { getEnabledCadastralLayers } from "../../config/cadastralLayers";
 import SatelliteIndices from "./SatelliteIndices/SatelliteIndices";
 import { satelliteService } from "../../services/satelliteService";
 import { notebookService } from "../../services/notebookService";
@@ -70,6 +71,8 @@ const FarmlandScreen = (props) => {
   const [selectedMapProvider, setSelectedMapProvider] = useState("osm");
   const [selectedSatelliteLayer, setSelectedSatelliteLayer] = useState("none");
   const [satelliteOpacity, setSatelliteOpacity] = useState(0.75);
+  const [selectedCadastralLayer, setSelectedCadastralLayer] = useState("agenziaEntrateParcel");
+  const [cadastralOpacity, setCadastralOpacity] = useState(0.9);
 
   // Satellite Indices
   const [satelliteIndices, setSatelliteIndices] = useState(null);
@@ -82,6 +85,7 @@ const FarmlandScreen = (props) => {
 
   const enabledMapProviders = useMemo(() => getEnabledMapProviders(), []);
   const enabledSatelliteLayers = useMemo(() => getEnabledSatelliteLayers(), []);
+  const enabledCadastralLayers = useMemo(() => getEnabledCadastralLayers(), []);
 
   const formik = useFormik({
     initialValues: farmland || {
@@ -202,6 +206,8 @@ const FarmlandScreen = (props) => {
       mapProviderKey={selectedMapProvider}
       satelliteLayerKey={selectedSatelliteLayer}
       satelliteOpacity={satelliteOpacity}
+      cadastralLayerKey={selectedCadastralLayer}
+      cadastralOpacity={cadastralOpacity}
     />
   );
 
@@ -211,6 +217,8 @@ const FarmlandScreen = (props) => {
       mapProviderKey={selectedMapProvider}
       satelliteLayerKey={selectedSatelliteLayer}
       satelliteOpacity={satelliteOpacity}
+      cadastralLayerKey={selectedCadastralLayer}
+      cadastralOpacity={cadastralOpacity}
     />
   );
 
@@ -398,6 +406,46 @@ const FarmlandScreen = (props) => {
                         onChange={(_e, newValue) => setSatelliteOpacity(newValue)}
                         valueLabelDisplay="auto"
                       />
+                    </Box>
+                  )}
+                </>
+              )}
+
+              {enabledCadastralLayers.length > 0 && (
+                <>
+                  <FormControl fullWidth className={classes.Input} sx={{ mt: 2 }}>
+                    <InputLabel id="cadastral-layer-label">Layer catastale</InputLabel>
+                    <Select
+                      labelId="cadastral-layer-label"
+                      value={selectedCadastralLayer}
+                      label="Layer catastale"
+                      onChange={(e) => setSelectedCadastralLayer(e.target.value)}
+                    >
+                      <MenuItem value="none">Nessuno</MenuItem>
+                      {enabledCadastralLayers.map((layer) => (
+                        <MenuItem key={layer.key} value={layer.key}>
+                          {layer.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  {selectedCadastralLayer !== "none" && (
+                    <Box sx={{ px: 1, mt: 2 }}>
+                      <Typography gutterBottom variant="caption">
+                        Opacita layer catastale: {(cadastralOpacity * 100).toFixed(0)}%
+                      </Typography>
+                      <Slider
+                        value={cadastralOpacity}
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        onChange={(_e, newValue) => setCadastralOpacity(newValue)}
+                        valueLabelDisplay="auto"
+                      />
+                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                        Dati da servizio WMS ufficiale Agenzia delle Entrate.
+                      </Typography>
                     </Box>
                   )}
                 </>
