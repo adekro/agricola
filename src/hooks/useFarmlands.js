@@ -40,6 +40,16 @@ const mapToSupabase = (item, userId) => ({
   current_crop: item.currentCrop,
 });
 
+const shouldRetryWithoutCadastralParcel = (error) =>
+  error?.code === "PGRST204" &&
+  typeof error?.message === "string" &&
+  error.message.includes("cadastral_parcel");
+
+const removeCadastralParcel = (payload) => {
+  const { cadastral_parcel, ...rest } = payload;
+  return rest;
+};
+
 const useFarmlands = () => {
   const [farmlands, setFarmlands] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -109,10 +119,18 @@ const useFarmlands = () => {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      const { data, error } = await supabase
+      const payload = mapToSupabase(newFarmland, user.id);
+      let { data, error } = await supabase
         .from("farmlands")
-        .insert([mapToSupabase(newFarmland, user.id)])
+        .insert([payload])
         .select();
+
+      if (error && shouldRetryWithoutCadastralParcel(error)) {
+        ({ data, error } = await supabase
+          .from("farmlands")
+          .insert([removeCadastralParcel(payload)])
+          .select());
+      }
 
       if (error) throw error;
 
@@ -146,11 +164,20 @@ const useFarmlands = () => {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      const { data, error } = await supabase
+      const payload = mapToSupabase(updatedFarmland, user.id);
+      let { data, error } = await supabase
         .from("farmlands")
-        .update(mapToSupabase(updatedFarmland, user.id))
+        .update(payload)
         .eq("id", id)
         .select();
+
+      if (error && shouldRetryWithoutCadastralParcel(error)) {
+        ({ data, error } = await supabase
+          .from("farmlands")
+          .update(removeCadastralParcel(payload))
+          .eq("id", id)
+          .select());
+      }
 
       if (error) throw error;
 
