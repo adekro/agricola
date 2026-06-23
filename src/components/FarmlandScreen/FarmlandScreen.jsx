@@ -59,7 +59,8 @@ const FarmlandScreen = (props) => {
   const farmlands = context.farmlands || [];
   const isNew = farmlandId === "new";
   const farmland =
-    props.farmland || (isNew ? null : farmlands.find((farm) => farm.id === farmlandId));
+    props.farmland ||
+    (isNew ? null : farmlands.find((farm) => farm.id === farmlandId));
 
   const [open, setOpen] = useState(true);
   const [area, setArea] = useState();
@@ -85,7 +86,11 @@ const FarmlandScreen = (props) => {
 
   const [cropHistory, setCropHistory] = useState([]);
   const [openCropDialog, setOpenCropDialog] = useState(false);
-  const [newCrop, setNewCrop] = useState({ crop: "", start_date: "", end_date: "" });
+  const [newCrop, setNewCrop] = useState({
+    crop: "",
+    start_date: "",
+    end_date: "",
+  });
 
   const enabledMapProviders = useMemo(() => getEnabledMapProviders(), []);
   const enabledSatelliteLayers = useMemo(() => getEnabledSatelliteLayers(), []);
@@ -132,7 +137,8 @@ const FarmlandScreen = (props) => {
   const findCompanyByName = useCallback(
     (name) =>
       companies.find(
-        (company) => normalizeCompanyName(company.name) === normalizeCompanyName(name),
+        (company) =>
+          normalizeCompanyName(company.name) === normalizeCompanyName(name),
       ) || null,
     [companies],
   );
@@ -232,7 +238,9 @@ const FarmlandScreen = (props) => {
       selectCompany(createdCompany);
       setIsCompanyDialogOpen(false);
     } catch (err) {
-      setCompanyError(err.message || "Errore durante il salvataggio dell'azienda.");
+      setCompanyError(
+        err.message || "Errore durante il salvataggio dell'azienda.",
+      );
     } finally {
       setIsSavingCompany(false);
     }
@@ -266,11 +274,14 @@ const FarmlandScreen = (props) => {
     formik.values,
   ]);
 
-  const drawCompletedHandler = useCallback(({ area, perimeter, coordinates }) => {
-    setArea(area);
-    setPerimeter(perimeter);
-    setCoordinates(coordinates);
-  }, []);
+  const drawCompletedHandler = useCallback(
+    ({ area, perimeter, coordinates }) => {
+      setArea(area);
+      setPerimeter(perimeter);
+      setCoordinates(coordinates);
+    },
+    [],
+  );
 
   useEffect(() => {
     const fetchCropHistory = async () => {
@@ -359,21 +370,52 @@ const FarmlandScreen = (props) => {
 
   useEffect(() => {
     if (area && perimeter) {
-      formik.setFieldValue("area", area);
-      formik.setFieldValue("perimeter", perimeter);
+      if (formik.values.area !== area) {
+        formik.setFieldValue("area", area, false);
+      }
+      if (formik.values.perimeter !== perimeter) {
+        formik.setFieldValue("perimeter", perimeter, false);
+      }
     }
-  }, [area, perimeter, formik]);
+  }, [area, perimeter, formik.values.area, formik.values.perimeter]);
 
   useEffect(() => {
     if (farmland) {
-      formik.setFieldValue("area", farmland.area || "");
-      formik.setFieldValue("perimeter", farmland.perimeter || "");
-      formik.setFieldValue("type", farmland.type || "");
-      formik.setFieldValue("notes", farmland.notes || "");
-      formik.setFieldValue("cadastralParcel", farmland.cadastralParcel || "");
-      formik.setFieldValue("currentCrop", farmland.currentCrop || "");
+      const nextArea = farmland.area || "";
+      const nextPerimeter = farmland.perimeter || "";
+      const nextType = farmland.type || "";
+      const nextNotes = farmland.notes || "";
+      const nextCadastralParcel = farmland.cadastralParcel || "";
+      const nextCurrentCrop = farmland.currentCrop || "";
+
+      if (formik.values.area !== nextArea) {
+        formik.setFieldValue("area", nextArea, false);
+      }
+      if (formik.values.perimeter !== nextPerimeter) {
+        formik.setFieldValue("perimeter", nextPerimeter, false);
+      }
+      if (formik.values.type !== nextType) {
+        formik.setFieldValue("type", nextType, false);
+      }
+      if (formik.values.notes !== nextNotes) {
+        formik.setFieldValue("notes", nextNotes, false);
+      }
+      if (formik.values.cadastralParcel !== nextCadastralParcel) {
+        formik.setFieldValue("cadastralParcel", nextCadastralParcel, false);
+      }
+      if (formik.values.currentCrop !== nextCurrentCrop) {
+        formik.setFieldValue("currentCrop", nextCurrentCrop, false);
+      }
     }
-  }, [farmland, formik]);
+  }, [
+    farmland,
+    formik.values.area,
+    formik.values.perimeter,
+    formik.values.type,
+    formik.values.notes,
+    formik.values.cadastralParcel,
+    formik.values.currentCrop,
+  ]);
 
   useEffect(() => {
     if (farmland) {
@@ -396,7 +438,8 @@ const FarmlandScreen = (props) => {
 
     const matchesExisting = options.some(
       (option) =>
-        normalizeCompanyName(option.name) === normalizeCompanyName(trimmedInput),
+        normalizeCompanyName(option.name) ===
+        normalizeCompanyName(trimmedInput),
     );
 
     if (!matchesExisting) {
@@ -431,7 +474,10 @@ const FarmlandScreen = (props) => {
             {farmland && map}
           </div>
           <div className={classes.FormSide}>
-            <form className={classes.FarmlandForm} onSubmit={formik.handleSubmit}>
+            <form
+              className={classes.FarmlandForm}
+              onSubmit={formik.handleSubmit}
+            >
               <TextField
                 onChange={formik.handleChange}
                 value={formik.values.area}
@@ -450,7 +496,9 @@ const FarmlandScreen = (props) => {
                 disabled
                 className={classes.Input}
                 fullWidth
-                error={formik.touched.perimeter && Boolean(formik.errors.perimeter)}
+                error={
+                  formik.touched.perimeter && Boolean(formik.errors.perimeter)
+                }
               />
               <TextField
                 onChange={formik.handleChange}
@@ -468,7 +516,10 @@ const FarmlandScreen = (props) => {
                 name="cadastralParcel"
                 className={classes.Input}
                 fullWidth
-                error={formik.touched.cadastralParcel && Boolean(formik.errors.cadastralParcel)}
+                error={
+                  formik.touched.cadastralParcel &&
+                  Boolean(formik.errors.cadastralParcel)
+                }
               />
               <TextField
                 onChange={formik.handleChange}
@@ -477,7 +528,10 @@ const FarmlandScreen = (props) => {
                 name="currentCrop"
                 className={classes.Input}
                 fullWidth
-                error={formik.touched.currentCrop && Boolean(formik.errors.currentCrop)}
+                error={
+                  formik.touched.currentCrop &&
+                  Boolean(formik.errors.currentCrop)
+                }
               />
               <TextField
                 onChange={formik.handleChange}
@@ -509,8 +563,12 @@ const FarmlandScreen = (props) => {
 
                     return option?.name || "";
                   }}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                  renderInput={(params) => <TextField {...params} label="Company name" />}
+                  isOptionEqualToValue={(option, value) =>
+                    option.id === value.id
+                  }
+                  renderInput={(params) => (
+                    <TextField {...params} label="Company name" />
+                  )}
                   renderOption={(renderProps, option) => (
                     <li {...renderProps} key={option.id}>
                       {option.name}
@@ -545,13 +603,21 @@ const FarmlandScreen = (props) => {
 
               {enabledSatelliteLayers.length > 0 && (
                 <>
-                  <FormControl fullWidth className={classes.Input} sx={{ mt: 2 }}>
-                    <InputLabel id="satellite-layer-label">Layer satellitare</InputLabel>
+                  <FormControl
+                    fullWidth
+                    className={classes.Input}
+                    sx={{ mt: 2 }}
+                  >
+                    <InputLabel id="satellite-layer-label">
+                      Layer satellitare
+                    </InputLabel>
                     <Select
                       labelId="satellite-layer-label"
                       value={selectedSatelliteLayer}
                       label="Layer satellitare"
-                      onChange={(e) => setSelectedSatelliteLayer(e.target.value)}
+                      onChange={(e) =>
+                        setSelectedSatelliteLayer(e.target.value)
+                      }
                     >
                       <MenuItem value="none">Nessuno</MenuItem>
                       {enabledSatelliteLayers.map((layer) => (
@@ -565,14 +631,17 @@ const FarmlandScreen = (props) => {
                   {selectedSatelliteLayer !== "none" && (
                     <Box sx={{ px: 1, mt: 2 }}>
                       <Typography gutterBottom variant="caption">
-                        OpacitÃ  layer satellitare: {(satelliteOpacity * 100).toFixed(0)}%
+                        OpacitÃ  layer satellitare:{" "}
+                        {(satelliteOpacity * 100).toFixed(0)}%
                       </Typography>
                       <Slider
                         value={satelliteOpacity}
                         min={0}
                         max={1}
                         step={0.05}
-                        onChange={(_e, newValue) => setSatelliteOpacity(newValue)}
+                        onChange={(_e, newValue) =>
+                          setSatelliteOpacity(newValue)
+                        }
                         valueLabelDisplay="auto"
                       />
                     </Box>
@@ -582,13 +651,21 @@ const FarmlandScreen = (props) => {
 
               {enabledCadastralLayers.length > 0 && (
                 <>
-                  <FormControl fullWidth className={classes.Input} sx={{ mt: 2 }}>
-                    <InputLabel id="cadastral-layer-label">Layer catastale</InputLabel>
+                  <FormControl
+                    fullWidth
+                    className={classes.Input}
+                    sx={{ mt: 2 }}
+                  >
+                    <InputLabel id="cadastral-layer-label">
+                      Layer catastale
+                    </InputLabel>
                     <Select
                       labelId="cadastral-layer-label"
                       value={selectedCadastralLayer}
                       label="Layer catastale"
-                      onChange={(e) => setSelectedCadastralLayer(e.target.value)}
+                      onChange={(e) =>
+                        setSelectedCadastralLayer(e.target.value)
+                      }
                     >
                       <MenuItem value="none">Nessuno</MenuItem>
                       {enabledCadastralLayers.map((layer) => (
@@ -602,17 +679,24 @@ const FarmlandScreen = (props) => {
                   {selectedCadastralLayer !== "none" && (
                     <Box sx={{ px: 1, mt: 2 }}>
                       <Typography gutterBottom variant="caption">
-                        Opacita layer catastale: {(cadastralOpacity * 100).toFixed(0)}%
+                        Opacita layer catastale:{" "}
+                        {(cadastralOpacity * 100).toFixed(0)}%
                       </Typography>
                       <Slider
                         value={cadastralOpacity}
                         min={0}
                         max={1}
                         step={0.05}
-                        onChange={(_e, newValue) => setCadastralOpacity(newValue)}
+                        onChange={(_e, newValue) =>
+                          setCadastralOpacity(newValue)
+                        }
                         valueLabelDisplay="auto"
                       />
-                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                      <Typography
+                        variant="caption"
+                        display="block"
+                        sx={{ mt: 1 }}
+                      >
                         Dati da servizio WMS ufficiale Agenzia delle Entrate.
                       </Typography>
                     </Box>
@@ -621,7 +705,10 @@ const FarmlandScreen = (props) => {
               )}
             </Box>
 
-            <SatelliteIndices indices={satelliteIndices} loading={satelliteLoading} />
+            <SatelliteIndices
+              indices={satelliteIndices}
+              loading={satelliteLoading}
+            />
 
             {farmland && (
               <Box sx={{ mt: 3 }}>
@@ -655,7 +742,11 @@ const FarmlandScreen = (props) => {
                     </TableBody>
                   </Table>
                 </TableContainer>
-                <Button size="small" sx={{ mt: 1 }} onClick={() => setOpenCropDialog(true)}>
+                <Button
+                  size="small"
+                  sx={{ mt: 1 }}
+                  onClick={() => setOpenCropDialog(true)}
+                >
                   Aggiungi Storico
                 </Button>
               </Box>
@@ -694,7 +785,9 @@ const FarmlandScreen = (props) => {
               label="Coltura"
               fullWidth
               value={newCrop.crop}
-              onChange={(e) => setNewCrop((prev) => ({ ...prev, crop: e.target.value }))}
+              onChange={(e) =>
+                setNewCrop((prev) => ({ ...prev, crop: e.target.value }))
+              }
             />
             <TextField
               label="Inizio"
@@ -702,7 +795,9 @@ const FarmlandScreen = (props) => {
               fullWidth
               InputLabelProps={{ shrink: true }}
               value={newCrop.start_date}
-              onChange={(e) => setNewCrop((prev) => ({ ...prev, start_date: e.target.value }))}
+              onChange={(e) =>
+                setNewCrop((prev) => ({ ...prev, start_date: e.target.value }))
+              }
             />
             <TextField
               label="Fine"
@@ -710,7 +805,9 @@ const FarmlandScreen = (props) => {
               fullWidth
               InputLabelProps={{ shrink: true }}
               value={newCrop.end_date}
-              onChange={(e) => setNewCrop((prev) => ({ ...prev, end_date: e.target.value }))}
+              onChange={(e) =>
+                setNewCrop((prev) => ({ ...prev, end_date: e.target.value }))
+              }
             />
           </Stack>
         </DialogContent>
@@ -722,7 +819,12 @@ const FarmlandScreen = (props) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={isCompanyDialogOpen} onClose={handleCompanyDialogClose} fullWidth maxWidth="sm">
+      <Dialog
+        open={isCompanyDialogOpen}
+        onClose={handleCompanyDialogClose}
+        fullWidth
+        maxWidth="sm"
+      >
         <DialogTitle>Nuova azienda</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>

@@ -85,7 +85,9 @@ const DrawableMap = ({
 
     // Initial satellite layer if any
     if (satelliteLayerKey !== "none") {
-      const satConfig = SATELLITE_LAYERS.find((l) => l.key === satelliteLayerKey);
+      const satConfig = SATELLITE_LAYERS.find(
+        (l) => l.key === satelliteLayerKey,
+      );
       if (satConfig) {
         const source =
           satConfig.type === "wmts" || satConfig.type === "xyz"
@@ -239,6 +241,7 @@ const DrawableMap = ({
       });
 
       draw.on("drawend", function () {
+        console.log("Draw completed");
         measureTooltipElement.className = "ol-tooltip ol-tooltip-static";
         measureTooltip.setOffset([0, -7]);
 
@@ -247,31 +250,45 @@ const DrawableMap = ({
         const area = formatArea(geometry);
         const perimeter = formatLength(geometry);
 
+        console.log(`Area: ${area}, Perimeter: ${perimeter}`);
+
         geometry = geometry.clone().transform("EPSG:3857", "EPSG:4326");
+        console.log(`Transformed Geometry: ${geometry.getCoordinates()}`);
         const coordinates = geometry.getCoordinates()[0];
+        console.log(`Coordinates: ${JSON.stringify(coordinates)}`);
 
         sketch = null;
         measureTooltipElement = null;
 
         createMeasureTooltip();
+        console.log("Measure tooltip recreated for next drawing");
 
         if (listener) {
           unByKey(listener);
         }
+        console.log("Listener removed after drawing completed");
 
         map.removeInteraction(draw);
 
         if (helpTooltip) {
           map.removeOverlay(helpTooltip);
         }
+        console.log("Help tooltip removed after drawing completed");
 
         map.un("pointermove", pointerMoveHandler);
 
-        onDrawCompletedRef.current?.({
+        console.log("Pointer move handler removed after drawing completed");
+        const payload = {
           area: area.split(" ")[0],
           perimeter: perimeter.split(" ")[0],
           coordinates,
+        };
+        requestAnimationFrame(() => {
+          onDrawCompletedRef.current?.(payload);
         });
+        console.log(
+          "onDrawCompleted callback executed with area, perimeter, and coordinates",
+        );
       });
     }
 
@@ -338,7 +355,9 @@ const DrawableMap = ({
     }
 
     if (satelliteLayerKey !== "none") {
-      const satConfig = SATELLITE_LAYERS.find((l) => l.key === satelliteLayerKey);
+      const satConfig = SATELLITE_LAYERS.find(
+        (l) => l.key === satelliteLayerKey,
+      );
       if (satConfig) {
         const source =
           satConfig.type === "wmts" || satConfig.type === "xyz"
