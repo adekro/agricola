@@ -77,7 +77,7 @@ const FarmlandScreen = (props) => {
   const [selectedMapProvider, setSelectedMapProvider] = useState("osm");
   const [selectedSatelliteLayer, setSelectedSatelliteLayer] = useState("none");
   const [satelliteOpacity, setSatelliteOpacity] = useState(0.75);
-  const [selectedCadastralLayer, setSelectedCadastralLayer] = useState("agenziaEntrateParcel");
+  const [selectedCadastralLayer, setSelectedCadastralLayer] = useState("none");
   const [cadastralOpacity, setCadastralOpacity] = useState(0.9);
 
   const [satelliteIndices, setSatelliteIndices] = useState(null);
