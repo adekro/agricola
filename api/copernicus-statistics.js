@@ -254,16 +254,27 @@ function buildStatisticsPayload({ coordinates, timeRange, cloudCoverage }) {
 function setup() {
   return {
     input: [{
-      bands: ["B02", "B03", "B04", "B08", "B11", "B12"],
+      bands: ["B02", "B03", "B04", "B08", "B11", "B12", "dataMask"],
       units: "REFLECTANCE"
     }],
     output: [
-      { id: "default", bands: 6, sampleType: "FLOAT32" }
+      { id: "default", bands: 6, sampleType: "FLOAT32" },
+      { id: "dataMask", bands: 1, sampleType: "UINT8" }
     ]
   };
 }
 function evaluatePixel(sample) {
-  return [sample.B02, sample.B03, sample.B04, sample.B08, sample.B11, sample.B12];
+  return {
+    default: [
+      sample.B02,
+      sample.B03,
+      sample.B04,
+      sample.B08,
+      sample.B11,
+      sample.B12
+    ],
+    dataMask: [sample.dataMask]
+  };
 }
 `;
 
