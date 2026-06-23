@@ -24,6 +24,14 @@ export const notebookService = {
     return data[0];
   },
 
+  async deleteCompany(id) {
+    const { error } = await supabase
+      .from("companies")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+  },
+
   // --- Inventory Products ---
   async getProducts() {
     const { data, error } = await supabase
