@@ -13,8 +13,8 @@ const mapFromSupabase = (item) => ({
   ownerDisplayName: item.owner_display_name,
   coordinates: item.coordinates,
   createdAt: item.created_at,
-  cadastralParcel: item.cadastral_parcel,
-  currentCrop: item.current_crop,
+  cadastralParcel: item.cadastral_parcel || null,
+  currentCrop: item.current_crop || null,
 });
 
 const mapCompanyFromSupabase = (item) => ({
