@@ -1,38 +1,74 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
+const normalizeCompanyName = (name = "") => name.trim().toLowerCase();
+
+const mapFromSupabase = (item) => ({
+  id: item.id,
+  type: item.type,
+  area: item.area,
+  perimeter: item.perimeter,
+  notes: item.notes,
+  location: item.location,
+  ownerDisplayName: item.owner_display_name,
+  coordinates: item.coordinates,
+  createdAt: item.created_at,
+  cadastralParcel: item.cadastral_parcel,
+  currentCrop: item.current_crop,
+});
+
+const mapCompanyFromSupabase = (item) => ({
+  id: item.id,
+  name: item.name,
+  vat_number: item.vat_number,
+  owner_name: item.owner_name,
+  authorized_operators: item.authorized_operators,
+  owner_id: item.owner_id,
+  created_at: item.created_at,
+});
+
+const mapToSupabase = (item, userId) => ({
+  type: item.type,
+  area: item.area,
+  perimeter: item.perimeter,
+  notes: item.notes,
+  location: item.location,
+  owner_display_name: item.ownerDisplayName,
+  coordinates: item.coordinates,
+  owner_id: userId,
+  cadastral_parcel: item.cadastralParcel,
+  current_crop: item.currentCrop,
+});
+
 const useFarmlands = () => {
   const [farmlands, setFarmlands] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const mapFromSupabase = (item) => ({
-    id: item.id,
-    type: item.type,
-    area: item.area,
-    perimeter: item.perimeter,
-    notes: item.notes,
-    location: item.location,
-    ownerDisplayName: item.owner_display_name,
-    coordinates: item.coordinates,
-    createdAt: item.created_at,
-    cadastralParcel: item.cadastral_parcel,
-    currentCrop: item.current_crop,
-  });
+  const fetchCompanies = useCallback(async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setCompanies([]);
+        return;
+      }
 
-  const mapToSupabase = (item, userId) => ({
-    type: item.type,
-    area: item.area,
-    perimeter: item.perimeter,
-    notes: item.notes,
-    location: item.location,
-    owner_display_name: item.ownerDisplayName,
-    coordinates: item.coordinates,
-    owner_id: userId,
-    cadastral_parcel: item.cadastralParcel,
-    current_crop: item.currentCrop,
-  });
+      const { data, error } = await supabase
+        .from("companies")
+        .select("*")
+        .eq("owner_id", user.id)
+        .order("name", { ascending: true });
+
+      if (error) throw error;
+      setCompanies((data || []).map(mapCompanyFromSupabase));
+    } catch (err) {
+      console.error("Error fetching companies:", err);
+      setError(err.message);
+    }
+  }, []);
 
   const fetchFarmlands = useCallback(async () => {
     setLoading(true);
@@ -49,7 +85,7 @@ const useFarmlands = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setFarmlands(data.map(mapFromSupabase));
+      setFarmlands((data || []).map(mapFromSupabase));
     } catch (err) {
       console.error("Error fetching farmlands:", err);
       setError(err.message);
@@ -63,17 +99,8 @@ const useFarmlands = () => {
   }, [fetchFarmlands]);
 
   useEffect(() => {
-    if (farmlands.length > 0) {
-      const uniqueCompanies = [
-        ...new Set(
-          farmlands
-            .map((f) => f.ownerDisplayName)
-            .filter(Boolean)
-        ),
-      ];
-      setCompanies(uniqueCompanies);
-    }
-  }, [farmlands]);
+    fetchCompanies();
+  }, [fetchCompanies]);
 
   const addFarmland = useCallback(async (newFarmland) => {
     try {
@@ -101,10 +128,7 @@ const useFarmlands = () => {
 
   const removeFarmland = useCallback(async (id) => {
     try {
-      const { error } = await supabase
-        .from("farmlands")
-        .delete()
-        .eq("id", id);
+      const { error } = await supabase.from("farmlands").delete().eq("id", id);
 
       if (error) throw error;
       setFarmlands((prev) => prev.filter((f) => f.id !== id));
@@ -131,9 +155,7 @@ const useFarmlands = () => {
       if (error) throw error;
 
       const updatedItem = mapFromSupabase(data[0]);
-      setFarmlands((prev) =>
-        prev.map((f) => (f.id === id ? updatedItem : f))
-      );
+      setFarmlands((prev) => prev.map((f) => (f.id === id ? updatedItem : f)));
       return updatedItem;
     } catch (err) {
       console.error("Error updating farmland:", err);
@@ -142,6 +164,63 @@ const useFarmlands = () => {
     }
   }, []);
 
+  const createCompany = useCallback(
+    async (companyDraft) => {
+      const normalizedName = normalizeCompanyName(companyDraft?.name);
+      if (!normalizedName) {
+        throw new Error("Company name is required");
+      }
+
+      const existingCompany = companies.find(
+        (company) => normalizeCompanyName(company.name) === normalizedName,
+      );
+      if (existingCompany) {
+        return existingCompany;
+      }
+
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
+        const payload = {
+          name: companyDraft.name.trim(),
+          vat_number: companyDraft.vat_number || null,
+          owner_name: companyDraft.owner_name || null,
+          authorized_operators: companyDraft.authorized_operators || [],
+          owner_id: user.id,
+        };
+
+        const { data, error } = await supabase
+          .from("companies")
+          .insert([payload])
+          .select();
+
+        if (error) throw error;
+
+        const createdCompany = mapCompanyFromSupabase(data[0]);
+        setCompanies((prev) => {
+          const withoutDuplicate = prev.filter(
+            (company) =>
+              normalizeCompanyName(company.name) !==
+              normalizeCompanyName(createdCompany.name),
+          );
+
+          return [...withoutDuplicate, createdCompany].sort((left, right) =>
+            left.name.localeCompare(right.name),
+          );
+        });
+        return createdCompany;
+      } catch (err) {
+        console.error("Error creating company:", err);
+        setError(err.message);
+        throw err;
+      }
+    },
+    [companies],
+  );
+
   return {
     farmlands,
     addFarmland,
@@ -149,6 +228,8 @@ const useFarmlands = () => {
     updateFarmland,
     reloadFarmland: fetchFarmlands,
     companies,
+    reloadCompanies: fetchCompanies,
+    createCompany,
     loading,
     error,
   };

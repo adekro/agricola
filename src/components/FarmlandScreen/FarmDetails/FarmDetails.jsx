@@ -29,7 +29,12 @@ export const FarmDetails = ({ farmland }) => {
   const { companies } = useFarmlands();
 
   const changeCompanyHandler = useCallback((_event, newValue) => {
-    setOwner(newValue);
+    if (typeof newValue === "string") {
+      setOwner(newValue);
+      return;
+    }
+
+    setOwner(newValue?.name || "");
   }, []);
 
   useEffect(() => {
@@ -86,6 +91,9 @@ export const FarmDetails = ({ farmland }) => {
             onChange={changeCompanyHandler}
             onInputChange={changeCompanyHandler}
             options={companies}
+            getOptionLabel={(option) =>
+              typeof option === "string" ? option : option?.name || ""
+            }
             renderInput={(params) => (
               <TextField {...params} label="Company name" />
             )}

@@ -92,7 +92,12 @@ const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
   }, [farmlandId]);
 
   const changeCompanyHandler = useCallback((_event, newValue) => {
-    setOwner(newValue);
+    if (typeof newValue === "string") {
+      setOwner(newValue);
+      return;
+    }
+
+    setOwner(newValue?.name || "");
   }, []);
 
   const closeHandler = useCallback(() => {
@@ -180,6 +185,9 @@ const NewFarmlandScreen = ({ onClose, farmlandId, onCreate }) => {
               onChange={changeCompanyHandler}
               onInputChange={changeCompanyHandler}
               options={companies}
+              getOptionLabel={(option) =>
+                typeof option === "string" ? option : option?.name || ""
+              }
               renderInput={(params) => (
                 <TextField {...params} label="Company name" />
               )}

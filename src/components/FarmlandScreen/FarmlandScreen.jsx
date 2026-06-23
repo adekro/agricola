@@ -25,13 +25,12 @@ import {
   DialogActions,
   Stack,
 } from "@mui/material";
+import { createFilterOptions } from "@mui/material/Autocomplete";
 import FullScreenDialog from "../UI/FullScreenDialog/FullScreenDialog";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import classes from "./FarmlandScreen.module.scss";
 import DrawableMap from "../WorldMap/DrawableMap/DrawableMap";
-import { useMemo } from "react";
 import { useFormik } from "formik";
-import { useEffect } from "react";
 import useFarmlands from "../../hooks/useFarmlands";
 import Modal from "../UI/Modal/Modal";
 import WorldMap from "../WorldMap/WorldMap";
@@ -43,6 +42,9 @@ import SatelliteIndices from "./SatelliteIndices/SatelliteIndices";
 import { satelliteService } from "../../services/satelliteService";
 import { notebookService } from "../../services/notebookService";
 import { useCadastralWmsError } from "../../hooks/useCadastralWmsError";
+
+const normalizeCompanyName = (name = "") => name.trim().toLowerCase();
+const filterCompanyOptions = createFilterOptions();
 
 const FarmlandScreen = (props) => {
   const { id } = useParams();
@@ -65,21 +67,22 @@ const FarmlandScreen = (props) => {
   const [coordinates, setCoordinates] = useState();
   const [error, setError] = useState();
   const [owner, setOwner] = useState("");
-  const { companies } = useFarmlands();
+  const [isCompanyDialogOpen, setIsCompanyDialogOpen] = useState(false);
+  const [companyDraft, setCompanyDraft] = useState({ name: "" });
+  const [companyError, setCompanyError] = useState("");
+  const [isSavingCompany, setIsSavingCompany] = useState(false);
+  const { companies, createCompany } = useFarmlands();
   const [isDelFarmland, setIsDelFarmland] = useState(false);
 
-  // Map settings
   const [selectedMapProvider, setSelectedMapProvider] = useState("osm");
   const [selectedSatelliteLayer, setSelectedSatelliteLayer] = useState("none");
   const [satelliteOpacity, setSatelliteOpacity] = useState(0.75);
   const [selectedCadastralLayer, setSelectedCadastralLayer] = useState("agenziaEntrateParcel");
   const [cadastralOpacity, setCadastralOpacity] = useState(0.9);
 
-  // Satellite Indices
   const [satelliteIndices, setSatelliteIndices] = useState(null);
   const [satelliteLoading, setSatelliteLoading] = useState(false);
 
-  // Crop History
   const [cropHistory, setCropHistory] = useState([]);
   const [openCropDialog, setOpenCropDialog] = useState(false);
   const [newCrop, setNewCrop] = useState({ crop: "", start_date: "", end_date: "" });
@@ -126,10 +129,119 @@ const FarmlandScreen = (props) => {
     onClose();
   }, [onClose]);
 
+  const findCompanyByName = useCallback(
+    (name) =>
+      companies.find(
+        (company) => normalizeCompanyName(company.name) === normalizeCompanyName(name),
+      ) || null,
+    [companies],
+  );
+
+  const selectCompany = useCallback((company) => {
+    setOwner(company?.name || "");
+  }, []);
+
+  const openCreateCompanyDialog = useCallback((name) => {
+    setCompanyDraft({ name: name.trim() });
+    setCompanyError("");
+    setIsCompanyDialogOpen(true);
+  }, []);
+
+  const handleCompanySelection = useCallback(
+    (_event, newValue) => {
+      if (typeof newValue === "string") {
+        const existingCompany = findCompanyByName(newValue);
+        if (existingCompany) {
+          selectCompany(existingCompany);
+          return;
+        }
+
+        openCreateCompanyDialog(newValue);
+        return;
+      }
+
+      if (newValue?.isNewCompanyOption) {
+        openCreateCompanyDialog(newValue.inputValue);
+        return;
+      }
+
+      if (newValue) {
+        selectCompany(newValue);
+        return;
+      }
+
+      setOwner("");
+    },
+    [findCompanyByName, openCreateCompanyDialog, selectCompany],
+  );
+
+  const handleCompanyInputChange = useCallback(
+    (_event, newInputValue, reason) => {
+      if (reason === "reset") {
+        return;
+      }
+
+      const nextValue = newInputValue || "";
+      const existingCompany = findCompanyByName(nextValue);
+      if (existingCompany) {
+        selectCompany(existingCompany);
+        return;
+      }
+
+      setOwner(nextValue);
+    },
+    [findCompanyByName, selectCompany],
+  );
+
+  const handleCompanyDialogClose = useCallback(() => {
+    if (isSavingCompany) {
+      return;
+    }
+
+    setIsCompanyDialogOpen(false);
+    setCompanyError("");
+  }, [isSavingCompany]);
+
+  const handleCompanyDraftChange = useCallback(
+    (event) => {
+      setCompanyDraft({ name: event.target.value });
+      if (companyError) {
+        setCompanyError("");
+      }
+    },
+    [companyError],
+  );
+
+  const handleCreateCompany = useCallback(async () => {
+    const trimmedName = companyDraft.name.trim();
+    if (!trimmedName) {
+      setCompanyError("Il nome azienda è obbligatorio.");
+      return;
+    }
+
+    const existingCompany = findCompanyByName(trimmedName);
+    if (existingCompany) {
+      selectCompany(existingCompany);
+      setIsCompanyDialogOpen(false);
+      return;
+    }
+
+    setIsSavingCompany(true);
+    try {
+      const createdCompany = await createCompany({ name: trimmedName });
+      selectCompany(createdCompany);
+      setIsCompanyDialogOpen(false);
+    } catch (err) {
+      setCompanyError(err.message || "Errore durante il salvataggio dell'azienda.");
+    } finally {
+      setIsSavingCompany(false);
+    }
+  }, [companyDraft.name, createCompany, findCompanyByName, selectCompany]);
+
   const onSaveFarmHandler = useCallback(() => {
     const newFarmland = {
       ...formik.values,
-      ownerDisplayName: owner,
+      ownerDisplayName: owner.trim(),
       coordinates: farmland ? farmland.coordinates : coordinates,
     };
     if (!newFarmland.area || !newFarmland.perimeter) {
@@ -143,16 +255,22 @@ const FarmlandScreen = (props) => {
     }
 
     handleOnClose();
-  }, [owner, coordinates, onCreate, handleOnClose, formik.values]);
+  }, [
+    owner,
+    coordinates,
+    farmland,
+    farmlandId,
+    onCreate,
+    onUpdate,
+    handleOnClose,
+    formik.values,
+  ]);
 
-  const drawCompletedHandler = useCallback(
-    ({ area, perimeter, coordinates }) => {
-      setArea(area);
-      setPerimeter(perimeter);
-      setCoordinates(coordinates);
-    },
-    [setArea, setPerimeter, setCoordinates],
-  );
+  const drawCompletedHandler = useCallback(({ area, perimeter, coordinates }) => {
+    setArea(area);
+    setPerimeter(perimeter);
+    setCoordinates(coordinates);
+  }, []);
 
   useEffect(() => {
     const fetchCropHistory = async () => {
@@ -184,8 +302,6 @@ const FarmlandScreen = (props) => {
 
   useEffect(() => {
     const fetchSatelliteIndices = async () => {
-      // Use current coordinates if available (from drawing),
-      // otherwise fall back to farmland coordinates
       const coords = coordinates || (farmland ? farmland.coordinates : null);
       if (coords && coords.length > 0) {
         setSatelliteLoading(true);
@@ -211,7 +327,7 @@ const FarmlandScreen = (props) => {
 
   const handleDelOnClose = useCallback(() => {
     setIsDelFarmland(false);
-  }, [isDelFarmland]);
+  }, []);
 
   const confirmDelete = useCallback(() => {
     setIsDelFarmland(false);
@@ -246,7 +362,7 @@ const FarmlandScreen = (props) => {
       formik.setFieldValue("area", area);
       formik.setFieldValue("perimeter", perimeter);
     }
-  }, [area, perimeter]);
+  }, [area, perimeter, formik]);
 
   useEffect(() => {
     if (farmland) {
@@ -257,24 +373,42 @@ const FarmlandScreen = (props) => {
       formik.setFieldValue("cadastralParcel", farmland.cadastralParcel || "");
       formik.setFieldValue("currentCrop", farmland.currentCrop || "");
     }
-  }, [farmland]);
+  }, [farmland, formik]);
 
   useEffect(() => {
     if (farmland) {
-      setOwner(farmland.ownerDisplayName);
+      setOwner(farmland.ownerDisplayName || "");
     }
-  }, []);
-
-  const changeCompanyHandler = useCallback((_event, newValue) => {
-    if (newValue) {
-      setOwner(newValue);
-    } else {
-      setOwner("");
-    }
-  }, []);
+  }, [farmland]);
 
   const closeHandler = useCallback(() => {
     setError();
+  }, []);
+
+  const selectedCompany = findCompanyByName(owner);
+
+  const companyOptions = useCallback((options, params) => {
+    const filtered = filterCompanyOptions(options, params);
+    const trimmedInput = params.inputValue.trim();
+    if (!trimmedInput) {
+      return filtered;
+    }
+
+    const matchesExisting = options.some(
+      (option) =>
+        normalizeCompanyName(option.name) === normalizeCompanyName(trimmedInput),
+    );
+
+    if (!matchesExisting) {
+      filtered.push({
+        id: `new-${trimmedInput}`,
+        inputValue: trimmedInput,
+        isNewCompanyOption: true,
+        name: `Crea nuova azienda: ${trimmedInput}`,
+      });
+    }
+
+    return filtered;
   }, []);
 
   const callToAction = (
@@ -358,15 +492,31 @@ const FarmlandScreen = (props) => {
                 <Autocomplete
                   freeSolo
                   name="owner"
-                  value={formik.values.owner}
+                  value={selectedCompany}
                   inputValue={owner}
-                  onChange={changeCompanyHandler}
-                  onInputChange={changeCompanyHandler}
+                  onChange={handleCompanySelection}
+                  onInputChange={handleCompanyInputChange}
+                  filterOptions={companyOptions}
                   options={companies}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Company name" />
+                  getOptionLabel={(option) => {
+                    if (typeof option === "string") {
+                      return option;
+                    }
+
+                    if (option?.isNewCompanyOption) {
+                      return option.inputValue;
+                    }
+
+                    return option?.name || "";
+                  }}
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  renderInput={(params) => <TextField {...params} label="Company name" />}
+                  renderOption={(renderProps, option) => (
+                    <li {...renderProps} key={option.id}>
+                      {option.name}
+                    </li>
                   )}
-                ></Autocomplete>
+                />
               </FormControl>
             </form>
 
@@ -415,7 +565,7 @@ const FarmlandScreen = (props) => {
                   {selectedSatelliteLayer !== "none" && (
                     <Box sx={{ px: 1, mt: 2 }}>
                       <Typography gutterBottom variant="caption">
-                        Opacità layer satellitare: {(satelliteOpacity * 100).toFixed(0)}%
+                        OpacitÃ  layer satellitare: {(satelliteOpacity * 100).toFixed(0)}%
                       </Typography>
                       <Slider
                         value={satelliteOpacity}
@@ -470,13 +620,14 @@ const FarmlandScreen = (props) => {
                 </>
               )}
             </Box>
- 
 
             <SatelliteIndices indices={satelliteIndices} loading={satelliteLoading} />
 
             {farmland && (
               <Box sx={{ mt: 3 }}>
-                <Typography variant="h6" gutterBottom>Storico Colture</Typography>
+                <Typography variant="h6" gutterBottom>
+                  Storico Colture
+                </Typography>
                 <TableContainer component={Paper} variant="outlined">
                   <Table size="small">
                     <TableHead>
@@ -496,38 +647,30 @@ const FarmlandScreen = (props) => {
                       ))}
                       {cropHistory.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={2} align="center">Nessuno storico</TableCell>
+                          <TableCell colSpan={2} align="center">
+                            Nessuno storico
+                          </TableCell>
                         </TableRow>
                       )}
                     </TableBody>
                   </Table>
                 </TableContainer>
-                <Button
-                  size="small"
-                  sx={{ mt: 1 }}
-                  onClick={() => setOpenCropDialog(true)}
-                >
+                <Button size="small" sx={{ mt: 1 }} onClick={() => setOpenCropDialog(true)}>
                   Aggiungi Storico
                 </Button>
               </Box>
             )}
- 
+
             {farmland && (
               <div className={classes.detailsWrapper}>
                 <Button onClick={deleteHandler}>Delete farmland</Button>
               </div>
             )}
- 
           </div>
         </div>
       </div>
 
-      <Snackbar
-        severity="error"
-        open={!!error}
-        autoHideDuration={6000}
-        onClose={closeHandler}
-      >
+      <Snackbar open={!!error} autoHideDuration={6000} onClose={closeHandler}>
         <Alert severity="error">{error}</Alert>
       </Snackbar>
 
@@ -551,7 +694,7 @@ const FarmlandScreen = (props) => {
               label="Coltura"
               fullWidth
               value={newCrop.crop}
-              onChange={(e) => setNewCrop(prev => ({ ...prev, crop: e.target.value }))}
+              onChange={(e) => setNewCrop((prev) => ({ ...prev, crop: e.target.value }))}
             />
             <TextField
               label="Inizio"
@@ -559,7 +702,7 @@ const FarmlandScreen = (props) => {
               fullWidth
               InputLabelProps={{ shrink: true }}
               value={newCrop.start_date}
-              onChange={(e) => setNewCrop(prev => ({ ...prev, start_date: e.target.value }))}
+              onChange={(e) => setNewCrop((prev) => ({ ...prev, start_date: e.target.value }))}
             />
             <TextField
               label="Fine"
@@ -567,13 +710,44 @@ const FarmlandScreen = (props) => {
               fullWidth
               InputLabelProps={{ shrink: true }}
               value={newCrop.end_date}
-              onChange={(e) => setNewCrop(prev => ({ ...prev, end_date: e.target.value }))}
+              onChange={(e) => setNewCrop((prev) => ({ ...prev, end_date: e.target.value }))}
             />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenCropDialog(false)}>Annulla</Button>
-          <Button onClick={handleAddCropHistory} variant="contained">Aggiungi</Button>
+          <Button onClick={handleAddCropHistory} variant="contained">
+            Aggiungi
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={isCompanyDialogOpen} onClose={handleCompanyDialogClose} fullWidth maxWidth="sm">
+        <DialogTitle>Nuova azienda</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              autoFocus
+              label="Nome azienda"
+              fullWidth
+              value={companyDraft.name}
+              onChange={handleCompanyDraftChange}
+              error={!!companyError}
+              helperText={companyError}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCompanyDialogClose} disabled={isSavingCompany}>
+            Annulla
+          </Button>
+          <Button
+            onClick={handleCreateCompany}
+            variant="contained"
+            disabled={!companyDraft.name.trim() || isSavingCompany}
+          >
+            Salva azienda
+          </Button>
         </DialogActions>
       </Dialog>
     </FullScreenDialog>
