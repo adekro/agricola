@@ -34,9 +34,14 @@ export default async function handler(req, res) {
     const contentType = response.headers.get("content-type");
     const cacheControl = response.headers.get("cache-control");
     const body = Buffer.from(await response.arrayBuffer());
+    const isGetMapRequest = `${req.query.REQUEST || req.query.request || ""}`.toUpperCase() === "GETMAP";
 
     if (contentType) {
       res.setHeader("Content-Type", contentType);
+    }
+
+    if (isGetMapRequest && contentType && !contentType.startsWith("image/")) {
+      res.setHeader("X-Upstream-Content-Type", contentType);
     }
 
     if (cacheControl) {

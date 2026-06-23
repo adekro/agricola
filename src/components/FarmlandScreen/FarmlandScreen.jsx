@@ -42,6 +42,7 @@ import { getEnabledCadastralLayers } from "../../config/cadastralLayers";
 import SatelliteIndices from "./SatelliteIndices/SatelliteIndices";
 import { satelliteService } from "../../services/satelliteService";
 import { notebookService } from "../../services/notebookService";
+import { useCadastralWmsError } from "../../hooks/useCadastralWmsError";
 
 const FarmlandScreen = (props) => {
   const { id } = useParams();
@@ -86,6 +87,24 @@ const FarmlandScreen = (props) => {
   const enabledMapProviders = useMemo(() => getEnabledMapProviders(), []);
   const enabledSatelliteLayers = useMemo(() => getEnabledSatelliteLayers(), []);
   const enabledCadastralLayers = useMemo(() => getEnabledCadastralLayers(), []);
+
+  useCadastralWmsError(
+    useCallback(
+      ({ contentType, status }) => {
+        if (selectedCadastralLayer === "none") {
+          return;
+        }
+
+        const detail = contentType ? ` Risposta ricevuta: ${contentType}.` : "";
+        const statusDetail = status ? ` HTTP ${status}.` : "";
+
+        setError(
+          `Il layer catastale non e disponibile in questo momento.${statusDetail}${detail}`,
+        );
+      },
+      [selectedCadastralLayer],
+    ),
+  );
 
   const formik = useFormik({
     initialValues: farmland || {

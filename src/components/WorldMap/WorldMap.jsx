@@ -19,6 +19,7 @@ import { styled } from "@mui/material";
 import { MAP_PROVIDERS } from "../../config/mapProviders";
 import { SATELLITE_LAYERS } from "../../config/satelliteLayers";
 import { CADASTRAL_LAYERS } from "../../config/cadastralLayers";
+import { createCadastralSource } from "../../lib/cadastralWms";
 
 export const DEFAULT_CENTER = [9.0953328, 45.4628246];
 
@@ -112,17 +113,7 @@ const WorldMap = ({
         const cadastralLayer = new TileLayer({
           visible: true,
           opacity: cadastralOpacity,
-          source: new TileWMS({
-            url: cadastralConfig.url,
-            params: {
-              LAYERS: cadastralConfig.layers,
-              TILED: true,
-              FORMAT: "image/png",
-              TRANSPARENT: true,
-            },
-            crossOrigin: "anonymous",
-            attributions: cadastralConfig.attribution,
-          }),
+          source: createCadastralSource(cadastralConfig),
         });
         cadastralLayerRef.current = cadastralLayer;
         layers.push(cadastralLayer);
@@ -262,17 +253,7 @@ const WorldMap = ({
         const cadastralLayer = new TileLayer({
           visible: true,
           opacity: cadastralOpacity,
-          source: new TileWMS({
-            url: cadastralConfig.url,
-            params: {
-              LAYERS: cadastralConfig.layers,
-              TILED: true,
-              FORMAT: "image/png",
-              TRANSPARENT: true,
-            },
-            crossOrigin: "anonymous",
-            attributions: cadastralConfig.attribution,
-          }),
+          source: createCadastralSource(cadastralConfig),
         });
 
         const insertIndex = satelliteLayerRef.current ? 2 : 1;

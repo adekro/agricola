@@ -21,6 +21,7 @@ import { ResponsiveMap } from "../WorldMap";
 import { MAP_PROVIDERS } from "../../../config/mapProviders";
 import { SATELLITE_LAYERS } from "../../../config/satelliteLayers";
 import { CADASTRAL_LAYERS } from "../../../config/cadastralLayers";
+import { createCadastralSource } from "../../../lib/cadastralWms";
 
 const DrawableMap = ({
   onDrawCompleted,
@@ -119,17 +120,7 @@ const DrawableMap = ({
         const cadastralLayer = new TileLayer({
           visible: true,
           opacity: cadastralOpacity,
-          source: new TileWMS({
-            url: cadastralConfig.url,
-            params: {
-              LAYERS: cadastralConfig.layers,
-              TILED: true,
-              FORMAT: "image/png",
-              TRANSPARENT: true,
-            },
-            crossOrigin: "anonymous",
-            attributions: cadastralConfig.attribution,
-          }),
+          source: createCadastralSource(cadastralConfig),
         });
         cadastralLayerRef.current = cadastralLayer;
         layers.push(cadastralLayer);
@@ -393,17 +384,7 @@ const DrawableMap = ({
         const cadastralLayer = new TileLayer({
           visible: true,
           opacity: cadastralOpacity,
-          source: new TileWMS({
-            url: cadastralConfig.url,
-            params: {
-              LAYERS: cadastralConfig.layers,
-              TILED: true,
-              FORMAT: "image/png",
-              TRANSPARENT: true,
-            },
-            crossOrigin: "anonymous",
-            attributions: cadastralConfig.attribution,
-          }),
+          source: createCadastralSource(cadastralConfig),
         });
 
         const layers = mapInstanceRef.current.getLayers();
