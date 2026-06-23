@@ -33,12 +33,17 @@ const DrawableMap = ({
 }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const onDrawCompletedRef = useRef(onDrawCompleted);
   const { position } = useGeolocation();
 
   // Reference for layers to update them without re-creating the map
   const baseLayerRef = useRef(null);
   const satelliteLayerRef = useRef(null);
   const cadastralLayerRef = useRef(null);
+
+  useEffect(() => {
+    onDrawCompletedRef.current = onDrawCompleted;
+  }, [onDrawCompleted]);
 
   useEffect(() => {
     if (!position || !mapRef.current) {
@@ -131,7 +136,7 @@ const DrawableMap = ({
 
     const map = new Map({
       layers: layers,
-      target: mapRef.current.id,
+      target: mapRef.current,
       view: new View({
         center: fromLonLat(position),
         zoom: 15,
@@ -262,7 +267,7 @@ const DrawableMap = ({
 
         map.un("pointermove", pointerMoveHandler);
 
-        onDrawCompleted({
+        onDrawCompletedRef.current?.({
           area: area.split(" ")[0],
           perimeter: perimeter.split(" ")[0],
           coordinates,
@@ -293,11 +298,15 @@ const DrawableMap = ({
         map.removeOverlay(measureTooltip);
       }
 
+      if (listener) {
+        unByKey(listener);
+      }
+
       map.un("pointermove", pointerMoveHandler);
       map.setTarget(undefined);
       mapInstanceRef.current = null;
     };
-  }, [position, onDrawCompleted]);
+  }, [position]);
 
   // Handle map provider changes
   useEffect(() => {
