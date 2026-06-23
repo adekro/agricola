@@ -11,6 +11,24 @@ const CLIENT_ID =
 let cachedToken = null;
 let tokenExpiresAt = 0;
 
+function toFriendlyAuthMessage(errorDescription) {
+  const message = `${errorDescription || ""}`.toLowerCase();
+
+  if (message.includes("account is not fully set up")) {
+    return "Account Copernicus non completato. Effettua login su Copernicus Data Space, verifica email, accetta termini/consensi e completa il profilo, poi riprova.";
+  }
+
+  if (message.includes("invalid user credentials")) {
+    return "Credenziali Copernicus non valide. Controlla username/password e riprova.";
+  }
+
+  if (message.includes("temporarily disabled")) {
+    return "Account temporaneamente bloccato. Attendi alcuni minuti e riprova.";
+  }
+
+  return errorDescription || "Unable to retrieve Copernicus token";
+}
+
 async function requestToken() {
   const username =
     process.env.VITE_COPERNICUS_USERNAME || process.env.COPERNICUS_USERNAME;
@@ -45,9 +63,7 @@ async function requestToken() {
 
   const payload = await response.json();
   if (!response.ok || !payload.access_token) {
-    const err = new Error(
-      payload.error_description || "Unable to retrieve Copernicus token",
-    );
+    const err = new Error(toFriendlyAuthMessage(payload.error_description));
     err.statusCode = response.status || 502;
     throw err;
   }
