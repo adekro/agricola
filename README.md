@@ -68,3 +68,28 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## Copernicus Real Satellite Indices
+
+The project now fetches real indices through serverless endpoints:
+
+- `GET /api/copernicus-token`
+- `POST /api/copernicus-statistics`
+
+Configure these environment variables:
+
+- `VITE_COPERNICUS_STATS_ENDPOINT` (frontend endpoint, default: `/api/copernicus-statistics`)
+- `VITE_COPERNICUS_USERNAME`
+- `VITE_COPERNICUS_PASSWORD`
+- `VITE_COPERNICUS_CLIENT_ID` (optional, default: `cdse-public`)
+- `VITE_COPERNICUS_CLIENT_SECRET` (optional)
+- `VITE_COPERNICUS_TOKEN_URL` (optional)
+- `VITE_COPERNICUS_STATS_URL` (optional)
+- `VITE_COPERNICUS_COLLECTION` (optional, default: `sentinel-2-l2a`)
+- `VITE_COPERNICUS_LOOKBACK_DAYS` (optional, default: `30`)
+- `VITE_COPERNICUS_MAX_CLOUD_COVER` (optional, default: `20`)
+
+Notes:
+
+- Keep credentials only on server runtime (Vercel project env variables).
+- If credentials are missing or invalid, the UI shows an explicit error and does not fallback to mock data.

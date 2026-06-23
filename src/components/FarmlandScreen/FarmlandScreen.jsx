@@ -319,8 +319,14 @@ const FarmlandScreen = (props) => {
         try {
           const data = await satelliteService.getSatelliteIndices(coords);
           setSatelliteIndices(data);
+          setError(undefined);
         } catch (err) {
           console.error("Error fetching satellite indices:", err);
+          setSatelliteIndices(null);
+          setError(
+            err.message ||
+              "Errore nel recupero indici satellitari da Copernicus.",
+          );
         } finally {
           setSatelliteLoading(false);
         }
