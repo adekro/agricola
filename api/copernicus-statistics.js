@@ -135,6 +135,14 @@ function computeStatus(label, value) {
 
 function parseBandMeans(statisticsResponse) {
   const intervals = statisticsResponse?.data || [];
+  const outputBandMap = {
+    B0: "B02",
+    B1: "B03",
+    B2: "B04",
+    B3: "B08",
+    B4: "B11",
+    B5: "B12",
+  };
 
   const bands = {
     B02: [],
@@ -147,10 +155,10 @@ function parseBandMeans(statisticsResponse) {
 
   intervals.forEach((item) => {
     const outputs = item?.outputs?.default?.bands || {};
-    Object.keys(bands).forEach((bandName) => {
-      const value = outputs?.[bandName]?.stats?.mean;
+    Object.entries(outputBandMap).forEach(([outputBandName, targetBandName]) => {
+      const value = outputs?.[outputBandName]?.stats?.mean;
       if (Number.isFinite(value)) {
-        bands[bandName].push(value);
+        bands[targetBandName].push(value);
       }
     });
   });
