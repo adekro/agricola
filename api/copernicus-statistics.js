@@ -183,6 +183,47 @@ function parseBandMeans(statisticsResponse) {
   };
 }
 
+function hasValidBandData(item) {
+  const outputBands =
+    item &&
+    item.outputs &&
+    item.outputs.default &&
+    item.outputs.default.bands
+      ? item.outputs.default.bands
+      : {};
+
+  return Object.values(outputBands).some((band) =>
+    Number.isFinite(band && band.stats ? band.stats.mean : undefined),
+  );
+}
+
+function getLatestAcquisitionDate(statisticsResponse) {
+  const intervals = statisticsResponse && statisticsResponse.data
+    ? statisticsResponse.data
+    : [];
+  const validIntervals = intervals.filter(hasValidBandData);
+
+  if (!validIntervals.length) {
+    return null;
+  }
+
+  const latestInterval = validIntervals.reduce((latest, current) => {
+    const latestTo =
+      latest && latest.interval && latest.interval.to ? latest.interval.to : 0;
+    const currentTo =
+      current && current.interval && current.interval.to
+        ? current.interval.to
+        : 0;
+    const latestTime = new Date(latestTo).getTime();
+    const currentTime = new Date(currentTo).getTime();
+    return currentTime > latestTime ? current : latest;
+  });
+
+  return latestInterval && latestInterval.interval && latestInterval.interval.to
+    ? latestInterval.interval.to
+    : null;
+}
+
 function computeIndicesFromBands(bands) {
   const { B02, B03, B04, B08, B11, B12 } = bands;
 
@@ -280,46 +321,6 @@ function setup() {
       { id: "dataMask", bands: 1, sampleType: "UINT8" }
     ]
   };
-}
-
-function hasValidBandData(item) {
-  const outputBands =
-    item &&
-    item.outputs &&
-    item.outputs.default &&
-    item.outputs.default.bands
-      ? item.outputs.default.bands
-      : {};
-  return Object.values(outputBands).some((band) =>
-    Number.isFinite(band && band.stats ? band.stats.mean : undefined),
-  );
-}
-
-function getLatestAcquisitionDate(statisticsResponse) {
-  const intervals = statisticsResponse && statisticsResponse.data
-    ? statisticsResponse.data
-    : [];
-  const validIntervals = intervals.filter(hasValidBandData);
-
-  if (!validIntervals.length) {
-    return null;
-  }
-
-  const latestInterval = validIntervals.reduce((latest, current) => {
-    const latestTo =
-      latest && latest.interval && latest.interval.to ? latest.interval.to : 0;
-    const currentTo =
-      current && current.interval && current.interval.to
-        ? current.interval.to
-        : 0;
-    const latestTime = new Date(latestTo).getTime();
-    const currentTime = new Date(currentTo).getTime();
-    return currentTime > latestTime ? current : latest;
-  });
-
-  return latestInterval && latestInterval.interval && latestInterval.interval.to
-    ? latestInterval.interval.to
-    : null;
 }
 function evaluatePixel(sample) {
   return {
