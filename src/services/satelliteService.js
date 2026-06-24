@@ -38,6 +38,7 @@ export const satelliteService = {
         source: payload.source || null,
         timeRange: payload.timeRange || null,
         cloudCoverage: payload.cloudCoverage ?? null,
+        latestAcquisitionDate: payload.latestAcquisitionDate || null,
       },
     };
   },

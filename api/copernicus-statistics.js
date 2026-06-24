@@ -271,6 +271,30 @@ function setup() {
     ]
   };
 }
+
+function hasValidBandData(item) {
+  const outputBands = item?.outputs?.default?.bands || {};
+  return Object.values(outputBands).some((band) =>
+    Number.isFinite(band?.stats?.mean),
+  );
+}
+
+function getLatestAcquisitionDate(statisticsResponse) {
+  const intervals = statisticsResponse?.data || [];
+  const validIntervals = intervals.filter(hasValidBandData);
+
+  if (!validIntervals.length) {
+    return null;
+  }
+
+  const latestInterval = validIntervals.reduce((latest, current) => {
+    const latestTime = new Date(latest?.interval?.to || 0).getTime();
+    const currentTime = new Date(current?.interval?.to || 0).getTime();
+    return currentTime > latestTime ? current : latest;
+  });
+
+  return latestInterval?.interval?.to || null;
+}
 function evaluatePixel(sample) {
   return {
     default: [
@@ -384,11 +408,13 @@ export default async function handler(req, res) {
 
     const bandMeans = parseBandMeans(result);
     const indices = computeIndicesFromBands(bandMeans);
+    const latestAcquisitionDate = getLatestAcquisitionDate(result);
 
     return res.status(200).json({
       source: "copernicus-statistics",
       timeRange,
       cloudCoverage,
+      latestAcquisitionDate,
       indices,
       upstreamResponse: result,
     });

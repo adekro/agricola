@@ -15,7 +15,28 @@ import InfoIcon from "@mui/icons-material/Info";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import classes from "./SatelliteIndices.module.scss";
 
-const SatelliteIndices = ({ indices, upstreamResponse, loading }) => {
+function formatAcquisitionDate(value) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
+const SatelliteIndices = ({ indices, upstreamResponse, metadata, loading }) => {
+  const acquisitionDateLabel = formatAcquisitionDate(
+    metadata?.latestAcquisitionDate,
+  );
+
   if (loading) {
     return (
       <Box className={classes.Container} display="flex" justifyContent="center" alignItems="center" py={4}>
@@ -31,8 +52,13 @@ const SatelliteIndices = ({ indices, upstreamResponse, loading }) => {
 
   return (
     <Box className={classes.Container}>
-      <Typography variant="h6" gutterBottom sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
+      <Typography variant="h6" gutterBottom sx={{ mt: 2, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
         Indici Satellitari Sentinel-2
+        {acquisitionDateLabel && (
+          <Typography component="span" variant="body2" color="text.secondary">
+            ({acquisitionDateLabel})
+          </Typography>
+        )}
         <Tooltip title="Dati derivati dall'analisi multispettrale del satellite Sentinel-2 per l'area selezionata.">
           <InfoIcon fontSize="small" sx={{ ml: 1, color: 'text.secondary', cursor: 'help' }} />
         </Tooltip>
@@ -65,6 +91,11 @@ const SatelliteIndices = ({ indices, upstreamResponse, loading }) => {
       <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block', fontStyle: 'italic' }}>
         * Dati calcolati in base alla posizione geografica del poligono.
       </Typography>
+      {metadata?.latestAcquisitionDate && (
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+          Ultima acquisizione utile Copernicus: {metadata.latestAcquisitionDate}
+        </Typography>
+      )}
 
       {upstreamResponse && (
         <Accordion className={classes.RawResponseSection} sx={{ mt: 2 }}>
