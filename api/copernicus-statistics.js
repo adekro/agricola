@@ -134,7 +134,9 @@ function computeStatus(label, value) {
 }
 
 function parseBandMeans(statisticsResponse) {
-  const intervals = statisticsResponse?.data || [];
+  const intervals = statisticsResponse && statisticsResponse.data
+    ? statisticsResponse.data
+    : [];
   const outputBandMap = {
     B0: "B02",
     B1: "B03",
@@ -154,9 +156,17 @@ function parseBandMeans(statisticsResponse) {
   };
 
   intervals.forEach((item) => {
-    const outputs = item?.outputs?.default?.bands || {};
+    const outputs =
+      item &&
+      item.outputs &&
+      item.outputs.default &&
+      item.outputs.default.bands
+        ? item.outputs.default.bands
+        : {};
     Object.entries(outputBandMap).forEach(([outputBandName, targetBandName]) => {
-      const value = outputs?.[outputBandName]?.stats?.mean;
+      const outputBand = outputs[outputBandName];
+      const value =
+        outputBand && outputBand.stats ? outputBand.stats.mean : undefined;
       if (Number.isFinite(value)) {
         bands[targetBandName].push(value);
       }
@@ -273,14 +283,22 @@ function setup() {
 }
 
 function hasValidBandData(item) {
-  const outputBands = item?.outputs?.default?.bands || {};
+  const outputBands =
+    item &&
+    item.outputs &&
+    item.outputs.default &&
+    item.outputs.default.bands
+      ? item.outputs.default.bands
+      : {};
   return Object.values(outputBands).some((band) =>
-    Number.isFinite(band?.stats?.mean),
+    Number.isFinite(band && band.stats ? band.stats.mean : undefined),
   );
 }
 
 function getLatestAcquisitionDate(statisticsResponse) {
-  const intervals = statisticsResponse?.data || [];
+  const intervals = statisticsResponse && statisticsResponse.data
+    ? statisticsResponse.data
+    : [];
   const validIntervals = intervals.filter(hasValidBandData);
 
   if (!validIntervals.length) {
@@ -288,12 +306,20 @@ function getLatestAcquisitionDate(statisticsResponse) {
   }
 
   const latestInterval = validIntervals.reduce((latest, current) => {
-    const latestTime = new Date(latest?.interval?.to || 0).getTime();
-    const currentTime = new Date(current?.interval?.to || 0).getTime();
+    const latestTo =
+      latest && latest.interval && latest.interval.to ? latest.interval.to : 0;
+    const currentTo =
+      current && current.interval && current.interval.to
+        ? current.interval.to
+        : 0;
+    const latestTime = new Date(latestTo).getTime();
+    const currentTime = new Date(currentTo).getTime();
     return currentTime > latestTime ? current : latest;
   });
 
-  return latestInterval?.interval?.to || null;
+  return latestInterval && latestInterval.interval && latestInterval.interval.to
+    ? latestInterval.interval.to
+    : null;
 }
 function evaluatePixel(sample) {
   return {
@@ -402,7 +428,11 @@ export default async function handler(req, res) {
       return res.status(response.status).json({
         error: "Copernicus statistics request failed",
         message:
-          result?.error?.message || result?.message || "Unknown upstream error",
+          (result &&
+            result.error &&
+            result.error.message) ||
+          (result && result.message) ||
+          "Unknown upstream error",
       });
     }
 
