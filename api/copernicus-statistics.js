@@ -129,6 +129,12 @@ function computeStatus(label, value) {
   if (label === "NDBI") return value < 0 ? "Naturale" : "Infrastrutture";
   if (label === "BSI")
     return value > 0.2 ? "Terreno esposto" : "Copertura vegetale";
+  if (label === "NDRE")
+    return value > 0.25 ? "Vigore elevato" : "Vigore da monitorare";
+  if (label === "MSI")
+    return value < 0.7 ? "Stress idrico basso" : "Stress idrico possibile";
+  if (label === "SAVI")
+    return value > 0.4 ? "Copertura vegetale buona" : "Copertura limitata";
 
   return "OK";
 }
@@ -141,15 +147,17 @@ function parseBandMeans(statisticsResponse) {
     B0: "B02",
     B1: "B03",
     B2: "B04",
-    B3: "B08",
-    B4: "B11",
-    B5: "B12",
+    B3: "B05",
+    B4: "B08",
+    B5: "B11",
+    B6: "B12",
   };
 
   const bands = {
     B02: [],
     B03: [],
     B04: [],
+    B05: [],
     B08: [],
     B11: [],
     B12: [],
@@ -177,6 +185,7 @@ function parseBandMeans(statisticsResponse) {
     B02: mean(bands.B02),
     B03: mean(bands.B03),
     B04: mean(bands.B04),
+    B05: mean(bands.B05),
     B08: mean(bands.B08),
     B11: mean(bands.B11),
     B12: mean(bands.B12),
@@ -225,7 +234,7 @@ function getLatestAcquisitionDate(statisticsResponse) {
 }
 
 function computeIndicesFromBands(bands) {
-  const { B02, B03, B04, B08, B11, B12 } = bands;
+  const { B02, B03, B04, B05, B08, B11, B12 } = bands;
 
   const ndvi = safeRatio(B08 - B04, B08 + B04);
   const evi = safeRatio(2.5 * (B08 - B04), B08 + 6 * B04 - 7.5 * B02 + 1);
@@ -236,6 +245,9 @@ function computeIndicesFromBands(bands) {
   const nbr = safeRatio(B08 - B12, B08 + B12);
   const ndbi = safeRatio(B11 - B08, B11 + B08);
   const bsi = safeRatio(B11 + B04 - (B08 + B02), B11 + B04 + B08 + B02);
+  const ndre = safeRatio(B08 - B05, B08 + B05);
+  const msi = safeRatio(B11, B08);
+  const savi = safeRatio(1.5 * (B08 - B04), B08 + B04 + 0.5);
 
   const normalized = {
     ndvi: clamp(ndvi, -1, 1),
@@ -247,6 +259,9 @@ function computeIndicesFromBands(bands) {
     nbr: clamp(nbr, -1, 1),
     ndbi: clamp(ndbi, -1, 1),
     bsi: clamp(bsi, -1, 1),
+    ndre: clamp(ndre, -1, 1),
+    msi: msi === null ? null : Number(msi.toFixed(3)),
+    savi: clamp(savi, -1, 1),
   };
 
   return {
@@ -304,6 +319,24 @@ function computeIndicesFromBands(bands) {
       normalized.bsi,
       computeStatus("BSI", normalized.bsi),
     ),
+    ndre: toIndexCard(
+      "NDRE",
+      "Indice red-edge del vigore vegetativo",
+      normalized.ndre,
+      computeStatus("NDRE", normalized.ndre),
+    ),
+    msi: {
+      label: "MSI",
+      description: "Indice di stress idrico",
+      value: normalized.msi,
+      status: computeStatus("MSI", normalized.msi),
+    },
+    savi: toIndexCard(
+      "SAVI",
+      "Indice vegetativo corretto per il suolo",
+      normalized.savi,
+      computeStatus("SAVI", normalized.savi),
+    ),
   };
 }
 
@@ -313,11 +346,11 @@ function buildStatisticsPayload({ coordinates, timeRange, cloudCoverage }) {
 function setup() {
   return {
     input: [{
-      bands: ["B02", "B03", "B04", "B08", "B11", "B12", "dataMask"],
+      bands: ["B02", "B03", "B04", "B05", "B08", "B11", "B12", "dataMask"],
       units: "REFLECTANCE"
     }],
     output: [
-      { id: "default", bands: 6, sampleType: "FLOAT32" },
+      { id: "default", bands: 7, sampleType: "FLOAT32" },
       { id: "dataMask", bands: 1, sampleType: "UINT8" }
     ]
   };
@@ -328,6 +361,7 @@ function evaluatePixel(sample) {
       sample.B02,
       sample.B03,
       sample.B04,
+      sample.B05,
       sample.B08,
       sample.B11,
       sample.B12
@@ -446,6 +480,7 @@ export default async function handler(req, res) {
       timeRange,
       cloudCoverage,
       latestAcquisitionDate,
+      bandMeans,
       indices,
       upstreamResponse: result,
     });
