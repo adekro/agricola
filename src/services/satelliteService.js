@@ -31,6 +31,14 @@ export const satelliteService = {
       );
     }
 
-    return payload.indices || null;
+    return {
+      indices: payload.indices || null,
+      upstreamResponse: payload.upstreamResponse || null,
+      metadata: {
+        source: payload.source || null,
+        timeRange: payload.timeRange || null,
+        cloudCoverage: payload.cloudCoverage ?? null,
+      },
+    };
   },
 };

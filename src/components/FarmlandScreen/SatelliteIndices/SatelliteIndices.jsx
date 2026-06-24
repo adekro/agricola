@@ -7,11 +7,15 @@ import {
   CardContent,
   CircularProgress,
   Tooltip,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import InfoIcon from "@mui/icons-material/Info";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import classes from "./SatelliteIndices.module.scss";
 
-const SatelliteIndices = ({ indices, loading }) => {
+const SatelliteIndices = ({ indices, upstreamResponse, loading }) => {
   if (loading) {
     return (
       <Box className={classes.Container} display="flex" justifyContent="center" alignItems="center" py={4}>
@@ -61,6 +65,24 @@ const SatelliteIndices = ({ indices, loading }) => {
       <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block', fontStyle: 'italic' }}>
         * Dati calcolati in base alla posizione geografica del poligono.
       </Typography>
+
+      {upstreamResponse && (
+        <Accordion className={classes.RawResponseSection} sx={{ mt: 2 }}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle2">
+              Risposta reale API satellite
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Typography
+              component="pre"
+              className={classes.RawResponse}
+            >
+              {JSON.stringify(upstreamResponse, null, 2)}
+            </Typography>
+          </AccordionDetails>
+        </Accordion>
+      )}
     </Box>
   );
 };

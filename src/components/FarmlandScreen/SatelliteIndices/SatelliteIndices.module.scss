@@ -17,4 +17,17 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
   }
+
+  .RawResponseSection {
+    background-color: #ffffff;
+  }
+
+  .RawResponse {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 12px;
+    line-height: 1.5;
+    font-family: Consolas, "Courier New", monospace;
+  }
 }

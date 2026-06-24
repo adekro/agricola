@@ -82,6 +82,7 @@ const FarmlandScreen = (props) => {
   const [cadastralOpacity, setCadastralOpacity] = useState(0.9);
 
   const [satelliteIndices, setSatelliteIndices] = useState(null);
+  const [satelliteApiResponse, setSatelliteApiResponse] = useState(null);
   const [satelliteLoading, setSatelliteLoading] = useState(false);
 
   const [cropHistory, setCropHistory] = useState([]);
@@ -318,11 +319,13 @@ const FarmlandScreen = (props) => {
         setSatelliteLoading(true);
         try {
           const data = await satelliteService.getSatelliteIndices(coords);
-          setSatelliteIndices(data);
+          setSatelliteIndices(data?.indices || null);
+          setSatelliteApiResponse(data?.upstreamResponse || null);
           setError(undefined);
         } catch (err) {
           console.error("Error fetching satellite indices:", err);
           setSatelliteIndices(null);
+          setSatelliteApiResponse(null);
           setError(
             err.message ||
               "Errore nel recupero indici satellitari da Copernicus.",
@@ -332,6 +335,7 @@ const FarmlandScreen = (props) => {
         }
       } else {
         setSatelliteIndices(null);
+        setSatelliteApiResponse(null);
       }
     };
 
@@ -713,6 +717,7 @@ const FarmlandScreen = (props) => {
 
             <SatelliteIndices
               indices={satelliteIndices}
+              upstreamResponse={satelliteApiResponse}
               loading={satelliteLoading}
             />
 

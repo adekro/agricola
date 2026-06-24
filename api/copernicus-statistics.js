@@ -364,6 +364,7 @@ export default async function handler(req, res) {
     });
 
     const result = await response.json();
+    console.log("Copernicus statistics response:", result);
 
     if (!response.ok) {
       return res.status(response.status).json({
@@ -381,6 +382,7 @@ export default async function handler(req, res) {
       timeRange,
       cloudCoverage,
       indices,
+      upstreamResponse: result,
     });
   } catch (error) {
     return res.status(502).json({
