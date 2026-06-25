@@ -1,5 +1,18 @@
+function normalizeComune(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
+function normalizeNumericField(value) {
+  const normalized = String(value || "").trim().replace(/\s+/g, "");
+  return normalized.replace(/^0+/, "") || "0";
+}
+
 export async function getPoligonoMappale(params) {
   const query = new URLSearchParams();
+  if (params.comune) query.set("comune", params.comune);
   if (params.foglio) query.set("foglio", params.foglio);
   if (params.mappale) query.set("mappale", params.mappale);
 
@@ -32,18 +45,23 @@ export function parseExcelRows(text) {
   return lines
     .map((line) => {
       const parts = line.split(separator).map((p) => p.trim());
-      const headers = sample === line ? null : null; // we don't have explicit header detection
+      const comune = normalizeComune(parts[0] || "");
+      const foglioRaw = parts[1] || "";
+      const mappaleRaw = parts[2] || "";
+      const foglio = normalizeNumericField(foglioRaw);
+      const mappale = normalizeNumericField(mappaleRaw);
 
-      const comune = parts[0] || "";
-      const foglio = parts[1] || "";
-      const mappale = parts[2] || "";
+      const isHeaderRow =
+        comune === "COMUNE" &&
+        normalizeComune(foglioRaw) === "FOGLIO" &&
+        normalizeComune(mappaleRaw) === "MAPPALE";
 
-      if (!foglio || !mappale) return null;
+      if (isHeaderRow || !comune || !foglioRaw || !mappaleRaw) return null;
 
       return {
-        comune: comune || undefined,
-        foglio: foglio.replace(/^0+/, ""), // Remove leading zeros from foglio
-        mappale: mappale.replace(/^0+/, ""), // Remove leading zeros from mappale
+        comune,
+        foglio,
+        mappale,
       };
     })
     .filter(Boolean);

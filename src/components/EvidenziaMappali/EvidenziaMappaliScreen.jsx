@@ -31,6 +31,7 @@ import { Stroke, Fill, Style, Text as OlText } from "ol/style";
 import { MAP_PROVIDERS } from "../../config/mapProviders";
 import { createCadastralSource } from "../../lib/cadastralWms";
 import { CADASTRAL_LAYERS } from "../../config/cadastralLayers";
+import { getPoligonoMappale } from "../../services/catastoService";
 
 // Register EPSG:6706 projection for OpenLayers
 proj4.defs("EPSG:6706", "+proj=longlat +ellps=GRS80 +no_defs +type=crs");
@@ -93,7 +94,7 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
   const [mapProvider, setMapProvider] = useState("osm");
   const [showCadastral, setShowCadastral] = useState(true);
 
-  // Try to fetch each parcel from WFS (may return demo data only)
+  // Try to fetch each parcel from WFS. Only validated responses are accepted.
   useEffect(() => {
     if (!mappaliRows || mappaliRows.length === 0) {
       navigate("/");
@@ -110,31 +111,28 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
         const row = mappaliRows[i];
         setProgress({ current: i + 1, total });
         try {
-          const response = await fetch(
-            `/api/catasto-poligono?foglio=${encodeURIComponent(row.foglio)}&mappale=${encodeURIComponent(row.mappale)}`,
-          );
-          if (response.ok) {
-            const data = await response.json();
+          const data = await getPoligonoMappale({
+            comune: row.comune,
+            foglio: row.foglio,
+            mappale: row.mappale,
+          });
+
+          if (data.validated) {
             fetched.push({
               ...data,
+              comune: row.comune,
               foglio: row.foglio,
               mappale: row.mappale,
               index: i,
-            });
-          } else {
-            errs.push({
-              index: i,
-              foglio: row.foglio,
-              mappale: row.mappale,
-              message: "Non trovato nel WFS (usare layer WMS)",
             });
           }
         } catch (err) {
           errs.push({
             index: i,
+            comune: row.comune,
             foglio: row.foglio,
             mappale: row.mappale,
-            message: err.message,
+            message: "Vettoriale non validato via WFS. Usa il layer WMS.",
           });
         }
       }
@@ -389,7 +387,7 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
           </Typography>
           {errors.slice(0, 5).map((err, i) => (
             <Typography key={i} variant="caption" display="block">
-              Foglio {err.foglio} - Mappale {err.mappale}
+              {err.comune}: Foglio {err.foglio} - Mappale {err.mappale}
             </Typography>
           ))}
         </Alert>
