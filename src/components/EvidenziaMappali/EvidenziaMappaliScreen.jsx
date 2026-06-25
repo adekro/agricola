@@ -5,6 +5,7 @@ import {
   Typography,
   Box,
   Alert,
+  Chip,
   Paper,
   ToggleButtonGroup,
   ToggleButton,
@@ -24,6 +25,13 @@ import { MAP_PROVIDERS } from "../../config/mapProviders";
 import { createCadastralSource } from "../../lib/cadastralWms";
 import { CADASTRAL_LAYERS } from "../../config/cadastralLayers";
 
+function getComuneLabel(rows) {
+  const comuni = [...new Set((rows || []).map((row) => row.comune).filter(Boolean))];
+  if (comuni.length === 0) return "";
+  if (comuni.length === 1) return comuni[0];
+  return `${comuni[0]} + ${comuni.length - 1} altri comuni`;
+}
+
 // Register EPSG:6706 projection for OpenLayers
 proj4.defs("EPSG:6706", "+proj=longlat +ellps=GRS80 +no_defs +type=crs");
 register(proj4);
@@ -37,6 +45,9 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const [loading, setLoading] = useState(true);
+  const [mapCenter, setMapCenter] = useState(fromLonLat([9.3, 45.08]));
+  const [mapZoom, setMapZoom] = useState(15);
+  const [geocodeError, setGeocodeError] = useState("");
   const [mapProvider, setMapProvider] = useState("osm");
   const [showCadastral, setShowCadastral] = useState(true);
 
@@ -46,7 +57,47 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
       return;
     }
 
-    setLoading(false);
+    const fetchComuneCenter = async () => {
+      setLoading(true);
+      setGeocodeError("");
+
+      const firstComune = mappaliRows[0]?.comune;
+      if (!firstComune) {
+        setMapCenter(fromLonLat([9.3, 45.08]));
+        setMapZoom(15);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/geocode-comune?comune=${encodeURIComponent(firstComune)}`,
+        );
+
+        if (!response.ok) {
+          throw new Error("Impossibile centrare il comune richiesto");
+        }
+
+        const data = await response.json();
+        if (Number.isFinite(data.lon) && Number.isFinite(data.lat)) {
+          setMapCenter(fromLonLat([data.lon, data.lat]));
+          setMapZoom(16);
+        } else {
+          setMapCenter(fromLonLat([9.3, 45.08]));
+          setMapZoom(15);
+        }
+      } catch (error) {
+        setMapCenter(fromLonLat([9.3, 45.08]));
+        setMapZoom(15);
+        setGeocodeError(
+          "Non sono riuscito a centrare automaticamente il comune. La mappa resta navigabile manualmente.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchComuneCenter();
   }, [mappaliRows, navigate]);
 
   useEffect(() => {
@@ -89,8 +140,8 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
       layers,
       target: mapRef.current,
       view: new View({
-        center: fromLonLat([9.3, 45.08]),
-        zoom: 15,
+        center: mapCenter,
+        zoom: mapZoom,
       }),
       controls: defaultControls({ attribution: true }),
     });
@@ -101,7 +152,7 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
       map.setTarget(undefined);
       mapInstanceRef.current = null;
     };
-  }, [loading, mapProvider, showCadastral]);
+  }, [loading, mapCenter, mapZoom, mapProvider, showCadastral]);
 
   const handleBack = useCallback(() => {
     if (mapInstanceRef.current) {
@@ -186,10 +237,39 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
             Il layer WMS catastale mostra i dati reali disponibili.
           </Typography>
           <Typography variant="caption">
-            Attiva <strong>"Catasto ON"</strong> per vedere le particelle reali
-            sulla mappa di sfondo tramite WMS.
+            Comune centrato: <strong>{getComuneLabel(mappaliRows)}</strong>. Attiva{" "}
+            <strong>"Catasto ON"</strong> per vedere le particelle reali sulla mappa di sfondo tramite WMS.
           </Typography>
         </Alert>
+      )}
+
+      {!loading && geocodeError && (
+        <Alert severity="warning" sx={{ mx: 2, mt: 1 }}>
+          {geocodeError}
+        </Alert>
+      )}
+
+      {!loading && mappaliRows?.length > 0 && (
+        <Paper
+          elevation={1}
+          sx={{
+            p: 1.5,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 1,
+            maxHeight: 100,
+            overflow: "auto",
+          }}
+        >
+          {mappaliRows.map((row, idx) => (
+            <Chip
+              key={`${row.comune}-${row.foglio}-${row.mappale}-${idx}`}
+              label={`${row.comune} · F${row.foglio} · M${row.mappale}`}
+              size="small"
+              variant="outlined"
+            />
+          ))}
+        </Paper>
       )}
     </Box>
   );
