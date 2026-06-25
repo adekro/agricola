@@ -35,7 +35,7 @@ const GML_PARSER = new XMLParser({
 // This should be configured based on actual Agenzia delle Entrate bulk download structure
 const BULK_DOWNLOAD_BASE =
   process.env.CATASTO_BULK_BASE_URL ||
-  "https://download.agenziaentrate.gov.it/cartografia_catastale";
+  "https://wfs.cartografia.agenziaentrate.gov.it/inspire/wfs/GetDataset.php?dataset=ITALIA.zip";
 
 // In-memory cache for downloaded zips (Vercel serverless: per-instance cache)
 const zipCache = new Map();
@@ -261,8 +261,9 @@ async function downloadComuneZip(comuneCode) {
   // Try multiple URL patterns for bulk download
   const urlsToTry = [
     // Pattern 1: Direct comune code
-    `${BULK_DOWNLOAD_BASE}/${comuneCode}.zip`,
+    `${BULK_DOWNLOAD_BASE}`,
     // Pattern 2: With regional/provincial hierarchy (placeholder)
+
     // These would need to be resolved based on actual service structure
     `${BULK_DOWNLOAD_BASE}/ITALIA/${comuneCode}.zip`,
   ];
