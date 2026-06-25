@@ -6,7 +6,7 @@
       "destination": "/api/proxy?path=$1"
     },
     {
-      "source": "/((?!fitosanitari-api/).*)",
+      "source": "/((?!api/|fitosanitari-api/).*)",
       "destination": "/index.html"
     }
   ]

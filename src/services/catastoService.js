@@ -1,8 +1,5 @@
 export async function getPoligonoMappale(params) {
   const query = new URLSearchParams();
-  if (params.codiceComuneCatastale)
-    query.set("codiceComuneCatastale", params.codiceComuneCatastale);
-  if (params.comune) query.set("comune", params.comune);
   if (params.foglio) query.set("foglio", params.foglio);
   if (params.mappale) query.set("mappale", params.mappale);
 
