@@ -12,6 +12,7 @@ import BusinessIcon from "@mui/icons-material/Business";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import BookIcon from "@mui/icons-material/Book";
+import YoloIcon from "@mui/icons-material/Yard";
 
 const Side = ({ onSelect, active, farmlands = [] }) => {
   const [itemActive, setItemActive] = useState(active);
@@ -73,6 +74,13 @@ const Side = ({ onSelect, active, farmlands = [] }) => {
           </div>
         </div>
       </div>
+
+      <button
+        className={classes.evidenziaBtn}
+        onClick={() => handlerClick("evidenzia-mappali")}
+      >
+        <YoloIcon /> EVIDENZIA MAPPALI
+      </button>
 
       <button
         className={classes.fitosanitariBtn}

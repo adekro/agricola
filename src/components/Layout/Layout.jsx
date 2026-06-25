@@ -8,11 +8,17 @@ import MobileMenu from "./MobileMenu";
 import { Button } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import {
+  EvidenziaMappaliModal,
+  EvidenziaMappaliScreen,
+} from "../EvidenziaMappali";
 
 const Layout = () => {
   const { farmlands, addFarmland, updateFarmland, removeFarmland } =
     useFarmlands();
   const [filterString, setFilterString] = useState("");
+  const [evidenziaModalOpen, setEvidenziaModalOpen] = useState(false);
+  const [evidenziaRows, setEvidenziaRows] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -26,10 +32,21 @@ const Layout = () => {
       else if (target === "fitosanitari") navigate("/fitosanitari");
       else if (target === "notebook-company") navigate("/notebook/company");
       else if (target === "notebook-inventory") navigate("/notebook/inventory");
-      else if (target === "notebook-operations") navigate("/notebook/operations");
+      else if (target === "notebook-operations")
+        navigate("/notebook/operations");
+      else if (target === "evidenzia-mappali") setEvidenziaModalOpen(true);
     },
     [navigate],
   );
+
+  const handleEvidenziaNavigateToMap = useCallback((rows) => {
+    setEvidenziaModalOpen(false);
+    setEvidenziaRows(rows);
+  }, []);
+
+  const handleEvidenziaBack = useCallback(() => {
+    setEvidenziaRows(null);
+  }, []);
 
   const handlerFarmlandOnClick = useCallback(
     (id) => {
@@ -130,18 +147,31 @@ const Layout = () => {
         </Header>
 
         <section className={classes.layoutContent}>
-          <Outlet
-            context={{
-              farmlands: filteredFarmlands,
-              onClick: handlerFarmlandOnClick,
-              onClose: () => navigate("/"),
-              onDelete: removeFarmlandHandler,
-              onUpdate: updateFarmlandHeader,
-              onCreate: addFarmlandHandler,
-            }}
-          />
+          {evidenziaRows ? (
+            <EvidenziaMappaliScreen
+              mappaliRows={evidenziaRows}
+              onBack={handleEvidenziaBack}
+            />
+          ) : (
+            <Outlet
+              context={{
+                farmlands: filteredFarmlands,
+                onClick: handlerFarmlandOnClick,
+                onClose: () => navigate("/"),
+                onDelete: removeFarmlandHandler,
+                onUpdate: updateFarmlandHeader,
+                onCreate: addFarmlandHandler,
+              }}
+            />
+          )}
         </section>
       </main>
+
+      <EvidenziaMappaliModal
+        open={evidenziaModalOpen}
+        onClose={() => setEvidenziaModalOpen(false)}
+        onNavigateToMap={handleEvidenziaNavigateToMap}
+      />
     </div>
   );
 };

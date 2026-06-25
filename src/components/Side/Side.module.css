@@ -65,6 +65,27 @@
   color: var(--primary-color-dark);
 }
 
+.evidenziaBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--primary-color);
+  color: var(--primary-color-text, #fff);
+  border: none;
+  border-radius: 8px;
+  padding: 14px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: opacity 0.2s;
+}
+
+.evidenziaBtn:hover {
+  opacity: 0.9;
+}
+
 .fitosanitariBtn {
   display: flex;
   align-items: center;
