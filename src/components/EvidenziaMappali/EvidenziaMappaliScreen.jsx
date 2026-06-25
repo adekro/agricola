@@ -15,7 +15,6 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import Map from "ol/Map.js";
 import View from "ol/View.js";
 import TileLayer from "ol/layer/Tile";
-import ImageLayer from "ol/layer/Image";
 import { Vector as VectorLayer } from "ol/layer";
 import { Feature } from "ol";
 import { Polygon } from "ol/geom";
@@ -28,8 +27,6 @@ import { fromLonLat, get as getProjection } from "ol/proj";
 import { register } from "ol/proj/proj4";
 import proj4 from "proj4";
 import { MAP_PROVIDERS } from "../../config/mapProviders";
-import { createCadastralSource } from "../../lib/cadastralWms";
-import { CADASTRAL_LAYERS } from "../../config/cadastralLayers";
 
 const DEFAULT_CENTER = [9.3, 45.08];
 const HIGHLIGHT_COLORS = [
@@ -54,226 +51,48 @@ function buildRowKey(row) {
   return `${row.comune}-${row.foglio}-${row.mappale}`;
 }
 
-function buildParcelFilter(mappale) {
-  return `LABEL='${String(mappale).replace(/'/g, "''")}'`;
-}
+async function resolveRowHighlight(row) {
+  try {
+    const response = await fetch(
+      `/api/catasto-gml?comune=${encodeURIComponent(row.comune)}&foglio=${encodeURIComponent(row.foglio)}&mappale=${encodeURIComponent(row.mappale)}`,
+    );
 
-function buildFoglioFilter(foglio) {
-  return `LABEL='${String(foglio).replace(/'/g, "''")}'`;
-}
-
-function buildCadastralWmsUrl({ layerName, filter, bbox, width, height }) {
-  const query = new URLSearchParams({
-    SERVICE: "WMS",
-    VERSION: "1.1.1",
-    REQUEST: "GetMap",
-    SRS: "EPSG:6706",
-    BBOX: bbox.join(","),
-    WIDTH: String(width),
-    HEIGHT: String(height),
-    LAYERS: layerName,
-    STYLES: "",
-    FORMAT: "image/png",
-    TRANSPARENT: "TRUE",
-    CQL_FILTER: filter,
-  });
-
-  return `/api/cadastral-wms?${query.toString()}`;
-}
-
-function createPolygonFromExtent(extent) {
-  const [minX, minY, maxX, maxY] = extent;
-  return [
-    [minX, minY],
-    [maxX, minY],
-    [maxX, maxY],
-    [minX, maxY],
-    [minX, minY],
-  ];
-}
-
-function cross(origin, a, b) {
-  return (
-    (a[0] - origin[0]) * (b[1] - origin[1]) -
-    (a[1] - origin[1]) * (b[0] - origin[0])
-  );
-}
-
-function computeConvexHull(points) {
-  if (points.length < 3) {
-    return points;
-  }
-
-  const sorted = [...points].sort((a, b) =>
-    a[0] === b[0] ? a[1] - b[1] : a[0] - b[0],
-  );
-
-  const lower = [];
-  sorted.forEach((point) => {
-    while (
-      lower.length >= 2 &&
-      cross(lower[lower.length - 2], lower[lower.length - 1], point) <= 0
-    ) {
-      lower.pop();
+    if (!response.ok) {
+      return null;
     }
-    lower.push(point);
-  });
 
-  const upper = [];
-  sorted
-    .slice()
-    .reverse()
-    .forEach((point) => {
-      while (
-        upper.length >= 2 &&
-        cross(upper[upper.length - 2], upper[upper.length - 1], point) <= 0
-      ) {
-        upper.pop();
-      }
-      upper.push(point);
+    const data = await response.json();
+    if (!data?.geometry || !data.geometry.coordinates?.[0]) {
+      return null;
+    }
+
+    // Convert GeoJSON coordinates (EPSG:4326) to map projection (EPSG:3857)
+    const coords4326 = data.geometry.coordinates[0];
+    const polygon3857 = coords4326.map(([lon, lat]) => fromLonLat([lon, lat]));
+
+    // Compute extent in 3857
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    polygon3857.forEach(([x, y]) => {
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
     });
 
-  lower.pop();
-  upper.pop();
-
-  return [...lower, ...upper];
-}
-
-function projectPixelToLonLat(x, y, bbox, width, height) {
-  const [minLon, minLat, maxLon, maxLat] = bbox;
-  const lon = minLon + (x / width) * (maxLon - minLon);
-  const lat = maxLat - (y / height) * (maxLat - minLat);
-  return [lon, lat];
-}
-
-async function loadImageData(url) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("Errore caricamento overlay catastale");
-  }
-
-  const blob = await response.blob();
-  const imageBitmap = await createImageBitmap(blob);
-  const canvas = document.createElement("canvas");
-  canvas.width = imageBitmap.width;
-  canvas.height = imageBitmap.height;
-  const context = canvas.getContext("2d", { willReadFrequently: true });
-
-  context.drawImage(imageBitmap, 0, 0);
-  return context.getImageData(0, 0, canvas.width, canvas.height);
-}
-
-function extractGeometryFromMasks(parcelImageData, foglioImageData, bbox) {
-  const width = parcelImageData.width;
-  const height = parcelImageData.height;
-  const parcelData = parcelImageData.data;
-  const foglioData = foglioImageData?.data || null;
-  const parcelPixels = [];
-  const intersectionPixels = [];
-
-  for (let y = 0; y < height; y += 2) {
-    for (let x = 0; x < width; x += 2) {
-      const index = (y * width + x) * 4;
-      const parcelAlpha = parcelData[index + 3];
-
-      if (parcelAlpha === 0) {
-        continue;
-      }
-
-      parcelPixels.push([x, y]);
-
-      if (foglioData && foglioData[index + 3] > 0) {
-        intersectionPixels.push([x, y]);
-      }
-    }
-  }
-
-  const relevantPixels =
-    intersectionPixels.length > 0 ? intersectionPixels : parcelPixels;
-
-  if (relevantPixels.length === 0) {
+    return {
+      ...row,
+      key: buildRowKey(row),
+      polygon3857,
+      extent3857: [minX, minY, maxX, maxY],
+      source: data.source,
+      validated: data.validated,
+    };
+  } catch {
     return null;
   }
-
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-
-  relevantPixels.forEach(([x, y]) => {
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x);
-    maxY = Math.max(maxY, y);
-  });
-
-  const bottomLeft = projectPixelToLonLat(minX, maxY, bbox, width, height);
-  const topRight = projectPixelToLonLat(maxX, minY, bbox, width, height);
-  const extent4326 = [bottomLeft[0], bottomLeft[1], topRight[0], topRight[1]];
-
-  const hull = computeConvexHull(
-    relevantPixels.map(([x, y]) =>
-      projectPixelToLonLat(x, y, bbox, width, height),
-    ),
-  );
-
-  const polygon4326 =
-    hull.length >= 3 ? [...hull, hull[0]] : createPolygonFromExtent(extent4326);
-
-  const polygon3857 = polygon4326.map(([lon, lat]) => fromLonLat([lon, lat]));
-  const bottomLeft3857 = fromLonLat([extent4326[0], extent4326[1]]);
-  const topRight3857 = fromLonLat([extent4326[2], extent4326[3]]);
-  const extent3857 = [
-    bottomLeft3857[0],
-    bottomLeft3857[1],
-    topRight3857[0],
-    topRight3857[1],
-  ];
-
-  return {
-    polygon3857,
-    extent3857,
-  };
-}
-
-async function resolveRowHighlight(row, comuneBbox) {
-  const width = 1024;
-  const height = 1024;
-  const parcelUrl = buildCadastralWmsUrl({
-    layerName: "CP.CadastralParcel",
-    filter: buildParcelFilter(row.mappale),
-    bbox: comuneBbox,
-    width,
-    height,
-  });
-  const foglioUrl = buildCadastralWmsUrl({
-    layerName: "CP.CadastralZoning",
-    filter: buildFoglioFilter(row.foglio),
-    bbox: comuneBbox,
-    width,
-    height,
-  });
-
-  const [parcelImageData, foglioImageData] = await Promise.all([
-    loadImageData(parcelUrl),
-    loadImageData(foglioUrl).catch(() => null),
-  ]);
-
-  const geometry = extractGeometryFromMasks(
-    parcelImageData,
-    foglioImageData,
-    comuneBbox,
-  );
-
-  if (!geometry) {
-    return null;
-  }
-
-  return {
-    ...row,
-    key: buildRowKey(row),
-    ...geometry,
-  };
 }
 
 proj4.defs("EPSG:6706", "+proj=longlat +ellps=GRS80 +no_defs +type=crs");
@@ -294,7 +113,6 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
   const [highlightRows, setHighlightRows] = useState([]);
   const [activeRowKey, setActiveRowKey] = useState(null);
   const [mapProvider, setMapProvider] = useState("osm");
-  const [showCadastral, setShowCadastral] = useState(true);
 
   useEffect(() => {
     if (!mappaliRows || mappaliRows.length === 0) {
@@ -330,7 +148,10 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
           setMapCenter(fromLonLat([data.lon, data.lat]));
           setMapZoom(16);
 
-          if (Array.isArray(data.boundingbox) && data.boundingbox.length === 4) {
+          if (
+            Array.isArray(data.boundingbox) &&
+            data.boundingbox.length === 4
+          ) {
             const comuneBbox = [
               data.boundingbox[2],
               data.boundingbox[0],
@@ -341,7 +162,7 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
             const resolvedHighlights = (
               await Promise.all(
                 mappaliRows.map((row) =>
-                  resolveRowHighlight(row, comuneBbox).catch(() => null),
+                  resolveRowHighlight(row).catch(() => null),
                 ),
               )
             ).filter(Boolean);
@@ -373,7 +194,8 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
     if (loading || !mapRef.current) return;
 
     const provider =
-      MAP_PROVIDERS.find((item) => item.key === mapProvider) || MAP_PROVIDERS[0];
+      MAP_PROVIDERS.find((item) => item.key === mapProvider) ||
+      MAP_PROVIDERS[0];
 
     const baseLayer = new TileLayer({
       visible: true,
@@ -389,22 +211,6 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
 
     const layers = [baseLayer];
 
-    if (showCadastral) {
-      const cadastralConfig = CADASTRAL_LAYERS.find(
-        (layer) => layer.key === "agenziaEntrateParcel",
-      );
-
-      if (cadastralConfig) {
-        layers.push(
-          new TileLayer({
-            visible: true,
-            opacity: 0.7,
-            source: createCadastralSource(cadastralConfig),
-          }),
-        );
-      }
-    }
-
     const activeRow = highlightRows.find((row) => row.key === activeRowKey);
     if (activeRow) {
       layers.push(
@@ -418,7 +224,7 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
               VERSION: "1.1.1",
               FORMAT: "image/png",
               TRANSPARENT: true,
-              CQL_FILTER: buildParcelFilter(activeRow.mappale),
+              CQL_FILTER: `LABEL='${String(activeRow.mappale).replace(/'/g, "''")}'`,
             },
             ratio: 1,
             crossOrigin: "anonymous",
@@ -489,15 +295,7 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
       map.setTarget(undefined);
       mapInstanceRef.current = null;
     };
-  }, [
-    activeRowKey,
-    highlightRows,
-    loading,
-    mapCenter,
-    mapZoom,
-    mapProvider,
-    showCadastral,
-  ]);
+  }, [activeRowKey, highlightRows, loading, mapCenter, mapZoom, mapProvider]);
 
   const handleBack = useCallback(() => {
     if (mapInstanceRef.current) {
@@ -553,16 +351,6 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
           <ToggleButton value="osm">OSM</ToggleButton>
           <ToggleButton value="satellite">Satellite</ToggleButton>
         </ToggleButtonGroup>
-
-        <ToggleButton
-          size="small"
-          value="cadastral"
-          selected={showCadastral}
-          onChange={() => setShowCadastral((prev) => !prev)}
-          sx={{ textTransform: "none" }}
-        >
-          {showCadastral ? "Catasto ON" : "Catasto OFF"}
-        </ToggleButton>
       </Paper>
 
       {loading && (

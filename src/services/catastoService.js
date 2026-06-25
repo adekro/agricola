@@ -6,7 +6,9 @@ function normalizeComune(value) {
 }
 
 function normalizeNumericField(value) {
-  const normalized = String(value || "").trim().replace(/\s+/g, "");
+  const normalized = String(value || "")
+    .trim()
+    .replace(/\s+/g, "");
   return normalized.replace(/^0+/, "") || "0";
 }
 
@@ -16,14 +18,32 @@ export async function getPoligonoMappale(params) {
   if (params.foglio) query.set("foglio", params.foglio);
   if (params.mappale) query.set("mappale", params.mappale);
 
-  const response = await fetch(`/api/catasto-poligono?${query}`);
+  // Prefer new GML-based endpoint, fallback to WFS endpoint
+  const endpoints = ["/api/catasto-gml", "/api/catasto-poligono"];
+  let lastError = null;
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new Error(error?.error ?? "Errore recupero poligono catastale");
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(`${endpoint}?${query}`);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => null);
+        lastError = error?.error ?? `HTTP ${response.status}`;
+        continue;
+      }
+
+      const data = await response.json();
+      if (data && data.geometry) {
+        return data;
+      }
+
+      lastError = data?.error || "Nessuna geometria disponibile";
+    } catch (error) {
+      lastError = error.message;
+    }
   }
 
-  return response.json();
+  throw new Error(lastError || "Errore recupero poligono catastale");
 }
 
 /**
