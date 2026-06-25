@@ -18,16 +18,16 @@ import View from "ol/View.js";
 import TileLayer from "ol/layer/Tile";
 import { Vector as VectorLayer } from "ol/layer.js";
 import { Vector as VectorSource } from "ol/source.js";
-import { fromLonLat, get as getProjection } from "ol/proj";
+import { fromLonLat } from "ol/proj";
 import { defaults as defaultControls } from "ol/control.js";
 import OSM from "ol/source/OSM";
 import XYZ from "ol/source/XYZ";
+import { get as getProjection } from "ol/proj";
 import { register } from "ol/proj/proj4";
 import proj4 from "proj4";
 import { Feature } from "ol";
 import { Polygon, MultiPolygon } from "ol/geom";
 import { Stroke, Fill, Style, Text as OlText } from "ol/style";
-import { getPoligonoMappale } from "../../services/catastoService";
 import { MAP_PROVIDERS } from "../../config/mapProviders";
 import { createCadastralSource } from "../../lib/cadastralWms";
 import { CADASTRAL_LAYERS } from "../../config/cadastralLayers";
@@ -58,21 +58,21 @@ const COLORS = [
 ];
 
 /**
- * Try multiple WMS CQL_FILTER patterns to highlight a specific parcel.
- * Each pattern returns a CQL filter for WMS GetMap.
+ * Build CQL_FILTER patterns for WMS to highlight specific parcels.
+ * The WMS supports CQL_FILTER and returns an IMAGE with only matching parcels.
  */
 function buildWmsCqlPatterns(foglio, mappale) {
   const f = String(foglio).replace(/^0+/, "");
   const m = String(mappale).replace(/^0+/, "");
   const patterns = [];
 
-  // Pattern 1: foglio+mappale concatenati (es. 5166)
+  // Pattern 1: foglio+mappale concatenati (es. 25 per foglio=2, mappale=5)
   patterns.push(`LABEL LIKE '%25${f}${m}%25'`);
 
-  // Pattern 2: foglio . mappale (es. 5.166 o 5/166)
+  // Pattern 2: foglio . mappale (es. 2.5 o 2/5)
   patterns.push(`LABEL LIKE '%25${f}.${m}%25'`);
 
-  // Pattern 3: mappale da solo (se è un numero piccolo)
+  // Pattern 3: mappale da solo con padding (es. 0005, 005)
   if (m.length <= 4) {
     patterns.push(`LABEL LIKE '%25${m.padStart(4, "0")}%25'`);
     patterns.push(`LABEL LIKE '%25${m.padStart(3, "0")}%25'`);
@@ -93,7 +93,7 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
   const [mapProvider, setMapProvider] = useState("osm");
   const [showCadastral, setShowCadastral] = useState(true);
 
-  // Attempt to fetch each parcel from WFS
+  // Try to fetch each parcel from WFS (may return demo data only)
   useEffect(() => {
     if (!mappaliRows || mappaliRows.length === 0) {
       navigate("/");
@@ -110,16 +110,25 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
         const row = mappaliRows[i];
         setProgress({ current: i + 1, total });
         try {
-          const data = await getPoligonoMappale({
-            foglio: row.foglio,
-            mappale: row.mappale,
-          });
-          fetched.push({
-            ...data,
-            foglio: row.foglio,
-            mappale: row.mappale,
-            index: i,
-          });
+          const response = await fetch(
+            `/api/catasto-poligono?foglio=${encodeURIComponent(row.foglio)}&mappale=${encodeURIComponent(row.mappale)}`,
+          );
+          if (response.ok) {
+            const data = await response.json();
+            fetched.push({
+              ...data,
+              foglio: row.foglio,
+              mappale: row.mappale,
+              index: i,
+            });
+          } else {
+            errs.push({
+              index: i,
+              foglio: row.foglio,
+              mappale: row.mappale,
+              message: "Non trovato nel WFS (usare layer WMS)",
+            });
+          }
         } catch (err) {
           errs.push({
             index: i,
@@ -159,7 +168,7 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
 
     const layers = [baseLayer];
 
-    // Cadastral WMS background layer
+    // Cadastral WMS background layer (REAL DATA)
     let cadastralLayer = null;
     if (showCadastral) {
       const cadastralConfig = CADASTRAL_LAYERS.find(
@@ -168,14 +177,14 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
       if (cadastralConfig) {
         cadastralLayer = new TileLayer({
           visible: true,
-          opacity: 0.6,
+          opacity: 0.7,
           source: createCadastralSource(cadastralConfig),
         });
         layers.push(cadastralLayer);
       }
     }
 
-    // Vector features for parcels found via WFS
+    // Vector features for parcels found via WFS (if any)
     const features = [];
     const allCoords = [];
 
@@ -242,7 +251,7 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
       layers,
       target: mapRef.current,
       view: new View({
-        center: allCoords.length > 0 ? allCoords[0] : fromLonLat([9.2, 45.1]),
+        center: allCoords.length > 0 ? allCoords[0] : fromLonLat([9.3, 45.08]),
         zoom: 15,
       }),
       controls: defaultControls({ attribution: true }),
@@ -320,7 +329,7 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
           <Box sx={{ display: "flex", gap: 1 }}>
             <Chip
               icon={<InfoIcon />}
-              label={`${results.length} trovati`}
+              label={`${results.length} vettoriali`}
               color={results.length > 0 ? "success" : "default"}
               size="small"
             />
@@ -359,20 +368,28 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
         <Box ref={mapRef} id="evidenzia-mappa" sx={{ flex: 1, minHeight: 0 }} />
       )}
 
+      {/* Info message */}
+      {!loading && (
+        <Alert severity="info" sx={{ mx: 2, mt: 1 }}>
+          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+            Il WFS catastale ha solo dati dimostrativi (es. ACQUA001).
+          </Typography>
+          <Typography variant="caption">
+            Attiva <strong>"Catasto ON"</strong> per vedere le particelle reali
+            sulla mappa di sfondo tramite WMS.
+          </Typography>
+        </Alert>
+      )}
+
       {/* Errors */}
       {!loading && errors.length > 0 && (
         <Alert severity="warning" sx={{ mx: 2, mt: 1 }}>
           <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
-            {errors.length} mappale/i non trovato/i (il WFS catastale ha dati
-            limitati):
-          </Typography>
-          <Typography variant="caption">
-            Attiva il layer "Catasto ON" sopra per vedere tutte le particelle
-            sulla mappa di sfondo.
+            {errors.length} mappale/i non trovati via WFS:
           </Typography>
           {errors.slice(0, 5).map((err, i) => (
             <Typography key={i} variant="caption" display="block">
-              Foglio {err.foglio} - Mappale {err.mappale}: {err.message}
+              Foglio {err.foglio} - Mappale {err.mappale}
             </Typography>
           ))}
         </Alert>

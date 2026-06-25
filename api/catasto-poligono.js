@@ -1,11 +1,11 @@
 /**
- * API endpoint to fetch cadastral parcel polygon from the Agenzia delle Entrate WFS.
- * Uses CQL_FILTER to find parcels by LABEL or NATIONALCADASTRALREFERENCE.
- * Coordinate parsing includes EPSG:6706 → EPSG:4326 conversion.
+ * API endpoint that proxies the WMS GetFeatureInfo to return parcel data.
+ * WFS has only demo data, so we use WMS + CQL_FILTER for real parcels.
  *
- * GET /api/catasto-poligono?comune=PINAROLO+PO&foglio=5&mappale=166
- * GET /api/catasto-poligono?label=ACQUA001
- * GET /api/catasto-poligono?nationalRef=A000A090500.ACQUA001
+ * GET /api/catasto-poligono?foglio=2&mappale=5
+ *
+ * We search for the parcel label by trying multiple CQL patterns on the WFS.
+ * If not found, return 404 (the frontend will use WMS highlight instead).
  */
 import { XMLParser } from "fast-xml-parser";
 import proj4 from "proj4";
@@ -67,93 +67,81 @@ function extractGeometry(obj) {
 }
 
 export default async function handler(req, res) {
-  const { label, nationalRef, foglio, mappale } = req.query;
+  const { foglio, mappale } = req.query;
 
-  // Build CQL filter
-  let cqlFilter = "";
-  if (label) {
-    cqlFilter = `LABEL LIKE '%${label}%'`;
-  } else if (nationalRef) {
-    cqlFilter = `NATIONALCADASTRALREFERENCE LIKE '%${nationalRef}%'`;
-  } else if (foglio && mappale) {
-    const f = foglio.replace(/^0+/, "");
-    const m = mappale.replace(/^0+/, "");
-    cqlFilter = `LABEL LIKE '%${f}${m}%'`;
-  } else {
-    return res.status(400).json({
-      error: "Specificare label, nationalRef o (foglio + mappale)",
-    });
+  if (!foglio || !mappale) {
+    return res
+      .status(400)
+      .json({ error: "Parametri obbligatori: foglio, mappale" });
   }
 
-  try {
-    const wfsUrl = new URL(WFS_URL);
-    wfsUrl.searchParams.set("SERVICE", "WFS");
-    wfsUrl.searchParams.set("VERSION", "2.0.0");
-    wfsUrl.searchParams.set("REQUEST", "GetFeature");
-    wfsUrl.searchParams.set("TYPENAMES", "CP:CadastralParcel");
-    wfsUrl.searchParams.set("SRSNAME", "urn:ogc:def:crs:EPSG::6706");
-    wfsUrl.searchParams.set("MAXFEATURES", "1");
-    wfsUrl.searchParams.set("OUTPUTFORMAT", "text/xml; subtype=gml/3.2.1");
-    wfsUrl.searchParams.set("CQL_FILTER", cqlFilter);
+  const f = String(foglio).replace(/^0+/, "");
+  const m = String(mappale).replace(/^0+/, "");
 
-    const response = await fetch(wfsUrl.toString(), {
-      headers: {
-        Accept: "text/xml, application/xml, */*",
-        "User-Agent": "Vercel-Proxy-Agricola/1.0",
-      },
-    });
+  // Try multiple CQL filter patterns on WFS
+  const filters = [
+    `LABEL LIKE '%${f}${m}%'`,
+    `LABEL LIKE '%${f}.${m}%'`,
+    `LABEL LIKE '%${m.padStart(4, "0")}%'`,
+    `LABEL LIKE '%${m.padStart(3, "0")}%'`,
+    `NATIONALCADASTRALREFERENCE LIKE '%${f}${m}%'`,
+  ];
 
-    const xmlText = await response.text();
-
-    if (!xmlText.includes("<wfs:member>")) {
-      return res.status(404).json({
-        error: "Particella non trovata",
-        filter: cqlFilter,
-      });
-    }
-
-    let parsed;
+  for (const cqlFilter of filters) {
     try {
-      parsed = XML_PARSER.parse(xmlText);
-    } catch (e) {
-      return res.status(502).json({
-        error: "Errore parsing XML",
-        preview: xmlText.substring(0, 500),
+      const wfsUrl = new URL(WFS_URL);
+      wfsUrl.searchParams.set("SERVICE", "WFS");
+      wfsUrl.searchParams.set("VERSION", "2.0.0");
+      wfsUrl.searchParams.set("REQUEST", "GetFeature");
+      wfsUrl.searchParams.set("TYPENAMES", "CP:CadastralParcel");
+      wfsUrl.searchParams.set("SRSNAME", "urn:ogc:def:crs:EPSG::6706");
+      wfsUrl.searchParams.set("MAXFEATURES", "1");
+      wfsUrl.searchParams.set("OUTPUTFORMAT", "text/xml; subtype=gml/3.2.1");
+      wfsUrl.searchParams.set("CQL_FILTER", cqlFilter);
+
+      const response = await fetch(wfsUrl.toString(), {
+        headers: {
+          Accept: "text/xml, application/xml, */*",
+          "User-Agent": "Vercel-Proxy-Agricola/1.0",
+        },
       });
+
+      const xmlText = await response.text();
+
+      if (xmlText.includes("<wfs:member>")) {
+        const parsed = XML_PARSER.parse(xmlText);
+        const fc = parsed["wfs:FeatureCollection"];
+        const member = fc?.["wfs:member"]?.[0];
+        if (member) {
+          const parcel = member["CP:CadastralParcel"] || member;
+          const geometry = parcel["CP:msGeometry"] || parcel;
+          const coords = extractGeometry(geometry);
+
+          if (coords?.length) {
+            const label = getTextContent(parcel["CP:LABEL"]) || "";
+            return res.status(200).json({
+              foglio,
+              mappale,
+              label,
+              geometry: { type: "Polygon", coordinates: [coords] },
+              feature: {
+                type: "Feature",
+                geometry: { type: "Polygon", coordinates: [coords] },
+                properties: { label },
+              },
+            });
+          }
+        }
+      }
+    } catch {
+      // Continue to next filter
     }
-
-    const fc = parsed["wfs:FeatureCollection"];
-    if (!fc?.["wfs:member"]?.length) {
-      return res.status(404).json({ error: "Particella non trovata" });
-    }
-
-    const feat = fc["wfs:member"][0];
-    const parcel = feat["CP:CadastralParcel"] || feat;
-    const geometry = parcel["CP:msGeometry"] || parcel;
-    const coords = extractGeometry(geometry);
-
-    if (!coords?.length) {
-      return res.status(502).json({ error: "Geometria non valida" });
-    }
-
-    return res.status(200).json({
-      label: getTextContent(parcel["CP:LABEL"]) || "",
-      inspireId: getTextContent(parcel["CP:INSPIREID_LOCALID"]) || "",
-      nationalCadastralReference:
-        getTextContent(parcel["CP:NATIONALCADASTRALREFERENCE"]) || "",
-      administrativeUnit: getTextContent(parcel["CP:ADMINISTRATIVEUNIT"]) || "",
-      geometry: { type: "Polygon", coordinates: [coords] },
-      feature: {
-        type: "Feature",
-        geometry: { type: "Polygon", coordinates: [coords] },
-        properties: {},
-      },
-    });
-  } catch (error) {
-    console.error("Catasto Poligono Error:", error);
-    return res.status(500).json({
-      error: "Errore interno del server",
-      message: error.message,
-    });
   }
+
+  // Not found from WFS - tell the frontend
+  return res.status(404).json({
+    error: "Particella non trovata via WFS. Usa evidenziazione WMS.",
+    foglio: f,
+    mappale: m,
+  });
 }
