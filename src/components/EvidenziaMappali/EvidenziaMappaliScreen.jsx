@@ -14,6 +14,7 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import Map from "ol/Map.js";
 import View from "ol/View.js";
+import ImageLayer from "ol/layer/Image";
 import TileLayer from "ol/layer/Tile";
 import { Vector as VectorLayer } from "ol/layer";
 import { Feature } from "ol";
@@ -27,6 +28,7 @@ import { fromLonLat, get as getProjection } from "ol/proj";
 import { register } from "ol/proj/proj4";
 import proj4 from "proj4";
 import { MAP_PROVIDERS } from "../../config/mapProviders";
+import { getPoligonoMappale } from "../../services/catastoService";
 
 const DEFAULT_CENTER = [9.3, 45.08];
 const HIGHLIGHT_COLORS = [
@@ -53,40 +55,24 @@ function buildRowKey(row) {
 
 async function resolveRowHighlight(row) {
   try {
-    const response = await fetch(
-      `/api/catasto-gml?comune=${encodeURIComponent(row.comune)}&foglio=${encodeURIComponent(row.foglio)}&mappale=${encodeURIComponent(row.mappale)}`,
-    );
+    const data = await getPoligonoMappale(row);
+    const coords4326 = data?.polygon4326;
+    const bbox4326 = data?.bbox4326;
+    if (!coords4326 || !bbox4326) return null;
 
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    if (!data?.geometry || !data.geometry.coordinates?.[0]) {
-      return null;
-    }
-
-    // Convert GeoJSON coordinates (EPSG:4326) to map projection (EPSG:3857)
-    const coords4326 = data.geometry.coordinates[0];
     const polygon3857 = coords4326.map(([lon, lat]) => fromLonLat([lon, lat]));
-
-    // Compute extent in 3857
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    polygon3857.forEach(([x, y]) => {
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x);
-      maxY = Math.max(maxY, y);
-    });
+    const extent3857 = [
+      fromLonLat([bbox4326[0], bbox4326[1]])[0],
+      fromLonLat([bbox4326[0], bbox4326[1]])[1],
+      fromLonLat([bbox4326[2], bbox4326[3]])[0],
+      fromLonLat([bbox4326[2], bbox4326[3]])[1],
+    ];
 
     return {
       ...row,
       key: buildRowKey(row),
       polygon3857,
-      extent3857: [minX, minY, maxX, maxY],
+      extent3857,
       source: data.source,
       validated: data.validated,
     };
@@ -148,29 +134,15 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
           setMapCenter(fromLonLat([data.lon, data.lat]));
           setMapZoom(16);
 
-          if (
-            Array.isArray(data.boundingbox) &&
-            data.boundingbox.length === 4
-          ) {
-            const comuneBbox = [
-              data.boundingbox[2],
-              data.boundingbox[0],
-              data.boundingbox[3],
-              data.boundingbox[1],
-            ];
+          const resolvedHighlights = (
+            await Promise.all(
+              mappaliRows.map((row) => resolveRowHighlight(row).catch(() => null)),
+            )
+          ).filter(Boolean);
 
-            const resolvedHighlights = (
-              await Promise.all(
-                mappaliRows.map((row) =>
-                  resolveRowHighlight(row).catch(() => null),
-                ),
-              )
-            ).filter(Boolean);
-
-            setHighlightRows(resolvedHighlights);
-            if (resolvedHighlights.length > 0) {
-              setActiveRowKey(resolvedHighlights[0].key);
-            }
+          setHighlightRows(resolvedHighlights);
+          if (resolvedHighlights.length > 0) {
+            setActiveRowKey(resolvedHighlights[0].key);
           }
         } else {
           setMapCenter(fromLonLat(DEFAULT_CENTER));

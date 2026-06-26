@@ -1,3 +1,5 @@
+import { supabase } from "../lib/supabaseClient";
+
 function normalizeComune(value) {
   return String(value || "")
     .trim()
@@ -12,38 +14,82 @@ function normalizeNumericField(value) {
   return normalized.replace(/^0+/, "") || "0";
 }
 
+function normalizePolygon(value) {
+  if (!Array.isArray(value) || value.length < 4) return null;
+
+  const polygon = value
+    .map((pair) =>
+      Array.isArray(pair) && pair.length >= 2
+        ? [Number(pair[0]), Number(pair[1])]
+        : null,
+    )
+    .filter(
+      (pair) =>
+        pair &&
+        Number.isFinite(pair[0]) &&
+        Number.isFinite(pair[1]),
+    );
+
+  return polygon.length >= 4 ? polygon : null;
+}
+
+function normalizeBbox(value) {
+  if (!Array.isArray(value) || value.length !== 4) return null;
+
+  const bbox = value.map(Number);
+  return bbox.every(Number.isFinite) ? bbox : null;
+}
+
 export async function getPoligonoMappale(params) {
-  const query = new URLSearchParams();
-  if (params.comune) query.set("comune", params.comune);
-  if (params.foglio) query.set("foglio", params.foglio);
-  if (params.mappale) query.set("mappale", params.mappale);
+  const comune = normalizeComune(params.comune);
+  const foglio = normalizeNumericField(params.foglio);
+  const mappale = normalizeNumericField(params.mappale);
+  const adminCode = String(params.adminCode || "")
+    .trim()
+    .toUpperCase();
 
-  // Prefer new GML-based endpoint, fallback to WFS endpoint
-  const endpoints = ["/api/catasto-gml", "/api/catasto-poligono"];
-  let lastError = null;
+  let query = supabase.from("cadastral_parcels").select(`
+      admin_code,
+      comune,
+      foglio,
+      mappale,
+      bbox_4326,
+      polygon_4326,
+      label,
+      national_reference
+    `);
 
-  for (const endpoint of endpoints) {
-    try {
-      const response = await fetch(`${endpoint}?${query}`);
+  if (adminCode) query = query.eq("admin_code", adminCode);
+  else query = query.eq("comune", comune);
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => null);
-        lastError = error?.error ?? `HTTP ${response.status}`;
-        continue;
-      }
+  const { data, error } = await query
+    .eq("foglio", foglio)
+    .eq("mappale", mappale)
+    .maybeSingle();
 
-      const data = await response.json();
-      if (data && data.geometry) {
-        return data;
-      }
-
-      lastError = data?.error || "Nessuna geometria disponibile";
-    } catch (error) {
-      lastError = error.message;
-    }
+  if (error) {
+    throw new Error(error.message || "Errore recupero poligono catastale");
   }
 
-  throw new Error(lastError || "Errore recupero poligono catastale");
+  const polygon = normalizePolygon(data?.polygon_4326);
+  const bbox = normalizeBbox(data?.bbox_4326);
+
+  if (!data || !polygon || !bbox) {
+    throw new Error("Nessuna geometria disponibile per questa particella");
+  }
+
+  return {
+    adminCode: data.admin_code || adminCode || null,
+    comune: data.comune || comune,
+    foglio: data.foglio || foglio,
+    mappale: data.mappale || mappale,
+    label: data.label || null,
+    nationalReference: data.national_reference || null,
+    bbox4326: bbox,
+    polygon4326: polygon,
+    source: "supabase",
+    validated: true,
+  };
 }
 
 /**

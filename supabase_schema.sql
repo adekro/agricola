@@ -17,15 +17,19 @@ CREATE TABLE IF NOT EXISTS farmlands (
 -- Set up Row Level Security (RLS) for farmlands
 ALTER TABLE farmlands ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow users to read their own farmlands" ON farmlands;
 CREATE POLICY "Allow users to read their own farmlands" ON farmlands
   FOR SELECT USING (auth.uid() = owner_id);
 
+DROP POLICY IF EXISTS "Allow users to insert their own farmlands" ON farmlands;
 CREATE POLICY "Allow users to insert their own farmlands" ON farmlands
   FOR INSERT WITH CHECK (auth.uid() = owner_id);
 
+DROP POLICY IF EXISTS "Allow users to update their own farmlands" ON farmlands;
 CREATE POLICY "Allow users to update their own farmlands" ON farmlands
   FOR UPDATE USING (auth.uid() = owner_id);
 
+DROP POLICY IF EXISTS "Allow users to delete their own farmlands" ON farmlands;
 CREATE POLICY "Allow users to delete their own farmlands" ON farmlands
   FOR DELETE USING (auth.uid() = owner_id);
 
@@ -46,6 +50,7 @@ CREATE TABLE IF NOT EXISTS companies (
 
 ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow users to manage their own companies" ON companies;
 CREATE POLICY "Allow users to manage their own companies" ON companies
   FOR ALL USING (auth.uid() = owner_id);
 
@@ -66,6 +71,7 @@ CREATE TABLE IF NOT EXISTS inventory_products (
 
 ALTER TABLE inventory_products ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow users to manage their own products" ON inventory_products;
 CREATE POLICY "Allow users to manage their own products" ON inventory_products
   FOR ALL USING (auth.uid() = owner_id);
 
@@ -105,8 +111,66 @@ CREATE TABLE IF NOT EXISTS crop_history (
 ALTER TABLE operations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crop_history ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow users to manage their own crop history" ON crop_history;
 CREATE POLICY "Allow users to manage their own crop history" ON crop_history
   FOR ALL USING (auth.uid() = owner_id);
 
+DROP POLICY IF EXISTS "Allow users to manage their own operations" ON operations;
 CREATE POLICY "Allow users to manage their own operations" ON operations
   FOR ALL USING (auth.uid() = owner_id);
+
+-- Shared cadastral sheets dataset populated by an external updater.
+CREATE TABLE IF NOT EXISTS cadastral_sheets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  admin_code TEXT NOT NULL,
+  comune TEXT NOT NULL,
+  foglio TEXT NOT NULL,
+  label TEXT NOT NULL,
+  inspire_id TEXT,
+  national_reference TEXT,
+  bbox_4326 JSONB NOT NULL,
+  polygon_4326 JSONB NOT NULL,
+  source_updated_at TIMESTAMP WITH TIME ZONE,
+  raw_begin_lifespan_version TEXT,
+  UNIQUE (admin_code, foglio)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cadastral_sheets_lookup
+  ON cadastral_sheets (admin_code, foglio);
+
+ALTER TABLE cadastral_sheets ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow anonymous read access to cadastral sheets" ON cadastral_sheets;
+CREATE POLICY "Allow anonymous read access to cadastral sheets" ON cadastral_sheets
+  FOR SELECT USING (true);
+
+-- Shared cadastral parcels dataset populated by an external updater.
+CREATE TABLE IF NOT EXISTS cadastral_parcels (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  admin_code TEXT NOT NULL,
+  comune TEXT NOT NULL,
+  foglio TEXT NOT NULL,
+  mappale TEXT NOT NULL,
+  label TEXT NOT NULL,
+  inspire_id TEXT,
+  national_reference TEXT,
+  bbox_4326 JSONB NOT NULL,
+  polygon_4326 JSONB NOT NULL,
+  source_updated_at TIMESTAMP WITH TIME ZONE,
+  raw_begin_lifespan_version TEXT,
+  UNIQUE (admin_code, foglio, mappale)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cadastral_parcels_lookup
+  ON cadastral_parcels (admin_code, foglio, mappale);
+
+CREATE INDEX IF NOT EXISTS idx_cadastral_parcels_comune_lookup
+  ON cadastral_parcels (comune, foglio, mappale);
+
+ALTER TABLE cadastral_parcels ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow anonymous read access to cadastral parcels" ON cadastral_parcels;
+CREATE POLICY "Allow anonymous read access to cadastral parcels" ON cadastral_parcels
+  FOR SELECT USING (true);
