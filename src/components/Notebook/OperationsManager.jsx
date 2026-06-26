@@ -105,9 +105,13 @@ const OperationsManager = () => {
 
     // Auto-fill crop if farmland is selected
     if (name === "farmland_id") {
-      const farm = farmlands.find(f => f.id === value);
+      const farm = farmlands.find((f) => f.id === value);
       if (farm && farm.currentCrop) {
-        setFormData(prev => ({ ...prev, farmland_id: value, crop: farm.currentCrop }));
+        setFormData((prev) => ({
+          ...prev,
+          farmland_id: value,
+          crop: farm.currentCrop,
+        }));
       }
     }
   };
@@ -118,7 +122,9 @@ const OperationsManager = () => {
       await notebookService.saveOperation({
         ...formData,
         quantity: formData.quantity ? parseFloat(formData.quantity) : null,
-        withholding_period: formData.withholding_period ? parseInt(formData.withholding_period) : null,
+        withholding_period: formData.withholding_period
+          ? parseInt(formData.withholding_period)
+          : null,
       });
       fetchOperations();
       handleClose();
@@ -143,12 +149,17 @@ const OperationsManager = () => {
   };
 
   const applyFilters = (ops) => {
-    return ops.filter(op => {
-      const date = op.operation_date.split('T')[0];
+    return ops.filter((op) => {
+      const date = op.operation_date.split("T")[0];
       if (filters.startDate && date < filters.startDate) return false;
       if (filters.endDate && date > filters.endDate) return false;
-      if (filters.operator && !op.operator?.toLowerCase().includes(filters.operator.toLowerCase())) return false;
-      if (filters.product_id && op.product_id !== filters.product_id) return false;
+      if (
+        filters.operator &&
+        !op.operator?.toLowerCase().includes(filters.operator.toLowerCase())
+      )
+        return false;
+      if (filters.product_id && op.product_id !== filters.product_id)
+        return false;
       return true;
     });
   };
@@ -157,42 +168,70 @@ const OperationsManager = () => {
   let filteredOperations = applyFilters(operations);
 
   if (tabValue === 1) {
-    filteredOperations = filteredOperations.filter(op => op.type === "Trattamento fitosanitario");
+    filteredOperations = filteredOperations.filter(
+      (op) => op.type === "Trattamento fitosanitario",
+    );
   } else if (tabValue === 2) {
-    filteredOperations = filteredOperations.filter(op => op.operation_date > now)
+    filteredOperations = filteredOperations
+      .filter((op) => op.operation_date > now)
       .sort((a, b) => a.operation_date.localeCompare(b.operation_date));
   }
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
+        }}
+      >
         <Typography variant="h5" sx={{ fontWeight: "bold" }}>
           Registro Attività (Quaderno di Campagna)
         </Typography>
         <Stack direction="row" spacing={1} className="no-print">
-          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
+          <Button
+            variant="outlined"
+            startIcon={<PrintIcon />}
+            onClick={handlePrint}
+          >
             Stampa Registro
           </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpen}
+          >
             Registra Attività
           </Button>
         </Stack>
       </Box>
 
-      <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: 2 }} className="no-print">
+      <Tabs
+        value={tabValue}
+        onChange={(_, v) => setTabValue(v)}
+        sx={{ mb: 2 }}
+        className="no-print"
+      >
         <Tab label="Tutte le attività" />
         <Tab label="Solo Trattamenti Fitosanitari" />
         <Tab label="Agenda (Pianificate)" />
       </Tabs>
 
-      <Box sx={{ mb: 2, display: "flex", gap: 2, flexWrap: "wrap" }} className="no-print">
+      <Box
+        sx={{ mb: 2, display: "flex", gap: 2, flexWrap: "wrap" }}
+        className="no-print"
+      >
         <TextField
           type="date"
           label="Da"
           size="small"
           InputLabelProps={{ shrink: true }}
           value={filters.startDate}
-          onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
+          onChange={(e) =>
+            setFilters((prev) => ({ ...prev, startDate: e.target.value }))
+          }
         />
         <TextField
           type="date"
@@ -200,13 +239,17 @@ const OperationsManager = () => {
           size="small"
           InputLabelProps={{ shrink: true }}
           value={filters.endDate}
-          onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
+          onChange={(e) =>
+            setFilters((prev) => ({ ...prev, endDate: e.target.value }))
+          }
         />
         <TextField
           label="Operatore"
           size="small"
           value={filters.operator}
-          onChange={(e) => setFilters(prev => ({ ...prev, operator: e.target.value }))}
+          onChange={(e) =>
+            setFilters((prev) => ({ ...prev, operator: e.target.value }))
+          }
         />
         <TextField
           select
@@ -214,14 +257,28 @@ const OperationsManager = () => {
           size="small"
           sx={{ minWidth: 150 }}
           value={filters.product_id}
-          onChange={(e) => setFilters(prev => ({ ...prev, product_id: e.target.value }))}
+          onChange={(e) =>
+            setFilters((prev) => ({ ...prev, product_id: e.target.value }))
+          }
         >
           <MenuItem value="">Tutti</MenuItem>
-          {products.map(p => (
-            <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+          {products.map((p) => (
+            <MenuItem key={p.id} value={p.id}>
+              {p.name}
+            </MenuItem>
           ))}
         </TextField>
-        <Button size="small" onClick={() => setFilters({ startDate: "", endDate: "", operator: "", product_id: "" })}>
+        <Button
+          size="small"
+          onClick={() =>
+            setFilters({
+              startDate: "",
+              endDate: "",
+              operator: "",
+              product_id: "",
+            })
+          }
+        >
           Reset
         </Button>
       </Box>
@@ -237,28 +294,44 @@ const OperationsManager = () => {
               <TableCell>Prodotto</TableCell>
               <TableCell>Quantità</TableCell>
               <TableCell>Operatore</TableCell>
-              <TableCell align="right" className="no-print">Azioni</TableCell>
+              <TableCell align="right" className="no-print">
+                Azioni
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {filteredOperations.map((op) => (
               <TableRow key={op.id}>
-                <TableCell>{new Date(op.operation_date).toLocaleDateString()}</TableCell>
+                <TableCell>
+                  {new Date(op.operation_date).toLocaleDateString()}
+                </TableCell>
                 <TableCell>
                   <Chip
                     label={op.type}
                     size="small"
-                    color={op.type === "Trattamento fitosanitario" ? "error" : "primary"}
+                    color={
+                      op.type === "Trattamento fitosanitario"
+                        ? "error"
+                        : "primary"
+                    }
                     variant="outlined"
                   />
                 </TableCell>
-                <TableCell>{op.farmland?.owner_display_name || "N/A"}</TableCell>
+                <TableCell>
+                  {op.farmland?.owner_display_name || "N/A"}
+                </TableCell>
                 <TableCell>{op.crop || "-"}</TableCell>
                 <TableCell>{op.product?.name || "-"}</TableCell>
-                <TableCell>{op.quantity ? `${op.quantity} ${op.unit_of_measure}` : "-"}</TableCell>
+                <TableCell>
+                  {op.quantity ? `${op.quantity} ${op.unit_of_measure}` : "-"}
+                </TableCell>
                 <TableCell>{op.operator || "-"}</TableCell>
                 <TableCell align="right" className="no-print">
-                  <IconButton onClick={() => handleDelete(op.id)} color="error" size="small">
+                  <IconButton
+                    onClick={() => handleDelete(op.id)}
+                    color="error"
+                    size="small"
+                  >
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </TableCell>
@@ -301,7 +374,9 @@ const OperationsManager = () => {
                   required
                 >
                   {operationTypes.map((t) => (
-                    <MenuItem key={t} value={t}>{t}</MenuItem>
+                    <MenuItem key={t} value={t}>
+                      {t}
+                    </MenuItem>
                   ))}
                 </TextField>
               </Stack>
@@ -339,8 +414,7 @@ const OperationsManager = () => {
                 fullWidth
               />
 
-              <Divider sx={{ my: 1 }}>Dettagli Prodotto e Quantità</Divider>
-
+              <Divider>Dettagli Prodotto e Quantità</Divider>
               <Stack direction="row" spacing={2}>
                 <TextField
                   select
@@ -352,7 +426,9 @@ const OperationsManager = () => {
                 >
                   <MenuItem value="">Nessun prodotto</MenuItem>
                   {products.map((p) => (
-                    <MenuItem key={p.id} value={p.id}>{p.name} ({p.category})</MenuItem>
+                    <MenuItem key={p.id} value={p.id}>
+                      {p.name} ({p.category})
+                    </MenuItem>
                   ))}
                 </TextField>
                 <TextField
@@ -432,7 +508,9 @@ const OperationsManager = () => {
           </DialogContent>
           <DialogActions>
             <Button onClick={handleClose}>Annulla</Button>
-            <Button type="submit" variant="contained">Salva Registrazione</Button>
+            <Button type="submit" variant="contained">
+              Salva Registrazione
+            </Button>
           </DialogActions>
         </form>
       </Dialog>
