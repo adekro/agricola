@@ -40,6 +40,27 @@ function normalizeBbox(value) {
   return bbox.every(Number.isFinite) ? bbox : null;
 }
 
+function buildFoglioLookupCandidates(value) {
+  const normalized = normalizeNumericField(value);
+  const candidates = new Set([normalized]);
+
+  if (/^\d+$/.test(normalized)) {
+    const numeric = String(Number(normalized));
+    candidates.add(numeric);
+    candidates.add(`${numeric}00`);
+    candidates.add(numeric.padStart(6, "0"));
+  } else {
+    candidates.add(normalized.replace(/0+$/, ""));
+    candidates.add(normalized.padStart(6, "0"));
+  }
+
+  return [...candidates].filter(Boolean);
+}
+
+function buildFoglioMatchSet(value) {
+  return new Set(buildFoglioLookupCandidates(value).map(normalizeNumericField));
+}
+
 export async function getPoligonoMappale(params) {
   const comune = normalizeComune(params.comune);
   const foglio = normalizeNumericField(params.foglio);
@@ -47,6 +68,8 @@ export async function getPoligonoMappale(params) {
   const adminCode = String(params.adminCode || "")
     .trim()
     .toUpperCase();
+  const foglioCandidates = buildFoglioLookupCandidates(foglio);
+  const foglioMatchSet = buildFoglioMatchSet(foglio);
 
   let query = supabase.from("cadastral_parcels").select(`
       admin_code,
@@ -62,29 +85,32 @@ export async function getPoligonoMappale(params) {
   if (adminCode) query = query.eq("admin_code", adminCode);
   else query = query.eq("comune", comune);
 
-  const { data, error } = await query
-    .eq("foglio", foglio)
-    .eq("mappale", mappale)
-    .maybeSingle();
+  const { data, error } = await query.in("foglio", foglioCandidates).eq(
+    "mappale",
+    mappale,
+  );
 
   if (error) {
     throw new Error(error.message || "Errore recupero poligono catastale");
   }
 
-  const polygon = normalizePolygon(data?.polygon_4326);
-  const bbox = normalizeBbox(data?.bbox_4326);
+  const parcel = (data || []).find((item) =>
+    foglioMatchSet.has(normalizeNumericField(item?.foglio)),
+  );
+  const polygon = normalizePolygon(parcel?.polygon_4326);
+  const bbox = normalizeBbox(parcel?.bbox_4326);
 
-  if (!data || !polygon || !bbox) {
+  if (!parcel || !polygon || !bbox) {
     throw new Error("Nessuna geometria disponibile per questa particella");
   }
 
   return {
-    adminCode: data.admin_code || adminCode || null,
-    comune: data.comune || comune,
-    foglio: data.foglio || foglio,
-    mappale: data.mappale || mappale,
-    label: data.label || null,
-    nationalReference: data.national_reference || null,
+    adminCode: parcel.admin_code || adminCode || null,
+    comune: parcel.comune || comune,
+    foglio,
+    mappale: parcel.mappale || mappale,
+    label: parcel.label || null,
+    nationalReference: parcel.national_reference || null,
     bbox4326: bbox,
     polygon4326: polygon,
     source: "supabase",

@@ -6,8 +6,16 @@ function createQueryMock(result) {
   const query = {
     select: vi.fn(() => query),
     eq: vi.fn(() => query),
-    maybeSingle: vi.fn(async () => result),
+    in: vi.fn(() => query),
+    then: undefined,
   };
+
+  query.eq.mockImplementation((column, value) => {
+    if (column === "mappale") {
+      return Promise.resolve(result);
+    }
+    return query;
+  });
 
   return query;
 }
@@ -54,21 +62,23 @@ describe("getPoligonoMappale", () => {
 
   it("legge il mappale da Supabase e normalizza il payload per la mappa", async () => {
     const query = createQueryMock({
-      data: {
-        admin_code: "I968",
-        comune: "STRADELLA",
-        foglio: "3",
-        mappale: "53",
-        label: "53",
-        national_reference: "I968_000300.53",
-        bbox_4326: [9.29, 45.08, 9.3, 45.09],
-        polygon_4326: [
-          [9.29, 45.08],
-          [9.3, 45.08],
-          [9.3, 45.09],
-          [9.29, 45.08],
-        ],
-      },
+      data: [
+        {
+          admin_code: "I968",
+          comune: "STRADELLA",
+          foglio: "300",
+          mappale: "53",
+          label: "53",
+          national_reference: "I968_000300.53",
+          bbox_4326: [9.29, 45.08, 9.3, 45.09],
+          polygon_4326: [
+            [9.29, 45.08],
+            [9.3, 45.08],
+            [9.3, 45.09],
+            [9.29, 45.08],
+          ],
+        },
+      ],
       error: null,
     });
 
@@ -100,27 +110,33 @@ describe("getPoligonoMappale", () => {
 
     expect(supabase.from).toHaveBeenCalledWith("cadastral_parcels");
     expect(query.eq).toHaveBeenNthCalledWith(1, "comune", "STRADELLA");
-    expect(query.eq).toHaveBeenNthCalledWith(2, "foglio", "3");
-    expect(query.eq).toHaveBeenNthCalledWith(3, "mappale", "53");
+    expect(query.in).toHaveBeenCalledWith("foglio", [
+      "3",
+      "300",
+      "000003",
+    ]);
+    expect(query.eq).toHaveBeenNthCalledWith(2, "mappale", "53");
   });
 
   it("accetta il lookup per admin code quando disponibile", async () => {
     const query = createQueryMock({
-      data: {
-        admin_code: "I968",
-        comune: "STRADELLA",
-        foglio: "3",
-        mappale: "53",
-        label: "53",
-        national_reference: "I968_000300.53",
-        bbox_4326: [9.29, 45.08, 9.3, 45.09],
-        polygon_4326: [
-          [9.29, 45.08],
-          [9.3, 45.08],
-          [9.3, 45.09],
-          [9.29, 45.08],
-        ],
-      },
+      data: [
+        {
+          admin_code: "I968",
+          comune: "STRADELLA",
+          foglio: "300",
+          mappale: "53",
+          label: "53",
+          national_reference: "I968_000300.53",
+          bbox_4326: [9.29, 45.08, 9.3, 45.09],
+          polygon_4326: [
+            [9.29, 45.08],
+            [9.3, 45.08],
+            [9.3, 45.09],
+            [9.29, 45.08],
+          ],
+        },
+      ],
       error: null,
     });
 
@@ -138,10 +154,7 @@ describe("getPoligonoMappale", () => {
 
   it("fallisce se Supabase non restituisce una geometria valida", async () => {
     const query = createQueryMock({
-      data: {
-        bbox_4326: [9.29, 45.08, 9.3, 45.09],
-        polygon_4326: null,
-      },
+      data: [{ bbox_4326: [9.29, 45.08, 9.3, 45.09], polygon_4326: null }],
       error: null,
     });
 

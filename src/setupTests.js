@@ -15,6 +15,7 @@ vi.mock('./lib/supabaseClient', () => ({
         update: vi.fn(() => query),
         delete: vi.fn(() => query),
         eq: vi.fn(() => query),
+        in: vi.fn(() => query),
         maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
       };
       return query;
