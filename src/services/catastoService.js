@@ -1,5 +1,12 @@
 import { supabase } from "../lib/supabaseClient";
 
+const LEGACY_SUPABASE_LON_OFFSET = 0.0003385;
+const LEGACY_SUPABASE_LAT_OFFSET = -0.0014878;
+
+function roundCoordinate(value) {
+  return Math.round(value * 1e8) / 1e8;
+}
+
 function normalizeComune(value) {
   return String(value || "")
     .trim()
@@ -66,6 +73,15 @@ function buildBboxFromPolygon(polygon) {
   }
 
   return [minLon, minLat, maxLon, maxLat];
+}
+
+function correctLegacySupabasePolygon(polygon) {
+  if (!Array.isArray(polygon)) return null;
+
+  return polygon.map(([lon, lat]) => [
+    roundCoordinate(Number(lon) + LEGACY_SUPABASE_LON_OFFSET),
+    roundCoordinate(Number(lat) + LEGACY_SUPABASE_LAT_OFFSET),
+  ]);
 }
 
 function buildFoglioLookupCandidates(value) {
@@ -155,9 +171,11 @@ export async function getPoligonoMappale(params) {
     foglioMatchSet.has(normalizeNumericField(item?.foglio)),
   );
   const polygon = normalizePolygon(parcel?.polygon_4326);
-  const bbox = normalizeBbox(parcel?.bbox_4326);
+  const correctedPolygon = correctLegacySupabasePolygon(polygon);
+  const bbox =
+    buildBboxFromPolygon(correctedPolygon) || normalizeBbox(parcel?.bbox_4326);
 
-  if (!parcel || !polygon || !bbox) {
+  if (!parcel || !correctedPolygon || !bbox) {
     throw new Error("Nessuna geometria disponibile per questa particella");
   }
 
@@ -169,7 +187,7 @@ export async function getPoligonoMappale(params) {
     label: parcel.label || null,
     nationalReference: parcel.national_reference || null,
     bbox4326: bbox,
-    polygon4326: polygon,
+    polygon4326: correctedPolygon,
     source: "supabase",
     validated: true,
   };
