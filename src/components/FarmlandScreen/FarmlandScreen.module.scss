@@ -49,6 +49,11 @@
       height: 400px;
       min-height: 300px;
 
+      @media (max-width: 900px) {
+        height: 400px;
+        min-height: 300px;
+      }
+
       @media (min-width: 901px) {
         flex: 1;
         height: 600px;
@@ -63,6 +68,11 @@
   flex-direction: column;
   padding-left: 20px;
   overflow-y: auto;
+
+  @media (max-width: 900px) {
+    padding-left: 0;
+    width: 100%;
+  }
 }
 
 .MapConfig {
