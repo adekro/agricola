@@ -35,6 +35,10 @@ const Layout = () => {
       else if (target === "notebook-operations")
         navigate("/notebook/operations");
       else if (target === "evidenzia-mappali") setEvidenziaModalOpen(true);
+      else if (target === "settings") {
+        // For now settings doesn't have a route, but we handle it
+        console.log("Settings clicked");
+      }
     },
     [navigate],
   );
@@ -100,12 +104,23 @@ const Layout = () => {
 
   const filteredFarmlands = filterFarmlandsList();
 
+  const getActiveItem = () => {
+    if (evidenziaModalOpen || evidenziaRows) return "evidenzia-mappali";
+    if (location.pathname === "/") return "dashboard";
+    if (location.pathname.startsWith("/farmlands")) return "farmlands";
+    if (location.pathname.startsWith("/farmland/")) return "farmlands";
+    if (location.pathname.startsWith("/fitosanitari")) return "fitosanitari";
+    if (location.pathname.startsWith("/notebook/company"))
+      return "notebook-company";
+    return "";
+  };
+
   return (
     <div className={classes.layoutRoot}>
       <aside className={classes.layoutSide}>
         <Side
           onSelect={handlerSelectSide}
-          active={location.pathname === "/" ? "dashboard" : "farmlands"}
+          active={getActiveItem()}
           farmlands={filteredFarmlands}
         />
       </aside>
@@ -141,7 +156,7 @@ const Layout = () => {
               farmlands={filteredFarmlands}
               onSearchChange={searchChangeHandler}
               onCreateFarmland={onCreateButtonClickHandler}
-              onFitosanitariClick={() => handlerSelectSide("fitosanitari")}
+              onSelect={handlerSelectSide}
             />
           </div>
         </Header>
