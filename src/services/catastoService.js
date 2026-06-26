@@ -40,6 +40,34 @@ function normalizeBbox(value) {
   return bbox.every(Number.isFinite) ? bbox : null;
 }
 
+function buildBboxFromPolygon(polygon) {
+  if (!Array.isArray(polygon) || polygon.length === 0) return null;
+
+  let minLon = Infinity;
+  let minLat = Infinity;
+  let maxLon = -Infinity;
+  let maxLat = -Infinity;
+
+  polygon.forEach(([lon, lat]) => {
+    if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
+    minLon = Math.min(minLon, lon);
+    minLat = Math.min(minLat, lat);
+    maxLon = Math.max(maxLon, lon);
+    maxLat = Math.max(maxLat, lat);
+  });
+
+  if (
+    !Number.isFinite(minLon) ||
+    !Number.isFinite(minLat) ||
+    !Number.isFinite(maxLon) ||
+    !Number.isFinite(maxLat)
+  ) {
+    return null;
+  }
+
+  return [minLon, minLat, maxLon, maxLat];
+}
+
 function buildFoglioLookupCandidates(value) {
   const normalized = normalizeNumericField(value);
   const candidates = new Set([normalized]);
@@ -70,6 +98,35 @@ export async function getPoligonoMappale(params) {
     .toUpperCase();
   const foglioCandidates = buildFoglioLookupCandidates(foglio);
   const foglioMatchSet = buildFoglioMatchSet(foglio);
+
+  try {
+    const response = await fetch(
+      `/api/catasto-poligono?comune=${encodeURIComponent(comune)}&foglio=${encodeURIComponent(foglio)}&mappale=${encodeURIComponent(mappale)}`,
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const polygon = normalizePolygon(data?.geometry?.coordinates?.[0]);
+      const bbox = buildBboxFromPolygon(polygon);
+
+      if (polygon && bbox) {
+        return {
+          adminCode: adminCode || null,
+          comune: data.comune || comune,
+          foglio,
+          mappale: data.mappale || mappale,
+          label: data.label || null,
+          nationalReference: null,
+          bbox4326: bbox,
+          polygon4326: polygon,
+          source: data.source || "api",
+          validated: data.validated !== false,
+        };
+      }
+    }
+  } catch {
+    // Fallback to Supabase below.
+  }
 
   let query = supabase.from("cadastral_parcels").select(`
       admin_code,

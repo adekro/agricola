@@ -58,6 +58,61 @@ describe("parseExcelRows", () => {
 describe("getPoligonoMappale", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: vi.fn(),
+    });
+  });
+
+  it("usa la geometria live dell'API quando disponibile", async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        comune: "STRADELLA",
+        mappale: "53",
+        label: "53",
+        validated: true,
+        source: "wfs",
+        geometry: {
+          type: "Polygon",
+          coordinates: [[
+            [9.29, 45.08],
+            [9.3, 45.08],
+            [9.3, 45.09],
+            [9.29, 45.08],
+          ]],
+        },
+      }),
+    });
+
+    await expect(
+      getPoligonoMappale({
+        comune: "stradella",
+        foglio: "03",
+        mappale: "0053",
+      }),
+    ).resolves.toEqual({
+      adminCode: null,
+      comune: "STRADELLA",
+      foglio: "3",
+      mappale: "53",
+      label: "53",
+      nationalReference: null,
+      bbox4326: [9.29, 45.08, 9.3, 45.09],
+      polygon4326: [
+        [9.29, 45.08],
+        [9.3, 45.08],
+        [9.3, 45.09],
+        [9.29, 45.08],
+      ],
+      source: "wfs",
+      validated: true,
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/catasto-poligono?comune=STRADELLA&foglio=3&mappale=53",
+    );
+    expect(supabase.from).not.toHaveBeenCalled();
   });
 
   it("legge il mappale da Supabase e normalizza il payload per la mappa", async () => {
@@ -82,6 +137,23 @@ describe("getPoligonoMappale", () => {
       error: null,
     });
 
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        comune: "STRADELLA",
+        mappale: "53",
+        validated: true,
+        source: "wfs",
+        geometry: {
+          type: "Polygon",
+          coordinates: [[
+            [9.29, 45.08],
+            [9.3, 45.08],
+            [9.3, 45.09],
+          ]],
+        },
+      }),
+    });
     supabase.from.mockReturnValue(query);
 
     await expect(
@@ -108,6 +180,7 @@ describe("getPoligonoMappale", () => {
       validated: true,
     });
 
+    expect(global.fetch).toHaveBeenCalled();
     expect(supabase.from).toHaveBeenCalledWith("cadastral_parcels");
     expect(query.eq).toHaveBeenNthCalledWith(1, "comune", "STRADELLA");
     expect(query.in).toHaveBeenCalledWith("foglio", [
@@ -140,6 +213,10 @@ describe("getPoligonoMappale", () => {
       error: null,
     });
 
+    global.fetch.mockResolvedValue({
+      ok: false,
+      json: vi.fn(),
+    });
     supabase.from.mockReturnValue(query);
 
     await getPoligonoMappale({
@@ -158,6 +235,10 @@ describe("getPoligonoMappale", () => {
       error: null,
     });
 
+    global.fetch.mockResolvedValue({
+      ok: false,
+      json: vi.fn(),
+    });
     supabase.from.mockReturnValue(query);
 
     await expect(

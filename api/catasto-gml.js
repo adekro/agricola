@@ -18,7 +18,7 @@ import AdmZip from "adm-zip";
 
 proj4.defs(
   "EPSG:6706",
-  "+proj=longlat +ellps=WGS84 +towgs84=-104.1,-49.1,-9.9,0.971,-2.917,0.714,-11.68 +no_defs +type=crs",
+  "+proj=longlat +ellps=GRS80 +no_defs +type=crs",
 );
 
 const GML_PARSER = new XMLParser({
