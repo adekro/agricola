@@ -16,6 +16,11 @@ import GridViewIcon from "@mui/icons-material/GridView";
 import StraightenIcon from "@mui/icons-material/Straighten";
 import HubIcon from "@mui/icons-material/Hub";
 import AddIcon from "@mui/icons-material/Add";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import MapIcon from "@mui/icons-material/Map";
+import BusinessIcon from "@mui/icons-material/Business";
+import SettingsIcon from "@mui/icons-material/Settings";
+import YoloIcon from "@mui/icons-material/Yard";
 import Search from "../Header/Search/Search";
 import styles from "./MobileMenu.module.scss";
 
@@ -23,7 +28,7 @@ const MobileMenu = ({
   farmlands,
   onSearchChange,
   onCreateFarmland,
-  onFitosanitariClick,
+  onSelect,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -47,6 +52,11 @@ const MobileMenu = ({
         0,
       )
     : 0;
+
+  const handleNavClick = (target) => {
+    onSelect(target);
+    setIsOpen(false);
+  };
 
   return (
     <div className={styles.mobileMenuContainer}>
@@ -73,6 +83,35 @@ const MobileMenu = ({
             <Search mode="farmlands" onChange={onSearchChange} />
           </Box>
 
+          <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+            RIEPILOGO
+          </Typography>
+          <List dense sx={{ mb: 2 }}>
+            <ListItem>
+              <ListItemIcon>
+                <GridViewIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                primary="NUMERO DI CAMPI"
+                secondary={numberfields}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon>
+                <StraightenIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="AREA TOTALE" secondary={`${area}m²`} />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon>
+                <HubIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="PERIMETRO" secondary={`${perimeter}m`} />
+            </ListItem>
+          </List>
+
+          <Divider sx={{ mb: 2 }} />
+
           <List>
             <ListItem
               button
@@ -94,47 +133,49 @@ const MobileMenu = ({
               <ListItemText primary="Nuovo Terreno" />
             </ListItem>
 
+            <ListItem button onClick={() => handleNavClick("dashboard")}>
+              <ListItemIcon>
+                <DashboardIcon />
+              </ListItemIcon>
+              <ListItemText primary="Dashboard" />
+            </ListItem>
+
+            <ListItem button onClick={() => handleNavClick("farmlands")}>
+              <ListItemIcon>
+                <MapIcon />
+              </ListItemIcon>
+              <ListItemText primary="Terreni" />
+            </ListItem>
+
+            <ListItem button onClick={() => handleNavClick("notebook-company")}>
+              <ListItemIcon>
+                <BusinessIcon />
+              </ListItemIcon>
+              <ListItemText primary="Aziende" />
+            </ListItem>
+
             <ListItem
               button
-              onClick={() => {
-                onFitosanitariClick();
-                setIsOpen(false);
-              }}
-              sx={{ borderRadius: "8px", mb: 1 }}
+              onClick={() => handleNavClick("evidenzia-mappali")}
             >
+              <ListItemIcon>
+                <YoloIcon />
+              </ListItemIcon>
+              <ListItemText primary="Evidenzia Mappali" />
+            </ListItem>
+
+            <ListItem button onClick={() => handleNavClick("fitosanitari")}>
               <ListItemIcon>
                 <ScienceIcon />
               </ListItemIcon>
-              <ListItemText primary="Gestione Fitosanitari" />
+              <ListItemText primary="Banca dati Fitosanitari" />
             </ListItem>
-          </List>
 
-          <Divider sx={{ my: 2 }} />
-
-          <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-            RIEPILOGO
-          </Typography>
-          <List dense>
-            <ListItem>
+            <ListItem button onClick={() => handleNavClick("settings")}>
               <ListItemIcon>
-                <GridViewIcon fontSize="small" />
+                <SettingsIcon />
               </ListItemIcon>
-              <ListItemText
-                primary="NUMERO DI CAMPI"
-                secondary={numberfields}
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
-                <StraightenIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="AREA TOTALE" secondary={`${area}m²`} />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
-                <HubIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="PERIMETRO" secondary={`${perimeter}m`} />
+              <ListItemText primary="Impostazioni" />
             </ListItem>
           </List>
         </Box>

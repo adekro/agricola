@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import classes from "./Side.module.css";
 import SideItem from "./SideItem";
 import MapIcon from "@mui/icons-material/Map";
@@ -9,17 +9,11 @@ import GridViewIcon from "@mui/icons-material/GridView";
 import StraightenIcon from "@mui/icons-material/Straighten";
 import HubIcon from "@mui/icons-material/Hub";
 import BusinessIcon from "@mui/icons-material/Business";
-import InventoryIcon from "@mui/icons-material/Inventory";
-import AssignmentIcon from "@mui/icons-material/Assignment";
-import BookIcon from "@mui/icons-material/Book";
 import YoloIcon from "@mui/icons-material/Yard";
 
 const Side = ({ onSelect, active, farmlands = [] }) => {
-  const [itemActive, setItemActive] = useState(active);
-
   const handlerClick = (target) => {
     onSelect(target);
-    setItemActive(target);
   };
 
   const numberfields = farmlands ? farmlands.length : 0;
@@ -75,68 +69,48 @@ const Side = ({ onSelect, active, farmlands = [] }) => {
         </div>
       </div>
 
-      <button
-        className={classes.evidenziaBtn}
-        onClick={() => handlerClick("evidenzia-mappali")}
-      >
-        <YoloIcon /> EVIDENZIA MAPPALI
-      </button>
-
-      <button
-        className={classes.fitosanitariBtn}
-        onClick={() => handlerClick("fitosanitari")}
-      >
-        <ScienceIcon /> BANCA DATI FITOSANITARI
-      </button>
-
-      <div className={classes.notebookSection}>
-        <div className={classes.sectionTitle}>
-          <BookIcon fontSize="small" /> QUADERNO DI CAMPAGNA
-        </div>
-        <SideItem
-          onClick={handlerClick}
-          label="Anagrafica Azienda"
-          target="notebook-company"
-          icon={BusinessIcon}
-          active={itemActive === "notebook-company"}
-        />
-        <SideItem
-          onClick={handlerClick}
-          label="Registro Attività"
-          target="notebook-operations"
-          icon={AssignmentIcon}
-          active={itemActive === "notebook-operations"}
-        />
-        <SideItem
-          onClick={handlerClick}
-          label="Magazzino"
-          target="notebook-inventory"
-          icon={InventoryIcon}
-          active={itemActive === "notebook-inventory"}
-        />
-      </div>
-
       <nav className={classes.sidecontent}>
         <SideItem
           onClick={handlerClick}
           label="Dashboard"
           target="dashboard"
           icon={DashboardIcon}
-          active={itemActive === "dashboard"}
+          active={active === "dashboard"}
         />
         <SideItem
           onClick={handlerClick}
           label="Terreni"
           target="farmlands"
           icon={MapIcon}
-          active={itemActive === "farmlands"}
+          active={active === "farmlands"}
+        />
+        <SideItem
+          onClick={handlerClick}
+          label="Aziende"
+          target="notebook-company"
+          icon={BusinessIcon}
+          active={active === "notebook-company"}
+        />
+        <SideItem
+          onClick={handlerClick}
+          label="Evidenzia Mappali"
+          target="evidenzia-mappali"
+          icon={YoloIcon}
+          active={active === "evidenzia-mappali"}
+        />
+        <SideItem
+          onClick={handlerClick}
+          label="Banca dati Fitosanitari"
+          target="fitosanitari"
+          icon={ScienceIcon}
+          active={active === "fitosanitari"}
         />
         <SideItem
           onClick={handlerClick}
           label="Impostazioni"
           target="settings"
           icon={SettingsIcon}
-          active={itemActive === "settings"}
+          active={active === "settings"}
         />
       </nav>
     </div>
