@@ -13,6 +13,10 @@ import {
   Box,
   CircularProgress,
   Chip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import {
   openDB,
@@ -24,6 +28,7 @@ import {
 const FitosanitariScreen = () => {
   const [products, setProducts] = useState([]);
   const [filter, setFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("Tutti");
   const [loading, setLoading] = useState(false);
   const [lastFile, setLastFile] = useState(null);
 
@@ -72,12 +77,25 @@ const FitosanitariScreen = () => {
     setLoading(false);
   };
 
-  const filteredProducts = products.filter((p) =>
-    Object.values(p).some(
+  const statuses = [
+    "Tutti",
+    ...new Set(
+      products
+        .map((p) => p.stato_amministrativo)
+        .filter(Boolean)
+        .sort(),
+    ),
+  ];
+
+  const filteredProducts = products.filter((p) => {
+    const matchesFilter = Object.values(p).some(
       (val) =>
         val && val.toString().toLowerCase().includes(filter.toLowerCase()),
-    ),
-  );
+    );
+    const matchesStatus =
+      statusFilter === "Tutti" || p.stato_amministrativo === statusFilter;
+    return matchesFilter && matchesStatus;
+  });
 
   return (
     <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
@@ -100,13 +118,31 @@ const FitosanitariScreen = () => {
         )}
       </Box>
 
-      <TextField
-        fullWidth
-        variant="outlined"
-        placeholder="Cerca prodotti..."
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-      />
+      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+        <TextField
+          sx={{ flexGrow: 1 }}
+          variant="outlined"
+          placeholder="Cerca prodotti..."
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+        <FormControl sx={{ minWidth: 200 }}>
+          <InputLabel id="status-filter-label">Stato</InputLabel>
+          <Select
+            labelId="status-filter-label"
+            id="status-filter"
+            value={statusFilter}
+            label="Stato"
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            {statuses.map((status) => (
+              <MenuItem key={status} value={status}>
+                {status}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
 
       <TableContainer
         component={Paper}
