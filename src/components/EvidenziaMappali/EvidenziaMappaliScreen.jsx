@@ -6,9 +6,11 @@ import {
   Button,
   Chip,
   CircularProgress,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
-  ToggleButton,
-  ToggleButtonGroup,
+  Select,
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -27,7 +29,8 @@ import { Fill, Stroke, Style, Text as OlText } from "ol/style";
 import { fromLonLat, get as getProjection } from "ol/proj";
 import { register } from "ol/proj/proj4";
 import proj4 from "proj4";
-import { MAP_PROVIDERS } from "../../config/mapProviders";
+import { getEnabledCadastralLayers } from "../../config/cadastralLayers";
+import { getEnabledMapProviders } from "../../config/mapProviders";
 import { getPoligonoMappale } from "../../services/catastoService";
 
 const DEFAULT_CENTER = [9.3, 45.08];
@@ -92,13 +95,20 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
   const navigate = useNavigate();
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const enabledMapProviders = getEnabledMapProviders();
+  const enabledCadastralLayers = getEnabledCadastralLayers();
   const [loading, setLoading] = useState(true);
   const [mapCenter, setMapCenter] = useState(fromLonLat(DEFAULT_CENTER));
   const [mapZoom, setMapZoom] = useState(15);
   const [geocodeError, setGeocodeError] = useState("");
   const [highlightRows, setHighlightRows] = useState([]);
   const [activeRowKey, setActiveRowKey] = useState(null);
-  const [mapProvider, setMapProvider] = useState("osm");
+  const [mapProvider, setMapProvider] = useState(
+    enabledMapProviders[0]?.key || "osm",
+  );
+  const [cadastralLayerKey, setCadastralLayerKey] = useState(
+    enabledCadastralLayers[0]?.key || "none",
+  );
 
   useEffect(() => {
     if (!mappaliRows || mappaliRows.length === 0) {
@@ -166,34 +176,38 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
     if (loading || !mapRef.current) return;
 
     const provider =
-      MAP_PROVIDERS.find((item) => item.key === mapProvider) ||
-      MAP_PROVIDERS[0];
+      enabledMapProviders.find((item) => item.key === mapProvider) ||
+      enabledMapProviders[0];
 
     const baseLayer = new TileLayer({
       visible: true,
       preload: Infinity,
-      source: provider.url
+      source: provider?.url
         ? new XYZ({
             url: provider.url,
             attributions: provider.attribution,
             crossOrigin: "anonymous",
           })
-        : new OSM({ attributions: provider.attribution }),
+        : new OSM({ attributions: provider?.attribution }),
     });
 
     const layers = [baseLayer];
 
     const activeRow = highlightRows.find((row) => row.key === activeRowKey);
-    if (activeRow) {
+    const cadastralLayer = enabledCadastralLayers.find(
+      (item) => item.key === cadastralLayerKey,
+    );
+
+    if (activeRow && cadastralLayer) {
       layers.push(
         new ImageLayer({
           opacity: 0.85,
           source: new ImageWMS({
-            url: "/api/cadastral-wms",
-            projection: "EPSG:6706",
+            url: cadastralLayer.url,
+            projection: cadastralLayer.sourceProjection,
             params: {
-              LAYERS: "CP.CadastralParcel",
-              VERSION: "1.1.1",
+              LAYERS: cadastralLayer.layers,
+              VERSION: cadastralLayer.version,
               FORMAT: "image/png",
               TRANSPARENT: true,
               CQL_FILTER: `LABEL='${String(activeRow.mappale).replace(/'/g, "''")}'`,
@@ -267,7 +281,17 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
       map.setTarget(undefined);
       mapInstanceRef.current = null;
     };
-  }, [activeRowKey, highlightRows, loading, mapCenter, mapZoom, mapProvider]);
+  }, [
+    activeRowKey,
+    cadastralLayerKey,
+    enabledCadastralLayers,
+    enabledMapProviders,
+    highlightRows,
+    loading,
+    mapCenter,
+    mapProvider,
+    mapZoom,
+  ]);
 
   const handleBack = useCallback(() => {
     if (mapInstanceRef.current) {
@@ -314,15 +338,38 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
           Evidenzia Mappali
         </Typography>
 
-        <ToggleButtonGroup
-          size="small"
-          value={mapProvider}
-          exclusive
-          onChange={(_, value) => value && setMapProvider(value)}
-        >
-          <ToggleButton value="osm">OSM</ToggleButton>
-          <ToggleButton value="satellite">Satellite</ToggleButton>
-        </ToggleButtonGroup>
+        <FormControl size="small" sx={{ minWidth: 220 }}>
+          <InputLabel id="evidenzia-provider-label">Base map</InputLabel>
+          <Select
+            labelId="evidenzia-provider-label"
+            value={mapProvider}
+            label="Base map"
+            onChange={(event) => setMapProvider(event.target.value)}
+          >
+            {enabledMapProviders.map((provider) => (
+              <MenuItem key={provider.key} value={provider.key}>
+                {provider.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 220 }}>
+          <InputLabel id="evidenzia-cadastral-label">Layer mappali</InputLabel>
+          <Select
+            labelId="evidenzia-cadastral-label"
+            value={cadastralLayerKey}
+            label="Layer mappali"
+            onChange={(event) => setCadastralLayerKey(event.target.value)}
+          >
+            <MenuItem value="none">Nessuno</MenuItem>
+            {enabledCadastralLayers.map((layer) => (
+              <MenuItem key={layer.key} value={layer.key}>
+                {layer.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Paper>
 
       {loading && (
@@ -354,8 +401,8 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
           </Typography>
           <Typography variant="caption">
             Comune centrato: <strong>{getComuneLabel(mappaliRows)}</strong>.
-            Attiva <strong>"Catasto ON"</strong> per vedere le particelle reali
-            sulla mappa di sfondo tramite WMS.
+            Seleziona un <strong>Layer mappali</strong> per vedere le
+            particelle reali sulla mappa di sfondo tramite WMS.
           </Typography>
         </Alert>
       )}
