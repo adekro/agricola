@@ -26,7 +26,7 @@ import { notebookService } from "../../services/notebookService";
 
 const categories = ["Fitosanitario", "Concime", "Biostimolante", "Altro"];
 
-const ProductInventory = () => {
+const ProductInventory = ({ companyId = null }) => {
   const [products, setProducts] = useState([]);
   const [open, setOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -42,7 +42,7 @@ const ProductInventory = () => {
 
   const fetchProducts = async () => {
     try {
-      const data = await notebookService.getProducts();
+      const data = await notebookService.getProducts(companyId);
       setProducts(data);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -51,7 +51,7 @@ const ProductInventory = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [companyId]);
 
   const handleOpen = (product = null) => {
     if (product) {
@@ -92,7 +92,7 @@ const ProductInventory = () => {
     try {
       const productToSave = editingProduct
         ? { ...formData, id: editingProduct.id }
-        : formData;
+        : { ...formData, company_id: companyId };
       await notebookService.saveProduct(productToSave);
       fetchProducts();
       handleClose();
@@ -113,10 +113,10 @@ const ProductInventory = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: companyId ? 0 : 3 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-          Magazzino Prodotti
+          {companyId ? "Prodotti Azienda" : "Magazzino Prodotti"}
         </Typography>
         <Button
           variant="contained"

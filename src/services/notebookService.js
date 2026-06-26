@@ -33,11 +33,17 @@ export const notebookService = {
   },
 
   // --- Inventory Products ---
-  async getProducts() {
-    const { data, error } = await supabase
+  async getProducts(companyId = null) {
+    let query = supabase
       .from("inventory_products")
       .select("*")
       .order("name");
+
+    if (companyId) {
+      query = query.eq("company_id", companyId);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return data;
   },
