@@ -36,6 +36,9 @@ CREATE TABLE IF NOT EXISTS companies (
   name TEXT NOT NULL,
   vat_number TEXT,
   owner_name TEXT,
+  address TEXT,
+  phone TEXT,
+  email TEXT,
   authorized_operators TEXT[],
   owner_id UUID NOT NULL,
   CONSTRAINT fk_owner FOREIGN KEY (owner_id) REFERENCES auth.users (id)
@@ -57,6 +60,7 @@ CREATE TABLE IF NOT EXISTS inventory_products (
   purchase_date DATE,
   expiry_date DATE,
   active_ingredient TEXT,
+  company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
   owner_id UUID NOT NULL
 );
 
