@@ -73,7 +73,9 @@ const WorldMap = ({
 
     // Satellite layer
     if (satelliteLayerKey !== "none") {
-      const satConfig = SATELLITE_LAYERS.find((l) => l.key === satelliteLayerKey);
+      const satConfig = SATELLITE_LAYERS.find(
+        (l) => l.key === satelliteLayerKey,
+      );
       if (satConfig) {
         const source =
           satConfig.type === "wmts" || satConfig.type === "xyz"
@@ -201,7 +203,9 @@ const WorldMap = ({
     }
 
     if (satelliteLayerKey !== "none") {
-      const satConfig = SATELLITE_LAYERS.find((l) => l.key === satelliteLayerKey);
+      const satConfig = SATELLITE_LAYERS.find(
+        (l) => l.key === satelliteLayerKey,
+      );
       if (satConfig) {
         const source =
           satConfig.type === "wmts" || satConfig.type === "xyz"
@@ -257,7 +261,9 @@ const WorldMap = ({
         });
 
         const insertIndex = satelliteLayerRef.current ? 2 : 1;
-        mapInstanceRef.current.getLayers().insertAt(insertIndex, cadastralLayer);
+        mapInstanceRef.current
+          .getLayers()
+          .insertAt(insertIndex, cadastralLayer);
         cadastralLayerRef.current = cadastralLayer;
       }
     }
@@ -277,14 +283,12 @@ const WorldMap = ({
   }, [cadastralOpacity]);
 
   return position ? (
-    <div>
-      <div id="genMap" className={classes.genMap}>
-        <ResponsiveMap
-          id="map"
-          ref={mapRef}
-          className={classes.map}
-        ></ResponsiveMap>
-      </div>
+    <div id="genMap" className={classes.genMap}>
+      <ResponsiveMap
+        id="map"
+        ref={mapRef}
+        className={classes.map}
+      ></ResponsiveMap>
     </div>
   ) : (
     <Loader />
