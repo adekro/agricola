@@ -436,10 +436,8 @@ const DrawableMap = ({
   }, [cadastralOpacity]);
 
   return position ? (
-    <div>
-      <div id="genMap" className={classes.genMap}>
-        <ResponsiveMap id="map" ref={mapRef} className={classes.map} />
-      </div>
+    <div id="genMap" className={classes.genMap}>
+      <ResponsiveMap id="map" ref={mapRef} className={classes.map} />
     </div>
   ) : (
     <Loader />
