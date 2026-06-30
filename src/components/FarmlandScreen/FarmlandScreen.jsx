@@ -24,6 +24,7 @@ import {
   DialogContent,
   DialogActions,
   Stack,
+  CircularProgress,
 } from "@mui/material";
 import { createFilterOptions } from "@mui/material/Autocomplete";
 import FullScreenDialog from "../UI/FullScreenDialog/FullScreenDialog";
@@ -42,9 +43,42 @@ import SatelliteIndices from "./SatelliteIndices/SatelliteIndices";
 import { satelliteService } from "../../services/satelliteService";
 import { notebookService } from "../../services/notebookService";
 import { useCadastralWmsError } from "../../hooks/useCadastralWmsError";
+import { ageaCropService } from "../../services/ageaCropService";
 
 const normalizeCompanyName = (name = "") => name.trim().toLowerCase();
 const filterCompanyOptions = createFilterOptions();
+const monthOptions = [
+  { value: 1, label: "Gennaio" },
+  { value: 2, label: "Febbraio" },
+  { value: 3, label: "Marzo" },
+  { value: 4, label: "Aprile" },
+  { value: 5, label: "Maggio" },
+  { value: 6, label: "Giugno" },
+  { value: 7, label: "Luglio" },
+  { value: 8, label: "Agosto" },
+  { value: 9, label: "Settembre" },
+  { value: 10, label: "Ottobre" },
+  { value: 11, label: "Novembre" },
+  { value: 12, label: "Dicembre" },
+];
+
+const getCurrentYear = () => new Date().getFullYear();
+
+const buildCurrentCropSummary = (entry) => {
+  if (!entry) return "";
+
+  const code = String(entry.agea_code || "").trim();
+  const label = String(entry.agea_label || entry.crop || "").trim();
+  return code && label ? `${code} - ${label}` : label || code;
+};
+
+const formatCropPeriod = (entry) => {
+  const monthLabel =
+    monthOptions.find((item) => item.value === Number(entry?.month))?.label ||
+    "-";
+  const yearLabel = entry?.year || "-";
+  return `${monthLabel} ${yearLabel}`;
+};
 
 const FarmlandScreen = (props) => {
   const { id } = useParams();
@@ -88,10 +122,22 @@ const FarmlandScreen = (props) => {
 
   const [cropHistory, setCropHistory] = useState([]);
   const [openCropDialog, setOpenCropDialog] = useState(false);
+  const [ageaCropOptions, setAgeaCropOptions] = useState([]);
+  const [ageaCropQuery, setAgeaCropQuery] = useState("");
+  const [ageaCropLoading, setAgeaCropLoading] = useState(false);
+  const [ageaCropError, setAgeaCropError] = useState("");
   const [newCrop, setNewCrop] = useState({
     crop: "",
+    agea_code: "",
+    agea_label: "",
+    area: "",
+    month: new Date().getMonth() + 1,
+    year: getCurrentYear(),
+    foglio: "",
+    mappale: "",
     start_date: "",
     end_date: "",
+    notes: "",
   });
 
   const enabledMapProviders = useMemo(() => getEnabledMapProviders(), []);
@@ -300,18 +346,84 @@ const FarmlandScreen = (props) => {
   }, [farmlandId]);
 
   const handleAddCropHistory = async () => {
+    if (!newCrop.crop || !newCrop.area || !newCrop.month || !newCrop.year) {
+      setError(
+        "Per ogni coltura servono almeno selezione AGEA, superficie, mese e anno.",
+      );
+      return;
+    }
+
     try {
-      await notebookService.saveCropHistory({
+      const entry = {
         ...newCrop,
         farmland_id: farmlandId,
-      });
+        area: Number.parseFloat(newCrop.area),
+        month: Number.parseInt(newCrop.month, 10),
+        year: Number.parseInt(newCrop.year, 10),
+      };
+
+      await notebookService.saveCropHistory(entry);
+
+      if (farmland && onUpdate) {
+        await onUpdate(farmlandId, {
+          ...farmland,
+          currentCrop: buildCurrentCropSummary(entry),
+        });
+      }
+
       const history = await notebookService.getCropHistory(farmlandId);
       setCropHistory(history);
       setOpenCropDialog(false);
+      setAgeaCropQuery("");
+      setAgeaCropOptions([]);
+      setAgeaCropError("");
+      setNewCrop({
+        crop: "",
+        agea_code: "",
+        agea_label: "",
+        area: "",
+        month: new Date().getMonth() + 1,
+        year: getCurrentYear(),
+        foglio: "",
+        mappale: "",
+        start_date: "",
+        end_date: "",
+        notes: "",
+      });
     } catch (err) {
       console.error("Error saving crop history:", err);
+      setError(err.message || "Errore durante il salvataggio della coltura.");
     }
   };
+
+  useEffect(() => {
+    const searchAgeaCrops = async () => {
+      const query = ageaCropQuery.trim();
+      if (query.length < 2 || !openCropDialog) {
+        setAgeaCropOptions([]);
+        setAgeaCropError("");
+        return;
+      }
+
+      setAgeaCropLoading(true);
+      try {
+        const items = await ageaCropService.searchCrops(query);
+        setAgeaCropOptions(items);
+        setAgeaCropError("");
+      } catch (err) {
+        console.error("Error searching AGEA crops:", err);
+        setAgeaCropOptions([]);
+        setAgeaCropError(
+          err.message || "Errore nel recupero delle colture AGEA.",
+        );
+      } finally {
+        setAgeaCropLoading(false);
+      }
+    };
+
+    const timeoutId = window.setTimeout(searchAgeaCrops, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [ageaCropQuery, openCropDialog]);
 
   useEffect(() => {
     const fetchSatelliteIndices = async () => {
@@ -538,10 +650,11 @@ const FarmlandScreen = (props) => {
               <TextField
                 onChange={formik.handleChange}
                 value={formik.values.currentCrop}
-                label="Coltura Attuale"
+                label="Ultima coltura registrata"
                 name="currentCrop"
                 className={classes.Input}
                 fullWidth
+                disabled
                 error={
                   formik.touched.currentCrop &&
                   Boolean(formik.errors.currentCrop)
@@ -735,22 +848,28 @@ const FarmlandScreen = (props) => {
                   <Table size="small">
                     <TableHead>
                       <TableRow>
+                        <TableCell>Codice AGEA</TableCell>
                         <TableCell>Coltura</TableCell>
-                        <TableCell>Periodo</TableCell>
+                        <TableCell>Superficie</TableCell>
+                        <TableCell>Mese/Anno</TableCell>
+                        <TableCell>Foglio</TableCell>
+                        <TableCell>Mappale</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {cropHistory.map((h) => (
                         <TableRow key={h.id}>
+                          <TableCell>{h.agea_code || "-"}</TableCell>
                           <TableCell>{h.crop}</TableCell>
-                          <TableCell>
-                            {h.start_date || "?"} / {h.end_date || "oggi"}
-                          </TableCell>
+                          <TableCell>{h.area || "-"}</TableCell>
+                          <TableCell>{formatCropPeriod(h)}</TableCell>
+                          <TableCell>{h.foglio || "-"}</TableCell>
+                          <TableCell>{h.mappale || "-"}</TableCell>
                         </TableRow>
                       ))}
                       {cropHistory.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={2} align="center">
+                          <TableCell colSpan={6} align="center">
                             Nessuno storico
                           </TableCell>
                         </TableRow>
@@ -797,32 +916,157 @@ const FarmlandScreen = (props) => {
         <DialogTitle>Aggiungi Storico Coltura</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              label="Coltura"
-              fullWidth
-              value={newCrop.crop}
-              onChange={(e) =>
-                setNewCrop((prev) => ({ ...prev, crop: e.target.value }))
+            <Autocomplete
+              options={ageaCropOptions}
+              loading={ageaCropLoading}
+              inputValue={ageaCropQuery}
+              value={
+                newCrop.agea_code && newCrop.agea_label
+                  ? {
+                      code: newCrop.agea_code,
+                      label: newCrop.agea_label,
+                    }
+                  : null
               }
-            />
-            <TextField
-              label="Inizio"
-              type="date"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              value={newCrop.start_date}
-              onChange={(e) =>
-                setNewCrop((prev) => ({ ...prev, start_date: e.target.value }))
+              onInputChange={(_event, value) => {
+                setAgeaCropQuery(value);
+              }}
+              onChange={(_event, value) => {
+                setNewCrop((prev) => ({
+                  ...prev,
+                  crop: value ? `${value.code} - ${value.label}` : "",
+                  agea_code: value?.code || "",
+                  agea_label: value?.label || "",
+                }));
+              }}
+              getOptionLabel={(option) =>
+                `${option.code || ""} - ${option.label || ""}`.trim()
               }
+              isOptionEqualToValue={(option, value) =>
+                option.code === value.code
+              }
+              noOptionsText={
+                ageaCropQuery.trim().length < 2
+                  ? "Digita almeno 2 caratteri"
+                  : "Nessuna coltura AGEA trovata"
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Coltura AGEA"
+                  helperText={
+                    ageaCropError ||
+                    "Seleziona la coltura dal catalogo AGEA."
+                  }
+                  error={!!ageaCropError}
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {ageaCropLoading ? (
+                          <CircularProgress color="inherit" size={18} />
+                        ) : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
             />
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField
+                label="Codice AGEA"
+                fullWidth
+                value={newCrop.agea_code}
+                disabled
+              />
+              <TextField
+                label="Superficie"
+                type="number"
+                fullWidth
+                value={newCrop.area}
+                onChange={(e) =>
+                  setNewCrop((prev) => ({ ...prev, area: e.target.value }))
+                }
+              />
+            </Stack>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField
+                select
+                label="Mese"
+                fullWidth
+                value={newCrop.month}
+                onChange={(e) =>
+                  setNewCrop((prev) => ({ ...prev, month: e.target.value }))
+                }
+              >
+                {monthOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                label="Anno"
+                type="number"
+                fullWidth
+                value={newCrop.year}
+                onChange={(e) =>
+                  setNewCrop((prev) => ({ ...prev, year: e.target.value }))
+                }
+              />
+            </Stack>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField
+                label="Foglio"
+                fullWidth
+                value={newCrop.foglio}
+                onChange={(e) =>
+                  setNewCrop((prev) => ({ ...prev, foglio: e.target.value }))
+                }
+              />
+              <TextField
+                label="Mappale"
+                fullWidth
+                value={newCrop.mappale}
+                onChange={(e) =>
+                  setNewCrop((prev) => ({ ...prev, mappale: e.target.value }))
+                }
+              />
+            </Stack>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField
+                label="Inizio"
+                type="date"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                value={newCrop.start_date}
+                onChange={(e) =>
+                  setNewCrop((prev) => ({
+                    ...prev,
+                    start_date: e.target.value,
+                  }))
+                }
+              />
+              <TextField
+                label="Fine"
+                type="date"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                value={newCrop.end_date}
+                onChange={(e) =>
+                  setNewCrop((prev) => ({ ...prev, end_date: e.target.value }))
+                }
+              />
+            </Stack>
             <TextField
-              label="Fine"
-              type="date"
+              label="Note"
               fullWidth
-              InputLabelProps={{ shrink: true }}
-              value={newCrop.end_date}
+              multiline
+              minRows={2}
+              value={newCrop.notes}
               onChange={(e) =>
-                setNewCrop((prev) => ({ ...prev, end_date: e.target.value }))
+                setNewCrop((prev) => ({ ...prev, notes: e.target.value }))
               }
             />
           </Stack>

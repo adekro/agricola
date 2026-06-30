@@ -3,6 +3,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import FarmlandScreen from "./FarmlandScreen";
+import { notebookService } from "../../services/notebookService";
+import { ageaCropService } from "../../services/ageaCropService";
 
 const mockUseFarmlands = vi.fn();
 const mockUseParams = vi.fn(() => ({ id: "new" }));
@@ -72,6 +74,12 @@ vi.mock("../../services/notebookService", () => ({
   },
 }));
 
+vi.mock("../../services/ageaCropService", () => ({
+  ageaCropService: {
+    searchCrops: vi.fn(async () => []),
+  },
+}));
+
 vi.mock("../../hooks/useCadastralWmsError", () => ({
   useCadastralWmsError: vi.fn(),
 }));
@@ -84,6 +92,7 @@ describe("FarmlandScreen company creation flow", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseParams.mockReturnValue({ id: "new" });
     mockUseFarmlands.mockReturnValue({
       companies: [
         { id: "c1", name: "Acme Farm" },
@@ -169,5 +178,76 @@ describe("FarmlandScreen company creation flow", () => {
 
     expect(await screen.findByText("save failed")).toBeInTheDocument();
     expect(screen.getByText("Nuova azienda")).toBeInTheDocument();
+  });
+
+  it("searches AGEA crops and saves extended crop history fields", async () => {
+    mockUseParams.mockReturnValue({ id: "farm-1" });
+    ageaCropService.searchCrops.mockResolvedValue([
+      {
+        code: "921-007-000-000",
+        label: "CIPOLLA ANCHE DI TIPO LUNGO (echalion) - DA ORTO",
+      },
+    ]);
+    notebookService.getCropHistory.mockResolvedValue([]);
+
+    render(
+      <FarmlandScreen
+        farmlandId="farm-1"
+        farmland={{
+          id: "farm-1",
+          type: "Campo 1",
+          area: 12,
+          perimeter: 100,
+          notes: "",
+          ownerDisplayName: "Azienda Test",
+          coordinates: [],
+          cadastralParcel: "",
+          currentCrop: "",
+        }}
+        onClose={onClose}
+        onCreate={onCreate}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Aggiungi Storico" }));
+
+    const ageaInput = screen.getByLabelText("Coltura AGEA");
+    await userEvent.type(ageaInput, "cipolla");
+
+    await waitFor(() => {
+      expect(ageaCropService.searchCrops).toHaveBeenCalledWith("cipolla");
+    });
+
+    await userEvent.click(
+      await screen.findByText(
+        "921-007-000-000 - CIPOLLA ANCHE DI TIPO LUNGO (echalion) - DA ORTO",
+      ),
+    );
+
+    await userEvent.type(screen.getByLabelText("Superficie"), "2.5");
+    await userEvent.clear(screen.getByLabelText("Anno"));
+    await userEvent.type(screen.getByLabelText("Anno"), "2026");
+    await userEvent.type(screen.getByLabelText("Foglio"), "7");
+    await userEvent.type(screen.getByLabelText("Mappale"), "53");
+
+    await userEvent.click(screen.getByRole("button", { name: "Aggiungi" }));
+
+    await waitFor(() => {
+      expect(notebookService.saveCropHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          farmland_id: "farm-1",
+          crop: "921-007-000-000 - CIPOLLA ANCHE DI TIPO LUNGO (echalion) - DA ORTO",
+          agea_code: "921-007-000-000",
+          agea_label: "CIPOLLA ANCHE DI TIPO LUNGO (echalion) - DA ORTO",
+          area: 2.5,
+          month: expect.any(Number),
+          year: 2026,
+          foglio: "7",
+          mappale: "53",
+        }),
+      );
+    });
   });
 });

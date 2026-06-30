@@ -113,7 +113,10 @@ export const notebookService = {
       .from("crop_history")
       .select("*")
       .eq("farmland_id", farmlandId)
-      .order("start_date", { ascending: false });
+      .order("year", { ascending: false })
+      .order("month", { ascending: false })
+      .order("start_date", { ascending: false })
+      .order("created_at", { ascending: false });
     if (error) throw error;
     return data;
   },
