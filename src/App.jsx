@@ -14,6 +14,11 @@ import FarmlandScreen from "./components/FarmlandScreen/FarmlandScreen";
 import LoginScreen from "./components/LoginScreen/LoginScreen";
 import FitosanitariScreen from "./components/FitosanitariScreen/FitosanitariScreen";
 import CompanyProfile from "./components/Notebook/CompanyProfile";
+import CompanyWorkspace from "./components/Notebook/CompanyWorkspace";
+import CompanyOverviewPage from "./components/Notebook/CompanyOverviewPage";
+import CompanyContactsPage from "./components/Notebook/CompanyContactsPage";
+import CompanyDocumentsPage from "./components/Notebook/CompanyDocumentsPage";
+import CompanyInventoryPage from "./components/Notebook/CompanyInventoryPage";
 import ProductInventory from "./components/Notebook/ProductInventory";
 import OperationsManager from "./components/Notebook/OperationsManager";
 import { supabase } from "./lib/supabaseClient";
@@ -83,7 +88,17 @@ const App = () => {
             <Route path="farmland/:id" element={<FarmlandScreen />} />
             <Route path="fitosanitari" element={<FitosanitariScreen />} />
             <Route path="notebook">
-              <Route path="company" element={<CompanyProfile />} />
+              <Route path="company">
+                <Route index element={<CompanyProfile />} />
+                <Route path=":companyId" element={<CompanyWorkspace />}>
+                  <Route index element={<CompanyOverviewPage />} />
+                  <Route path="contacts" element={<CompanyContactsPage sectionKey="contacts" />} />
+                  <Route path="operators" element={<CompanyContactsPage sectionKey="operators" />} />
+                  <Route path="network" element={<CompanyContactsPage sectionKey="network" />} />
+                  <Route path="documents" element={<CompanyDocumentsPage />} />
+                  <Route path="inventory" element={<CompanyInventoryPage />} />
+                </Route>
+              </Route>
               <Route path="inventory" element={<ProductInventory />} />
               <Route path="operations" element={<OperationsManager />} />
             </Route>

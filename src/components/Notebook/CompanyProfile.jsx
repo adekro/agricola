@@ -24,8 +24,13 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
+import GroupsIcon from "@mui/icons-material/Groups";
+import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
+import StorefrontIcon from "@mui/icons-material/Storefront";
+import DescriptionIcon from "@mui/icons-material/Description";
+import { useNavigate } from "react-router-dom";
 import { notebookService } from "../../services/notebookService";
-import ProductInventory from "./ProductInventory";
 
 const EMPTY_COMPANY = {
   name: "",
@@ -43,6 +48,7 @@ const createEmptyCompany = () => ({
 });
 
 const CompanyProfile = () => {
+  const navigate = useNavigate();
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -51,7 +57,6 @@ const CompanyProfile = () => {
 
   // Modals state
   const [companyModal, setCompanyModal] = useState({ open: false, data: createEmptyCompany() });
-  const [inventoryModal, setInventoryModal] = useState({ open: false, companyId: null, companyName: "" });
   const [operatorInput, setOperatorInput] = useState("");
 
   const fetchCompanies = async () => {
@@ -80,18 +85,6 @@ const CompanyProfile = () => {
 
   const handleCloseCompanyModal = () => {
     setCompanyModal({ open: false, data: createEmptyCompany() });
-  };
-
-  const handleOpenInventoryModal = (company) => {
-    setInventoryModal({
-      open: true,
-      companyId: company.id,
-      companyName: company.name,
-    });
-  };
-
-  const handleCloseInventoryModal = () => {
-    setInventoryModal({ open: false, companyId: null, companyName: "" });
   };
 
   const handleChange = (e) => {
@@ -215,17 +208,72 @@ const CompanyProfile = () => {
                 <TableCell>{item.phone || "-"}</TableCell>
                 <TableCell>{item.email || "-"}</TableCell>
                 <TableCell align="right">
-                  <Stack direction="row" spacing={1} justifyContent="flex-end">
+                  <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
                     <IconButton
                       size="small"
                       color="primary"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleOpenInventoryModal(item);
+                        navigate(`/notebook/company/${item.id}/contacts`);
+                      }}
+                      title="Contatti principali"
+                    >
+                      <GroupsIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/notebook/company/${item.id}/operators`);
+                      }}
+                      title="Rete operativa"
+                    >
+                      <PrecisionManufacturingIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/notebook/company/${item.id}/network`);
+                      }}
+                      title="Rete commerciale"
+                    >
+                      <StorefrontIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/notebook/company/${item.id}/documents`);
+                      }}
+                      title="Documenti"
+                    >
+                      <DescriptionIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/notebook/company/${item.id}/inventory`);
                       }}
                       title="Magazzino"
                     >
                       <InventoryIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenCompanyModal(item);
+                      }}
+                      title="Modifica"
+                    >
+                      <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton
                       size="small"
@@ -349,19 +397,6 @@ const CompanyProfile = () => {
             </Button>
           </DialogActions>
         </form>
-      </Dialog>
-
-      {/* Inventory Modal */}
-      <Dialog open={inventoryModal.open} onClose={handleCloseInventoryModal} fullWidth maxWidth="md">
-        <DialogTitle>
-          Magazzino: {inventoryModal.companyName}
-        </DialogTitle>
-        <DialogContent dividers>
-          <ProductInventory companyId={inventoryModal.companyId} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseInventoryModal}>Chiudi</Button>
-        </DialogActions>
       </Dialog>
 
       <Snackbar open={openSnackbar} autoHideDuration={6000} onClose={() => setOpenSnackbar(false)}>

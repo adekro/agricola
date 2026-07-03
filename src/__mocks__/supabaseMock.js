@@ -7,10 +7,13 @@ vi.mock("../lib/supabaseClient", () => ({
         select: vi.fn(() => query),
         order: vi.fn(() => query),
         insert: vi.fn(() => query),
+        upsert: vi.fn(() => query),
         update: vi.fn(() => query),
         delete: vi.fn(() => query),
         eq: vi.fn(() => query),
         in: vi.fn(() => query),
+        gte: vi.fn(() => query),
+        lte: vi.fn(() => query),
         maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
       };
       return query;

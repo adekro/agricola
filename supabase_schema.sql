@@ -54,6 +54,57 @@ DROP POLICY IF EXISTS "Allow users to manage their own companies" ON companies;
 CREATE POLICY "Allow users to manage their own companies" ON companies
   FOR ALL USING (auth.uid() = owner_id);
 
+-- Create the company_contacts table
+CREATE TABLE IF NOT EXISTS company_contacts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  owner_id UUID NOT NULL REFERENCES auth.users(id),
+  category TEXT NOT NULL CHECK (category IN ('owner', 'technician', 'operator', 'supplier', 'client', 'cooperative', 'consortium')),
+  name TEXT NOT NULL,
+  role_label TEXT,
+  phone TEXT,
+  email TEXT,
+  notes TEXT,
+  is_primary BOOLEAN DEFAULT false
+);
+
+CREATE INDEX IF NOT EXISTS idx_company_contacts_company_id
+  ON company_contacts (company_id);
+
+CREATE INDEX IF NOT EXISTS idx_company_contacts_category
+  ON company_contacts (category);
+
+ALTER TABLE company_contacts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow users to manage their own company contacts" ON company_contacts;
+CREATE POLICY "Allow users to manage their own company contacts" ON company_contacts
+  FOR ALL USING (auth.uid() = owner_id);
+
+-- Create the company_documents table
+CREATE TABLE IF NOT EXISTS company_documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  owner_id UUID NOT NULL REFERENCES auth.users(id),
+  title TEXT NOT NULL,
+  document_type TEXT,
+  reference_number TEXT,
+  issue_date DATE,
+  expiry_date DATE,
+  file_url TEXT,
+  notes TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_company_documents_company_id
+  ON company_documents (company_id);
+
+ALTER TABLE company_documents ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow users to manage their own company documents" ON company_documents;
+CREATE POLICY "Allow users to manage their own company documents" ON company_documents
+  FOR ALL USING (auth.uid() = owner_id);
+
 -- Create the inventory_products table
 CREATE TABLE IF NOT EXISTS inventory_products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

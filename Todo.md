@@ -12,15 +12,15 @@
 ### 2.1 Aziende Agricole
 
 - [x] CRUD anagrafica aziende (CompanyProfile con notebookService - Supabase)
-- [x] Gestione proprietari e tecnici (owner_name, referente aziendale)
-- [x] Gestione operatori e fornitori (authorized_operators array, CRUD completo)
+- [ ] Gestione proprietari e tecnici (presente solo owner_name; mancano tecnici/referente dedicato)
+- [ ] Gestione operatori e fornitori (presenti solo operatori autorizzati; fornitori non gestiti qui)
 - [ ] Gestione clienti, cooperative e consorzi
 - [ ] Documentazione aziendale (allegati, certificazioni)
 
 ### 2.2 Appezzamenti
 
 - [x] CRUD appezzamenti (FarmlandScreen + useFarmlands hook - Supabase)
-- [x] Dati catastali (foglio, particella) (cadastralParcel field nel form)
+- [ ] Dati catastali (foglio, particella) (presente solo campo testuale cadastralParcel, non strutturato)
 - [x] Integrazione mappe GIS (OpenLayers, DrawableMap, mappe interattive)
 - [x] Geolocalizzazione e confini (useGeolocation, coordinate poligoni)
 - [ ] Analisi terreno (tessitura, pH, sostanza organica, NPK)
@@ -28,7 +28,7 @@
 
 ### 2.3 Colture
 
-- [x] CRUD colture e varietà (crop_history table + currentCrop field)
+- [ ] CRUD colture e varietà (presente gestione colture/storico; manca gestione varietà)
 - [x] Gestione ciclo colturale (crop_history con date inizio/fine)
 - [x] Rotazione colturale e storico (cropHistory UI in FarmlandScreen)
 - [x] Monitoraggio stato coltura (currentCrop, ciclo da semina a raccolta)
@@ -36,16 +36,16 @@
 ### 2.4 Quaderno di Campagna
 
 - [x] Registrazione interventi (OperationsManager - 10 tipi operazione)
-- [x] Dettaglio intervento (data, operatore, appezzamento, coltura, macchinario, durata, note, allegati, condizioni meteo)
+- [ ] Dettaglio intervento (mancano durata e allegati reali; presente solo attachment_url)
 - [x] Storico interventi (filtri per data, operatore, prodotto; tab "Tutte le attività")
 - [x] Gestione prodotti collegati e quantità
 
 ### 2.5 Trattamenti Fitosanitari
 
 - [x] Archivio prodotti fitosanitari (FitosanitariScreen - dati da opendata Ministero Salute, salvataggio su IndexedDB)
-- [x] Controlli automatici (tempi di carenza, dose per ettaro nei trattamenti)
+- [ ] Controlli automatici (tempi di carenza, dose per ettaro nei trattamenti) (campi presenti, logica automatica assente)
 - [x] Registrazione trattamenti con costi (OperationsManager - trattamento fitosanitario)
-- [x] Piano di fertilizzazione (tipo "Concimazione" in OperationsManager)
+- [ ] Piano di fertilizzazione (presente solo tipo "Concimazione", non un piano dedicato)
 
 ### 2.6 Magazzino
 
@@ -105,6 +105,17 @@
 - [x] Promemoria (tab "Agenda (Pianificate)" in OperationsManager per attività future)
 - [ ] Notifiche (email, SMS, push)
 
+### 3.6 Modulo PAC
+
+- [ ] Gestione fascicolo aziendale
+- [ ] Import delle particelle AGEA/SIAN
+- [ ] Verifica automatica dei requisiti PAC
+- [ ] Controllo degli ecoschemi
+- [ ] Verifica delle BCAA (Buone Condizioni Agronomiche e Ambientali)
+- [ ] Simulazione dei contributi ottenibili
+- [ ] Checklist dei documenti mancanti
+- [ ] Report pronti per CAA e agronomi
+
 ## Fase 4: Modulo Agronomo
 
 - [ ] Elenco aziende seguite
@@ -126,7 +137,7 @@
 - [x] Visualizzazione mappe satellitari (OpenLayers con provider OSM, Esri, MapTiler, Thunderforest)
 - [x] Layer catastali (WMS Agenzia Entrate con proiezione EPSG:6706)
 - [x] Layer satellitari (Sentinel-2 Cloudless EOX)
-- [x] Geolocalizzazione interventi (coordinate poligoni appezzamenti)
+- [ ] Geolocalizzazione interventi (presenti coordinate degli appezzamenti, non dei singoli interventi)
 - [ ] Disegno appezzamenti manuale (DrawableMap esistente)
 
 ### 5.3 Sensori IoT
