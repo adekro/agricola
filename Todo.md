@@ -23,12 +23,12 @@
 - [ ] Dati catastali (foglio, particella) (presente solo campo testuale cadastralParcel, non strutturato)
 - [x] Integrazione mappe GIS (OpenLayers, DrawableMap, mappe interattive)
 - [x] Geolocalizzazione e confini (useGeolocation, coordinate poligoni)
-- [ ] Analisi terreno (tessitura, pH, sostanza organica, NPK)
-- [ ] Storico analisi terreno
+- [x] Analisi terreno (tessitura, pH, sostanza organica, NPK) (FarmlandScreen con campi data, tessitura, pH, sostanza organica, NPK e note)
+- [x] Storico analisi terreno (tabella storico in FarmlandScreen con inserimento ed eliminazione analisi)
 
 ### 2.3 Colture
 
-- [ ] CRUD colture e varietà (presente gestione colture/storico; manca gestione varietà)
+- [ ] CRUD colture e varietÃ  (presente gestione coltura corrente e storico colture in FarmlandScreen; manca gestione anagrafica/CRUD varietÃ  dedicata)
 - [x] Gestione ciclo colturale (crop_history con date inizio/fine)
 - [x] Rotazione colturale e storico (cropHistory UI in FarmlandScreen)
 - [x] Monitoraggio stato coltura (currentCrop, ciclo da semina a raccolta)
@@ -37,28 +37,28 @@
 
 - [x] Registrazione interventi (OperationsManager - 10 tipi operazione)
 - [ ] Dettaglio intervento (mancano durata e allegati reali; presente solo attachment_url)
-- [x] Storico interventi (filtri per data, operatore, prodotto; tab "Tutte le attività")
-- [x] Gestione prodotti collegati e quantità
+- [x] Storico interventi (filtri per data, operatore, prodotto; tab "Tutte le attivitÃ ")
+- [x] Gestione prodotti collegati e quantitÃ 
 
 ### 2.5 Trattamenti Fitosanitari
 
 - [x] Archivio prodotti fitosanitari (FitosanitariScreen - dati da opendata Ministero Salute, salvataggio su IndexedDB)
-- [ ] Controlli automatici (tempi di carenza, dose per ettaro nei trattamenti) (campi presenti, logica automatica assente)
+- [x] Controlli automatici (tempi di carenza, dose per ettaro nei trattamenti) (OperationsManager calcola dose attesa per appezzamento, segnala scostamenti e mostra la fine del tempo di carenza)
 - [x] Registrazione trattamenti con costi (OperationsManager - trattamento fitosanitario)
-- [ ] Piano di fertilizzazione (presente solo tipo "Concimazione", non un piano dedicato)
+- [x] Piano di fertilizzazione (modulo dedicato in FarmlandScreen con righe collegate all'appezzamento e prefill dall'ultima analisi terreno)
 
 ### 2.6 Magazzino
 
 - [x] Categorie merceologiche (Fitosanitario, Concime, Biostimolante, Altro)
 - [x] Gestione carico/scarico (ProductInventory CRUD su Supabase)
 - [x] Inventario e giacenze (anagrafica prodotti)
-- [ ] Gestione lotti e scadenze (batch_number e expiry_date esistenti, manca alert e movimenti)
-- [ ] Alert sottoscorta e scadenze
+- [x] Gestione lotti e scadenze (ProductInventory gestisce lotti aziendali, quantità iniziali, movimenti per lotto e date di scadenza)
+- [x] Alert sottoscorta e scadenze (ProductInventory mostra alert per lotti in scadenza e prodotti sotto scorta minima aziendale)
 
 ### 2.7 Raccolte
 
-- [ ] Registrazione raccolta dedicata (data, appezzamento, coltura, quantità, qualità)
-- [ ] Tracciabilità lotti produzione
+- [ ] Registrazione raccolta dedicata (data, appezzamento, coltura, quantitÃ , qualitÃ )
+- [ ] TracciabilitÃ  lotti produzione
 - [ ] Destinazione prodotto e clienti finali
 
 ### 2.8 Dashboard
@@ -98,11 +98,11 @@
 
 - [ ] Costi diretti (sementi, concimi, fitofarmaci, carburante, manodopera)
 - [ ] Costi indiretti (ammortamenti, assicurazioni, consulenze)
-- [ ] Indicatori (costo/ettaro, produzione/ettaro, margine lordo, redditività per coltura)
+- [ ] Indicatori (costo/ettaro, produzione/ettaro, margine lordo, redditivitÃ  per coltura)
 
 ### 3.5 Agenda e Scadenze
 
-- [x] Promemoria (tab "Agenda (Pianificate)" in OperationsManager per attività future)
+- [x] Promemoria (tab "Agenda (Pianificate)" in OperationsManager per attivitÃ  future)
 - [ ] Notifiche (email, SMS, push)
 
 ### 3.6 Modulo PAC
@@ -130,7 +130,7 @@
 
 - [ ] Previsioni locali
 - [ ] Storico precipitazioni e temperature
-- [ ] Alert meteo (gelate, grandine, siccità, piogge intense)
+- [ ] Alert meteo (gelate, grandine, siccitÃ , piogge intense)
 
 ### 5.2 GIS e Cartografia
 
@@ -142,7 +142,7 @@
 
 ### 5.3 Sensori IoT
 
-- [ ] Monitoraggio umidità terreno, temperatura, pioggia, livello serbatoi
+- [ ] Monitoraggio umiditÃ  terreno, temperatura, pioggia, livello serbatoi
 - [ ] Automazioni (avvio irrigazione, allarmi)
 
 ### 5.4 Intelligenza Artificiale

@@ -36,7 +36,7 @@ import { useFormik } from "formik";
 import useFarmlands from "../../hooks/useFarmlands";
 import Modal from "../UI/Modal/Modal";
 import WorldMap from "../WorldMap/WorldMap";
-import { useOutletContext, useParams } from "react-router-dom";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { getEnabledMapProviders } from "../../config/mapProviders";
 import { getEnabledSatelliteLayers } from "../../config/satelliteLayers";
 import { getEnabledCadastralLayers } from "../../config/cadastralLayers";
@@ -83,6 +83,7 @@ const formatCropPeriod = (entry) => {
 };
 
 const FarmlandScreen = (props) => {
+  const navigate = useNavigate();
   const { id } = useParams();
   const context = useOutletContext() || {};
 
@@ -124,8 +125,11 @@ const FarmlandScreen = (props) => {
 
   const [cropHistory, setCropHistory] = useState([]);
   const [soilAnalysisHistory, setSoilAnalysisHistory] = useState([]);
+  const [treatments, setTreatments] = useState([]);
+  const [fertilizationPlans, setFertilizationPlans] = useState([]);
   const [openCropDialog, setOpenCropDialog] = useState(false);
   const [openSoilDialog, setOpenSoilDialog] = useState(false);
+  const [openFertilizationDialog, setOpenFertilizationDialog] = useState(false);
   const [ageaCropOptions, setAgeaCropOptions] = useState([]);
   const [ageaCropQuery, setAgeaCropQuery] = useState("");
   const [ageaCropLoading, setAgeaCropLoading] = useState(false);
@@ -151,6 +155,15 @@ const FarmlandScreen = (props) => {
     nitrogen: "",
     phosphorus: "",
     potassium: "",
+    notes: "",
+  });
+  const [newFertilizationPlan, setNewFertilizationPlan] = useState({
+    recommended_date: new Date().toISOString().slice(0, 10),
+    product_category: "Concime",
+    target_n: "",
+    target_p: "",
+    target_k: "",
+    organic_matter: "",
     notes: "",
   });
 
@@ -373,6 +386,36 @@ const FarmlandScreen = (props) => {
     fetchSoilAnalysisHistory();
   }, [farmlandId]);
 
+  useEffect(() => {
+    const fetchTreatments = async () => {
+      if (farmlandId && farmlandId !== "new") {
+        try {
+          const operations = await notebookService.getFarmlandOperations(farmlandId);
+          setTreatments(
+            operations.filter((item) => item.type === "Trattamento fitosanitario"),
+          );
+        } catch (err) {
+          console.error("Error fetching farmland treatments:", err);
+        }
+      }
+    };
+    fetchTreatments();
+  }, [farmlandId]);
+
+  useEffect(() => {
+    const fetchFertilizationPlans = async () => {
+      if (farmlandId && farmlandId !== "new") {
+        try {
+          const plans = await notebookService.getFertilizationPlans(farmlandId);
+          setFertilizationPlans(plans);
+        } catch (err) {
+          console.error("Error fetching fertilization plans:", err);
+        }
+      }
+    };
+    fetchFertilizationPlans();
+  }, [farmlandId]);
+
   const handleAddCropHistory = async () => {
     if (!newCrop.crop || !newCrop.area || !newCrop.month || !newCrop.year) {
       setError(
@@ -437,6 +480,21 @@ const FarmlandScreen = (props) => {
     });
   }, []);
 
+  const resetFertilizationPlanForm = useCallback(() => {
+    const latest = soilAnalysisHistory[0];
+    setNewFertilizationPlan({
+      recommended_date: new Date().toISOString().slice(0, 10),
+      product_category: "Concime",
+      target_n: latest?.nitrogen ?? "",
+      target_p: latest?.phosphorus ?? "",
+      target_k: latest?.potassium ?? "",
+      organic_matter: latest?.organic_matter ?? "",
+      notes: latest
+        ? `Prefill da ultima analisi del ${latest.analysis_date}.`
+        : "",
+    });
+  }, [soilAnalysisHistory]);
+
   const handleAddSoilAnalysis = async () => {
     if (!newSoilAnalysis.analysis_date) {
       setError("La data analisi terreno e obbligatoria.");
@@ -489,6 +547,61 @@ const FarmlandScreen = (props) => {
       } catch (err) {
         console.error("Error deleting soil analysis history:", err);
         setError(err.message || "Errore durante l'eliminazione dell'analisi terreno.");
+      }
+    },
+    [farmlandId],
+  );
+
+  const handleOpenFertilizationDialog = useCallback(() => {
+    resetFertilizationPlanForm();
+    setOpenFertilizationDialog(true);
+  }, [resetFertilizationPlanForm]);
+
+  const handleAddFertilizationPlan = async () => {
+    try {
+      await notebookService.saveFertilizationPlan({
+        farmland_id: farmlandId,
+        recommended_date: newFertilizationPlan.recommended_date || null,
+        product_category: newFertilizationPlan.product_category,
+        target_n:
+          newFertilizationPlan.target_n === ""
+            ? null
+            : Number.parseFloat(newFertilizationPlan.target_n),
+        target_p:
+          newFertilizationPlan.target_p === ""
+            ? null
+            : Number.parseFloat(newFertilizationPlan.target_p),
+        target_k:
+          newFertilizationPlan.target_k === ""
+            ? null
+            : Number.parseFloat(newFertilizationPlan.target_k),
+        organic_matter:
+          newFertilizationPlan.organic_matter === ""
+            ? null
+            : Number.parseFloat(newFertilizationPlan.organic_matter),
+        notes: newFertilizationPlan.notes || null,
+      });
+
+      const plans = await notebookService.getFertilizationPlans(farmlandId);
+      setFertilizationPlans(plans);
+      setOpenFertilizationDialog(false);
+    } catch (err) {
+      console.error("Error saving fertilization plan:", err);
+      setError(err.message || "Errore durante il salvataggio del piano di fertilizzazione.");
+    }
+  };
+
+  const handleDeleteFertilizationPlan = useCallback(
+    async (planId) => {
+      if (!window.confirm("Eliminare questa riga di piano?")) return;
+
+      try {
+        await notebookService.deleteFertilizationPlan(planId);
+        const plans = await notebookService.getFertilizationPlans(farmlandId);
+        setFertilizationPlans(plans);
+      } catch (err) {
+        console.error("Error deleting fertilization plan:", err);
+        setError(err.message || "Errore durante l'eliminazione del piano.");
       }
     },
     [farmlandId],
@@ -1048,6 +1161,130 @@ const FarmlandScreen = (props) => {
             )}
 
             {farmland && (
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Trattamenti Fitosanitari
+                </Typography>
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Data</TableCell>
+                        <TableCell>Prodotto</TableCell>
+                        <TableCell>Quantità</TableCell>
+                        <TableCell>Operatore</TableCell>
+                        <TableCell>Tempo di carenza</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {treatments.map((treatment) => (
+                        <TableRow key={treatment.id}>
+                          <TableCell>{new Date(treatment.operation_date).toLocaleDateString()}</TableCell>
+                          <TableCell>{treatment.product?.name || "-"}</TableCell>
+                          <TableCell>{treatment.quantity || "-"} {treatment.unit_of_measure || ""}</TableCell>
+                          <TableCell>{treatment.operator || "-"}</TableCell>
+                          <TableCell>{treatment.withholding_period || "-"} gg</TableCell>
+                        </TableRow>
+                      ))}
+                      {treatments.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} align="center">
+                            Nessun trattamento registrato.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <Button
+                  size="small"
+                  sx={{ mt: 1 }}
+                  onClick={() =>
+                    navigate("/notebook/operations", {
+                      state: {
+                        initialFarmlandId: farmlandId,
+                        initialType: "Trattamento fitosanitario",
+                      },
+                    })
+                  }
+                >
+                  Nuovo trattamento per questo appezzamento
+                </Button>
+              </Box>
+            )}
+
+            {farmland && (
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Piano di Fertilizzazione
+                </Typography>
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Data consigliata</TableCell>
+                        <TableCell>Categoria</TableCell>
+                        <TableCell>N</TableCell>
+                        <TableCell>P</TableCell>
+                        <TableCell>K</TableCell>
+                        <TableCell>Sostanza organica</TableCell>
+                        <TableCell>Note</TableCell>
+                        <TableCell align="right">Azioni</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {fertilizationPlans.map((plan) => (
+                        <TableRow key={plan.id}>
+                          <TableCell>{plan.recommended_date || "-"}</TableCell>
+                          <TableCell>{plan.product_category || "-"}</TableCell>
+                          <TableCell>{plan.target_n ?? "-"}</TableCell>
+                          <TableCell>{plan.target_p ?? "-"}</TableCell>
+                          <TableCell>{plan.target_k ?? "-"}</TableCell>
+                          <TableCell>{plan.organic_matter ?? "-"}</TableCell>
+                          <TableCell>{plan.notes || "-"}</TableCell>
+                          <TableCell align="right">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDeleteFertilizationPlan(plan.id)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {fertilizationPlans.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={8} align="center">
+                            Nessun piano di fertilizzazione registrato.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                  <Button size="small" onClick={handleOpenFertilizationDialog}>
+                    Aggiungi piano
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() =>
+                      navigate("/notebook/operations", {
+                        state: {
+                          initialFarmlandId: farmlandId,
+                          initialType: "Concimazione",
+                        },
+                      })
+                    }
+                  >
+                    Registra concimazione
+                  </Button>
+                </Stack>
+              </Box>
+            )}
+
+            {farmland && (
               <div className={classes.detailsWrapper}>
                 <Button onClick={deleteHandler}>Delete farmland</Button>
               </div>
@@ -1335,6 +1572,120 @@ const FarmlandScreen = (props) => {
           <Button onClick={() => setOpenSoilDialog(false)}>Annulla</Button>
           <Button onClick={handleAddSoilAnalysis} variant="contained">
             Salva analisi
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={openFertilizationDialog}
+        onClose={() => setOpenFertilizationDialog(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Aggiungi piano di fertilizzazione</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Alert severity="info">
+              Prefill basato sull'ultima analisi terreno disponibile.
+            </Alert>
+            <TextField
+              label="Data consigliata"
+              type="date"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              value={newFertilizationPlan.recommended_date}
+              onChange={(e) =>
+                setNewFertilizationPlan((prev) => ({
+                  ...prev,
+                  recommended_date: e.target.value,
+                }))
+              }
+            />
+            <TextField
+              select
+              label="Categoria prodotto"
+              fullWidth
+              value={newFertilizationPlan.product_category}
+              onChange={(e) =>
+                setNewFertilizationPlan((prev) => ({
+                  ...prev,
+                  product_category: e.target.value,
+                }))
+              }
+            >
+              <MenuItem value="Concime">Concime</MenuItem>
+              <MenuItem value="Biostimolante">Biostimolante</MenuItem>
+              <MenuItem value="Altro">Altro</MenuItem>
+            </TextField>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField
+                label="Target N"
+                type="number"
+                fullWidth
+                value={newFertilizationPlan.target_n}
+                onChange={(e) =>
+                  setNewFertilizationPlan((prev) => ({
+                    ...prev,
+                    target_n: e.target.value,
+                  }))
+                }
+              />
+              <TextField
+                label="Target P"
+                type="number"
+                fullWidth
+                value={newFertilizationPlan.target_p}
+                onChange={(e) =>
+                  setNewFertilizationPlan((prev) => ({
+                    ...prev,
+                    target_p: e.target.value,
+                  }))
+                }
+              />
+              <TextField
+                label="Target K"
+                type="number"
+                fullWidth
+                value={newFertilizationPlan.target_k}
+                onChange={(e) =>
+                  setNewFertilizationPlan((prev) => ({
+                    ...prev,
+                    target_k: e.target.value,
+                  }))
+                }
+              />
+            </Stack>
+            <TextField
+              label="Sostanza organica (%)"
+              type="number"
+              fullWidth
+              value={newFertilizationPlan.organic_matter}
+              onChange={(e) =>
+                setNewFertilizationPlan((prev) => ({
+                  ...prev,
+                  organic_matter: e.target.value,
+                }))
+              }
+            />
+            <TextField
+              label="Note"
+              fullWidth
+              multiline
+              minRows={2}
+              value={newFertilizationPlan.notes}
+              onChange={(e) =>
+                setNewFertilizationPlan((prev) => ({
+                  ...prev,
+                  notes: e.target.value,
+                }))
+              }
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenFertilizationDialog(false)}>Annulla</Button>
+          <Button onClick={handleAddFertilizationPlan} variant="contained">
+            Salva piano
           </Button>
         </DialogActions>
       </Dialog>

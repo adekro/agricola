@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
+  useLocation,
+} from "react-router-dom";
+import {
   Box,
   Typography,
   Paper,
@@ -22,6 +25,7 @@ import {
   Chip,
   Tabs,
   Tab,
+  Alert,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -42,20 +46,26 @@ const operationTypes = [
   "Altro",
 ];
 
-const OperationsManager = () => {
+const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
+  const location = useLocation();
+  const routePreset = location.state || {};
   const [operations, setOperations] = useState([]);
   const [products, setProducts] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [formError, setFormError] = useState("");
   const [tabValue, setTabValue] = useState(0); // 0: Tutte, 1: Solo Trattamenti, 2: Agenda
   const { farmlands } = useFarmlands();
 
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     operation_date: new Date().toISOString().slice(0, 16),
-    type: "Lavorazione del terreno",
-    farmland_id: "",
+    type: initialType || routePreset.initialType || "Lavorazione del terreno",
+    farmland_id: initialFarmlandId || routePreset.initialFarmlandId || "",
+    company_id: "",
     crop: "",
     operator: "",
     product_id: "",
+    inventory_batch_id: "",
     quantity: "",
     unit_of_measure: "",
     machinery: "",
@@ -63,6 +73,7 @@ const OperationsManager = () => {
     weather_conditions: "",
     withholding_period: "",
     dose_per_hectare: "",
+    fertilization_plan_id: "",
     attachment_url: "",
   });
 
@@ -92,45 +103,181 @@ const OperationsManager = () => {
     }
   };
 
+  const fetchBatches = async (companyId = null) => {
+    if (!companyId) {
+      setBatches([]);
+      return;
+    }
+
+    try {
+      const data = await notebookService.getProductBatches(companyId);
+      setBatches(data);
+    } catch (error) {
+      console.error("Error fetching product batches:", error);
+      setBatches([]);
+    }
+  };
+
   useEffect(() => {
     fetchOperations();
     fetchProducts();
   }, []);
 
+  useEffect(() => {
+    if (routePreset.initialFarmlandId || routePreset.initialType) {
+      setOpen(true);
+    }
+  }, [routePreset.initialFarmlandId, routePreset.initialType]);
+
+  useEffect(() => {
+    if (!formData.farmland_id) {
+      setFormData((prev) => ({ ...prev, company_id: "", inventory_batch_id: "" }));
+      setBatches([]);
+      return;
+    }
+
+    const farm = farmlands.find((item) => item.id === formData.farmland_id);
+    if (!farm?.company_id) {
+      setFormData((prev) => ({ ...prev, company_id: "", inventory_batch_id: "" }));
+      setBatches([]);
+      return;
+    }
+
+    setFormData((prev) => {
+      if (prev.company_id === farm.company_id) return prev;
+      return {
+        ...prev,
+        company_id: farm.company_id,
+        inventory_batch_id: "",
+      };
+    });
+    fetchBatches(farm.company_id);
+  }, [farmlands, formData.farmland_id]);
+
   const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const handleClose = () => {
+    setFormError("");
+    setOpen(false);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormError("");
 
     // Auto-fill crop if farmland is selected
     if (name === "farmland_id") {
       const farm = farmlands.find((f) => f.id === value);
-      if (farm && farm.currentCrop) {
+      if (farm) {
         setFormData((prev) => ({
           ...prev,
           farmland_id: value,
-          crop: farm.currentCrop,
+          company_id: farm.company_id || "",
+          crop: farm.currentCrop || "",
+          inventory_batch_id: "",
+          product_id: "",
         }));
       }
     }
+
+    if (name === "product_id") {
+      setFormData((prev) => ({
+        ...prev,
+        product_id: value,
+        inventory_batch_id: "",
+      }));
+    }
   };
+
+  const selectedFarmland = farmlands.find((farm) => farm.id === formData.farmland_id);
+  const farmlandArea = Number(selectedFarmland?.area || 0);
+  const relevantProducts = formData.company_id
+    ? products.filter((product) => product.company_id === formData.company_id)
+    : products;
+  const relevantBatches = batches.filter(
+    (batch) => !formData.product_id || batch.product_id === formData.product_id,
+  );
+  const expectedDoseTotal =
+    formData.type === "Trattamento fitosanitario" &&
+    formData.dose_per_hectare !== "" &&
+    farmlandArea > 0
+      ? Number(formData.dose_per_hectare || 0) * farmlandArea
+      : null;
+  const enteredQuantity =
+    formData.quantity === "" ? null : Number(formData.quantity || 0);
+  const quantityMismatch =
+    expectedDoseTotal != null &&
+    enteredQuantity != null &&
+    Math.abs(expectedDoseTotal - enteredQuantity) > 0.0001;
+  const withholdingDate =
+    formData.type === "Trattamento fitosanitario" &&
+    formData.operation_date &&
+    formData.withholding_period
+      ? (() => {
+          const date = new Date(formData.operation_date);
+          date.setDate(date.getDate() + Number(formData.withholding_period || 0));
+          return date.toLocaleDateString();
+        })()
+      : "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await notebookService.saveOperation({
+      if (
+        formData.type === "Trattamento fitosanitario" &&
+        !formData.farmland_id
+      ) {
+        setFormError("Per un trattamento fitosanitario devi selezionare un appezzamento.");
+        return;
+      }
+
+      if (
+        (formData.type === "Trattamento fitosanitario" ||
+          formData.type === "Concimazione") &&
+        formData.product_id &&
+        !formData.inventory_batch_id
+      ) {
+        setFormError("Se usi un prodotto di magazzino devi selezionare il lotto da scaricare.");
+        return;
+      }
+
+      const savedOperation = await notebookService.saveOperation({
         ...formData,
+        company_id: formData.company_id || null,
+        inventory_batch_id: formData.inventory_batch_id || null,
+        fertilization_plan_id: formData.fertilization_plan_id || null,
         quantity: formData.quantity ? parseFloat(formData.quantity) : null,
         withholding_period: formData.withholding_period
           ? parseInt(formData.withholding_period)
           : null,
+        dose_per_hectare: formData.dose_per_hectare
+          ? parseFloat(formData.dose_per_hectare)
+          : null,
       });
+
+      if (
+        savedOperation?.id &&
+        formData.inventory_batch_id &&
+        formData.quantity
+      ) {
+        await notebookService.saveInventoryMovement({
+          inventory_batch_id: formData.inventory_batch_id,
+          company_id: formData.company_id,
+          product_id: formData.product_id,
+          operation_id: savedOperation.id,
+          movement_type: "unload",
+          quantity: parseFloat(formData.quantity),
+          movement_date: formData.operation_date,
+          notes: `Scarico automatico da operazione ${formData.type}`,
+        });
+      }
+
       fetchOperations();
+      fetchBatches(formData.company_id);
       handleClose();
     } catch (error) {
       console.error("Error saving operation:", error);
+      setFormError(error.message || "Errore durante il salvataggio.");
     }
   };
 
@@ -354,6 +501,7 @@ const OperationsManager = () => {
           <DialogTitle>Registra Nuova Operazione Agronomica</DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
+              {formError && <Alert severity="error">{formError}</Alert>}
               <Stack direction="row" spacing={2}>
                 <TextField
                   type="datetime-local"
@@ -407,6 +555,14 @@ const OperationsManager = () => {
                 />
               </Stack>
 
+              {selectedFarmland && (
+                <Alert severity="info">
+                  Appezzamento: {selectedFarmland.ownerDisplayName || selectedFarmland.type}
+                  {" | "}Superficie: {selectedFarmland.area || "-"} ha
+                  {" | "}Azienda: {selectedFarmland.company_id || "-"}
+                </Alert>
+              )}
+
               <TextField
                 name="operator"
                 label="Operatore Responsabile"
@@ -426,7 +582,7 @@ const OperationsManager = () => {
                   fullWidth
                 >
                   <MenuItem value="">Nessun prodotto</MenuItem>
-                  {products.map((p) => (
+                  {relevantProducts.map((p) => (
                     <MenuItem key={p.id} value={p.id}>
                       {p.name} ({p.category})
                     </MenuItem>
@@ -449,6 +605,26 @@ const OperationsManager = () => {
                   fullWidth
                 />
               </Stack>
+
+              {(formData.type === "Trattamento fitosanitario" ||
+                formData.type === "Concimazione") &&
+                formData.product_id && (
+                  <TextField
+                    select
+                    name="inventory_batch_id"
+                    label="Lotto di Magazzino"
+                    value={formData.inventory_batch_id}
+                    onChange={handleChange}
+                    fullWidth
+                  >
+                    <MenuItem value="">Seleziona lotto</MenuItem>
+                    {relevantBatches.map((batch) => (
+                      <MenuItem key={batch.id} value={batch.id}>
+                        {batch.batch_number} {batch.expiry_date ? `- scad. ${batch.expiry_date}` : ""}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                )}
 
               {formData.type === "Trattamento fitosanitario" && (
                 <>
@@ -477,6 +653,23 @@ const OperationsManager = () => {
                     onChange={handleChange}
                     fullWidth
                   />
+                  {(expectedDoseTotal != null || withholdingDate) && (
+                    <Stack spacing={1}>
+                      {expectedDoseTotal != null && (
+                        <Alert severity={quantityMismatch ? "warning" : "success"}>
+                          Dose attesa su appezzamento: {expectedDoseTotal} {formData.unit_of_measure || "unità"}
+                          {quantityMismatch && enteredQuantity != null
+                            ? ` | quantità inserita: ${enteredQuantity}`
+                            : ""}
+                        </Alert>
+                      )}
+                      {withholdingDate && (
+                        <Alert severity="info">
+                          Fine tempo di carenza prevista: {withholdingDate}
+                        </Alert>
+                      )}
+                    </Stack>
+                  )}
                 </>
               )}
 

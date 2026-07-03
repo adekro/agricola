@@ -116,9 +116,12 @@ CREATE TABLE IF NOT EXISTS inventory_products (
   purchase_date DATE,
   expiry_date DATE,
   active_ingredient TEXT,
+  minimum_stock NUMERIC,
   company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
   owner_id UUID NOT NULL
 );
+
+ALTER TABLE inventory_products ADD COLUMN IF NOT EXISTS minimum_stock NUMERIC;
 
 ALTER TABLE inventory_products ENABLE ROW LEVEL SECURITY;
 
@@ -133,9 +136,11 @@ CREATE TABLE IF NOT EXISTS operations (
   operation_date TIMESTAMP WITH TIME ZONE NOT NULL,
   type TEXT CHECK (type IN ('Semina', 'Trapianto', 'Concimazione', 'Irrigazione', 'Trattamento fitosanitario', 'Diserbo', 'Potatura', 'Lavorazione del terreno', 'Raccolta', 'Altro')),
   farmland_id UUID REFERENCES farmlands(id) ON DELETE CASCADE,
+  company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
   crop TEXT,
   operator TEXT,
   product_id UUID REFERENCES inventory_products(id) ON DELETE SET NULL,
+  inventory_batch_id UUID,
   quantity NUMERIC,
   unit_of_measure TEXT,
   machinery TEXT,
@@ -143,9 +148,68 @@ CREATE TABLE IF NOT EXISTS operations (
   weather_conditions TEXT,
   withholding_period INTEGER, -- In days (for treatments)
   dose_per_hectare NUMERIC,
+  fertilization_plan_id UUID,
   attachment_url TEXT,
   owner_id UUID NOT NULL
 );
+
+ALTER TABLE operations ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES companies(id) ON DELETE SET NULL;
+ALTER TABLE operations ADD COLUMN IF NOT EXISTS inventory_batch_id UUID;
+ALTER TABLE operations ADD COLUMN IF NOT EXISTS fertilization_plan_id UUID;
+
+CREATE TABLE IF NOT EXISTS fertilization_plans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  farmland_id UUID NOT NULL REFERENCES farmlands(id) ON DELETE CASCADE,
+  recommended_date DATE,
+  product_category TEXT CHECK (product_category IN ('Concime', 'Biostimolante', 'Altro')),
+  target_n NUMERIC,
+  target_p NUMERIC,
+  target_k NUMERIC,
+  organic_matter NUMERIC,
+  notes TEXT,
+  owner_id UUID NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS inventory_batches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  product_id UUID NOT NULL REFERENCES inventory_products(id) ON DELETE CASCADE,
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  batch_number TEXT NOT NULL,
+  purchase_date DATE,
+  expiry_date DATE,
+  initial_quantity NUMERIC DEFAULT 0,
+  unit_of_measure TEXT,
+  notes TEXT,
+  owner_id UUID NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS inventory_movements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  inventory_batch_id UUID NOT NULL REFERENCES inventory_batches(id) ON DELETE CASCADE,
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES inventory_products(id) ON DELETE CASCADE,
+  operation_id UUID REFERENCES operations(id) ON DELETE SET NULL,
+  movement_type TEXT NOT NULL CHECK (movement_type IN ('load', 'unload', 'adjustment')),
+  quantity NUMERIC NOT NULL,
+  movement_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now()),
+  notes TEXT,
+  owner_id UUID NOT NULL
+);
+
+ALTER TABLE operations
+  DROP CONSTRAINT IF EXISTS operations_inventory_batch_id_fkey;
+ALTER TABLE operations
+  ADD CONSTRAINT operations_inventory_batch_id_fkey
+  FOREIGN KEY (inventory_batch_id) REFERENCES inventory_batches(id) ON DELETE SET NULL;
+
+ALTER TABLE operations
+  DROP CONSTRAINT IF EXISTS operations_fertilization_plan_id_fkey;
+ALTER TABLE operations
+  ADD CONSTRAINT operations_fertilization_plan_id_fkey
+  FOREIGN KEY (fertilization_plan_id) REFERENCES fertilization_plans(id) ON DELETE SET NULL;
 
 -- Create the crop_history table
 CREATE TABLE IF NOT EXISTS crop_history (
@@ -185,6 +249,9 @@ CREATE TABLE IF NOT EXISTS soil_analysis_history (
 ALTER TABLE operations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crop_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE soil_analysis_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fertilization_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory_batches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory_movements ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow users to manage their own crop history" ON crop_history;
 CREATE POLICY "Allow users to manage their own crop history" ON crop_history
@@ -196,6 +263,18 @@ CREATE POLICY "Allow users to manage their own operations" ON operations
 
 DROP POLICY IF EXISTS "Allow users to manage their own soil analysis history" ON soil_analysis_history;
 CREATE POLICY "Allow users to manage their own soil analysis history" ON soil_analysis_history
+  FOR ALL USING (auth.uid() = owner_id);
+
+DROP POLICY IF EXISTS "Allow users to manage their own fertilization plans" ON fertilization_plans;
+CREATE POLICY "Allow users to manage their own fertilization plans" ON fertilization_plans
+  FOR ALL USING (auth.uid() = owner_id);
+
+DROP POLICY IF EXISTS "Allow users to manage their own inventory batches" ON inventory_batches;
+CREATE POLICY "Allow users to manage their own inventory batches" ON inventory_batches
+  FOR ALL USING (auth.uid() = owner_id);
+
+DROP POLICY IF EXISTS "Allow users to manage their own inventory movements" ON inventory_movements;
+CREATE POLICY "Allow users to manage their own inventory movements" ON inventory_movements
   FOR ALL USING (auth.uid() = owner_id);
 
 -- Shared cadastral sheets dataset populated by an external updater.

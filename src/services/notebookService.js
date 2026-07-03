@@ -221,6 +221,15 @@ export const notebookService = {
     return data;
   },
 
+  async getProductsByFarmland(farmlandId) {
+    const farmland = await this.getFarmland(farmlandId);
+    if (!farmland?.company_id) {
+      return [];
+    }
+
+    return this.getProducts(farmland.company_id);
+  },
+
   async saveProduct(product) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated");
@@ -242,15 +251,83 @@ export const notebookService = {
     if (error) throw error;
   },
 
+  async getProductBatches(companyId, productId = null) {
+    let query = supabase
+      .from("inventory_batches")
+      .select("*, product:product_id(id, name, category, minimum_stock)")
+      .eq("company_id", companyId)
+      .order("expiry_date", { ascending: true, nullsFirst: false })
+      .order("batch_number");
+
+    if (productId) {
+      query = query.eq("product_id", productId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
+  async saveProductBatch(batch) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+
+    const payload = { ...batch, owner_id: user.id };
+    const { data, error } = await supabase
+      .from("inventory_batches")
+      .upsert(payload)
+      .select("*, product:product_id(id, name, category, minimum_stock)");
+    if (error) throw error;
+    return data[0];
+  },
+
+  async deleteProductBatch(id) {
+    const { error } = await supabase
+      .from("inventory_batches")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+  },
+
+  async getInventoryMovements(companyId, batchId = null) {
+    let query = supabase
+      .from("inventory_movements")
+      .select("*, batch:inventory_batch_id(batch_number), product:product_id(name), operation:operation_id(id, type)")
+      .eq("company_id", companyId)
+      .order("movement_date", { ascending: false });
+
+    if (batchId) {
+      query = query.eq("inventory_batch_id", batchId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
+  async saveInventoryMovement(movement) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+
+    const payload = { ...movement, owner_id: user.id };
+    const { data, error } = await supabase
+      .from("inventory_movements")
+      .upsert(payload)
+      .select("*, batch:inventory_batch_id(batch_number), product:product_id(name)");
+    if (error) throw error;
+    return data[0];
+  },
+
   // --- Operations ---
   async getOperations(filters = {}) {
     let query = supabase
       .from("operations")
-      .select("*, farmland:farmland_id(type, owner_display_name), product:product_id(name)")
+      .select("*, farmland:farmland_id(id, type, area, company_id, owner_display_name, currentCrop), product:product_id(id, name, category, company_id), batch:inventory_batch_id(id, batch_number, expiry_date), company:company_id(id, name)")
       .order("operation_date", { ascending: false });
 
     if (filters.farmland_id) query = query.eq("farmland_id", filters.farmland_id);
     if (filters.type) query = query.eq("type", filters.type);
+    if (filters.company_id) query = query.eq("company_id", filters.company_id);
     if (filters.startDate) query = query.gte("operation_date", filters.startDate);
     if (filters.endDate) query = query.lte("operation_date", filters.endDate);
 
@@ -278,6 +355,20 @@ export const notebookService = {
       .delete()
       .eq("id", id);
     if (error) throw error;
+  },
+
+  async getFarmlandOperations(farmlandId) {
+    return this.getOperations({ farmland_id: farmlandId });
+  },
+
+  async getFarmland(id) {
+    const { data, error } = await supabase
+      .from("farmlands")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
   },
 
   // --- Crop History ---
@@ -338,5 +429,93 @@ export const notebookService = {
       .delete()
       .eq("id", id);
     if (error) throw error;
+  },
+
+  async getFertilizationPlans(farmlandId) {
+    const { data, error } = await supabase
+      .from("fertilization_plans")
+      .select("*")
+      .eq("farmland_id", farmlandId)
+      .order("recommended_date", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async saveFertilizationPlan(entry) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+
+    const payload = { ...entry, owner_id: user.id };
+    const { data, error } = await supabase
+      .from("fertilization_plans")
+      .upsert(payload)
+      .select();
+    if (error) throw error;
+    return data[0];
+  },
+
+  async deleteFertilizationPlan(id) {
+    const { error } = await supabase
+      .from("fertilization_plans")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+  },
+
+  async getCompanyInventoryAlerts(companyId) {
+    const [products, batches, movements] = await Promise.all([
+      this.getProducts(companyId),
+      this.getProductBatches(companyId),
+      this.getInventoryMovements(companyId),
+    ]);
+
+    const movementTotals = movements.reduce((acc, movement) => {
+      const direction = movement.movement_type === "unload" ? -1 : 1;
+      acc[movement.inventory_batch_id] =
+        (acc[movement.inventory_batch_id] || 0) +
+        direction * Number(movement.quantity || 0);
+      return acc;
+    }, {});
+
+    const expiry = batches
+      .filter((batch) => batch.expiry_date)
+      .filter((batch) => {
+        const expiryDate = new Date(batch.expiry_date);
+        const threshold = new Date();
+        threshold.setDate(threshold.getDate() + 30);
+        return expiryDate <= threshold;
+      })
+      .map((batch) => ({
+        type: "expiry",
+        batchId: batch.id,
+        productName: batch.product?.name || "-",
+        batchNumber: batch.batch_number,
+        expiryDate: batch.expiry_date,
+      }));
+
+    const minimumStock = products
+      .filter((product) => product.minimum_stock != null)
+      .map((product) => {
+        const productBatches = batches.filter((batch) => batch.product_id === product.id);
+        const currentStock = productBatches.reduce(
+          (sum, batch) =>
+            sum +
+            Number(batch.initial_quantity || 0) +
+            Number(movementTotals[batch.id] || 0),
+          0,
+        );
+
+        return {
+          type: "minimum_stock",
+          productId: product.id,
+          productName: product.name,
+          currentStock,
+          minimumStock: Number(product.minimum_stock || 0),
+        };
+      })
+      .filter((entry) => entry.currentStock < entry.minimumStock);
+
+    return { expiry, minimumStock };
   },
 };
