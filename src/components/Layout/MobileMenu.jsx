@@ -21,6 +21,7 @@ import MapIcon from "@mui/icons-material/Map";
 import BusinessIcon from "@mui/icons-material/Business";
 import SettingsIcon from "@mui/icons-material/Settings";
 import YoloIcon from "@mui/icons-material/Yard";
+import AgricultureIcon from "@mui/icons-material/Agriculture";
 import Search from "../Header/Search/Search";
 import styles from "./MobileMenu.module.scss";
 
@@ -152,6 +153,13 @@ const MobileMenu = ({
                 <BusinessIcon />
               </ListItemIcon>
               <ListItemText primary="Aziende" />
+            </ListItem>
+
+            <ListItem button onClick={() => handleNavClick("notebook-harvests")}>
+              <ListItemIcon>
+                <AgricultureIcon />
+              </ListItemIcon>
+              <ListItemText primary="Raccolte" />
             </ListItem>
 
             <ListItem

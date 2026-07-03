@@ -57,9 +57,9 @@
 
 ### 2.7 Raccolte
 
-- [ ] Registrazione raccolta dedicata (data, appezzamento, coltura, quantitÃ , qualitÃ )
-- [ ] TracciabilitÃ  lotti produzione
-- [ ] Destinazione prodotto e clienti finali
+- [x] Registrazione raccolta dedicata (data, appezzamento, coltura, quantitÃ , qualitÃ )
+- [x] TracciabilitÃ  lotti produzione
+- [x] Destinazione prodotto e clienti finali
 
 ### 2.8 Dashboard
 

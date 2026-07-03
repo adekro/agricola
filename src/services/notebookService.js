@@ -28,6 +28,58 @@ const COMPANY_DOCUMENT_SELECT = `
   created_at
 `;
 
+const HARVEST_SELECT = `
+  id,
+  created_at,
+  harvest_date,
+  farmland_id,
+  company_id,
+  crop,
+  notes,
+  owner_id,
+  farmland:farmland_id(id, type, owner_display_name, current_crop),
+  company:company_id(id, name)
+`;
+
+const HARVEST_BATCH_SELECT = `
+  id,
+  created_at,
+  harvest_id,
+  lot_code,
+  quantity,
+  unit_of_measure,
+  quality,
+  notes,
+  owner_id
+`;
+
+const HARVEST_DESTINATION_SELECT = `
+  id,
+  created_at,
+  harvest_batch_id,
+  contact_id,
+  quantity,
+  destination_type,
+  notes,
+  owner_id,
+  contact:contact_id(id, name, category, role_label)
+`;
+
+const mapFarmlandRecord = (item) => ({
+  id: item.id,
+  type: item.type,
+  area: item.area,
+  perimeter: item.perimeter,
+  notes: item.notes,
+  location: item.location,
+  ownerDisplayName: item.owner_display_name,
+  coordinates: item.coordinates,
+  createdAt: item.created_at,
+  cadastralParcel: item.cadastral_parcel || null,
+  currentCrop: item.current_crop || null,
+  company_id: item.company_id || null,
+});
+
 const buildLegacyOwnerContact = (company) => {
   if (!company?.owner_name?.trim()) {
     return null;
@@ -205,6 +257,117 @@ export const notebookService = {
     if (error) throw error;
   },
 
+  // --- Harvests ---
+  async getHarvests(filters = {}) {
+    let query = supabase
+      .from("harvests")
+      .select(HARVEST_SELECT)
+      .order("harvest_date", { ascending: false });
+
+    if (filters.company_id) query = query.eq("company_id", filters.company_id);
+    if (filters.farmland_id) query = query.eq("farmland_id", filters.farmland_id);
+    if (filters.crop) query = query.ilike("crop", `%${filters.crop}%`);
+    if (filters.startDate) query = query.gte("harvest_date", filters.startDate);
+    if (filters.endDate) query = query.lte("harvest_date", filters.endDate);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getHarvest(id) {
+    const { data, error } = await supabase
+      .from("harvests")
+      .select(HARVEST_SELECT)
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async saveHarvest(harvest) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+
+    const payload = { ...harvest, owner_id: user.id };
+    const { data, error } = await supabase
+      .from("harvests")
+      .upsert(payload)
+      .select(HARVEST_SELECT);
+    if (error) throw error;
+    return data[0];
+  },
+
+  async deleteHarvest(id) {
+    const { error } = await supabase
+      .from("harvests")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+  },
+
+  async getHarvestBatches(harvestId) {
+    const { data, error } = await supabase
+      .from("harvest_batches")
+      .select(HARVEST_BATCH_SELECT)
+      .eq("harvest_id", harvestId)
+      .order("created_at");
+    if (error) throw error;
+    return data || [];
+  },
+
+  async saveHarvestBatch(batch) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+
+    const payload = { ...batch, owner_id: user.id };
+    const { data, error } = await supabase
+      .from("harvest_batches")
+      .upsert(payload)
+      .select(HARVEST_BATCH_SELECT);
+    if (error) throw error;
+    return data[0];
+  },
+
+  async deleteHarvestBatch(id) {
+    const { error } = await supabase
+      .from("harvest_batches")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+  },
+
+  async getHarvestDestinations(batchId) {
+    const { data, error } = await supabase
+      .from("harvest_destinations")
+      .select(HARVEST_DESTINATION_SELECT)
+      .eq("harvest_batch_id", batchId)
+      .order("created_at");
+    if (error) throw error;
+    return data || [];
+  },
+
+  async saveHarvestDestination(destination) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+
+    const payload = { ...destination, owner_id: user.id };
+    const { data, error } = await supabase
+      .from("harvest_destinations")
+      .upsert(payload)
+      .select(HARVEST_DESTINATION_SELECT);
+    if (error) throw error;
+    return data[0];
+  },
+
+  async deleteHarvestDestination(id) {
+    const { error } = await supabase
+      .from("harvest_destinations")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+  },
+
   // --- Inventory Products ---
   async getProducts(companyId = null) {
     let query = supabase
@@ -369,6 +532,21 @@ export const notebookService = {
       .maybeSingle();
     if (error) throw error;
     return data;
+  },
+
+  async getFarmlands() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+      .from("farmlands")
+      .select("*")
+      .eq("owner_id", user.id)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data || []).map(mapFarmlandRecord);
   },
 
   // --- Crop History ---

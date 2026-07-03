@@ -10,6 +10,7 @@ import StraightenIcon from "@mui/icons-material/Straighten";
 import HubIcon from "@mui/icons-material/Hub";
 import BusinessIcon from "@mui/icons-material/Business";
 import YoloIcon from "@mui/icons-material/Yard";
+import AgricultureIcon from "@mui/icons-material/Agriculture";
 
 const Side = ({ onSelect, active, farmlands = [] }) => {
   const handlerClick = (target) => {
@@ -90,6 +91,13 @@ const Side = ({ onSelect, active, farmlands = [] }) => {
           target="notebook-company"
           icon={BusinessIcon}
           active={active === "notebook-company"}
+        />
+        <SideItem
+          onClick={handlerClick}
+          label="Raccolte"
+          target="notebook-harvests"
+          icon={AgricultureIcon}
+          active={active === "notebook-harvests"}
         />
         <SideItem
           onClick={handlerClick}

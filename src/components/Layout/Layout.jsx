@@ -34,6 +34,7 @@ const Layout = () => {
       else if (target === "notebook-inventory") navigate("/notebook/inventory");
       else if (target === "notebook-operations")
         navigate("/notebook/operations");
+      else if (target === "notebook-harvests") navigate("/notebook/harvests");
       else if (target === "evidenzia-mappali") setEvidenziaModalOpen(true);
       else if (target === "settings") {
         // For now settings doesn't have a route, but we handle it
@@ -112,6 +113,8 @@ const Layout = () => {
     if (location.pathname.startsWith("/fitosanitari")) return "fitosanitari";
     if (location.pathname.startsWith("/notebook/company"))
       return "notebook-company";
+    if (location.pathname.startsWith("/notebook/harvests"))
+      return "notebook-harvests";
     return "";
   };
 

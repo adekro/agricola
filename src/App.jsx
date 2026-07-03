@@ -22,6 +22,7 @@ import CompanyInventoryPage from "./components/Notebook/CompanyInventoryPage";
 import CompanyFarmlandsPage from "./components/Notebook/CompanyFarmlandsPage";
 import ProductInventory from "./components/Notebook/ProductInventory";
 import OperationsManager from "./components/Notebook/OperationsManager";
+import HarvestsPage from "./components/Notebook/HarvestsPage";
 import { supabase } from "./lib/supabaseClient";
 
 const ProtectedRoute = ({ session, loading, children }) => {
@@ -103,6 +104,7 @@ const App = () => {
               </Route>
               <Route path="inventory" element={<ProductInventory />} />
               <Route path="operations" element={<OperationsManager />} />
+              <Route path="harvests" element={<HarvestsPage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

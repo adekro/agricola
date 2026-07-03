@@ -157,6 +157,70 @@ ALTER TABLE operations ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES compa
 ALTER TABLE operations ADD COLUMN IF NOT EXISTS inventory_batch_id UUID;
 ALTER TABLE operations ADD COLUMN IF NOT EXISTS fertilization_plan_id UUID;
 
+CREATE TABLE IF NOT EXISTS harvests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  harvest_date DATE NOT NULL,
+  farmland_id UUID NOT NULL REFERENCES farmlands(id) ON DELETE CASCADE,
+  company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
+  crop TEXT NOT NULL,
+  notes TEXT,
+  owner_id UUID NOT NULL REFERENCES auth.users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_harvests_company_id
+  ON harvests (company_id);
+
+CREATE INDEX IF NOT EXISTS idx_harvests_farmland_id
+  ON harvests (farmland_id);
+
+ALTER TABLE harvests ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow users to manage their own harvests" ON harvests;
+CREATE POLICY "Allow users to manage their own harvests" ON harvests
+  FOR ALL USING (auth.uid() = owner_id);
+
+CREATE TABLE IF NOT EXISTS harvest_batches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  harvest_id UUID NOT NULL REFERENCES harvests(id) ON DELETE CASCADE,
+  lot_code TEXT NOT NULL,
+  quantity NUMERIC NOT NULL,
+  unit_of_measure TEXT,
+  quality TEXT NOT NULL,
+  notes TEXT,
+  owner_id UUID NOT NULL REFERENCES auth.users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_harvest_batches_harvest_id
+  ON harvest_batches (harvest_id);
+
+ALTER TABLE harvest_batches ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow users to manage their own harvest batches" ON harvest_batches;
+CREATE POLICY "Allow users to manage their own harvest batches" ON harvest_batches
+  FOR ALL USING (auth.uid() = owner_id);
+
+CREATE TABLE IF NOT EXISTS harvest_destinations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  harvest_batch_id UUID NOT NULL REFERENCES harvest_batches(id) ON DELETE CASCADE,
+  contact_id UUID NOT NULL REFERENCES company_contacts(id) ON DELETE RESTRICT,
+  quantity NUMERIC NOT NULL,
+  destination_type TEXT,
+  notes TEXT,
+  owner_id UUID NOT NULL REFERENCES auth.users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_harvest_destinations_batch_id
+  ON harvest_destinations (harvest_batch_id);
+
+ALTER TABLE harvest_destinations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow users to manage their own harvest destinations" ON harvest_destinations;
+CREATE POLICY "Allow users to manage their own harvest destinations" ON harvest_destinations
+  FOR ALL USING (auth.uid() = owner_id);
+
 CREATE TABLE IF NOT EXISTS fertilization_plans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
