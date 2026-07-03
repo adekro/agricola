@@ -166,8 +166,25 @@ CREATE TABLE IF NOT EXISTS crop_history (
   owner_id UUID NOT NULL
 );
 
+-- Create the soil_analysis_history table
+CREATE TABLE IF NOT EXISTS soil_analysis_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  farmland_id UUID NOT NULL REFERENCES farmlands(id) ON DELETE CASCADE,
+  analysis_date DATE NOT NULL,
+  texture TEXT,
+  ph NUMERIC,
+  organic_matter NUMERIC,
+  nitrogen NUMERIC,
+  phosphorus NUMERIC,
+  potassium NUMERIC,
+  notes TEXT,
+  owner_id UUID NOT NULL
+);
+
 ALTER TABLE operations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crop_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE soil_analysis_history ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow users to manage their own crop history" ON crop_history;
 CREATE POLICY "Allow users to manage their own crop history" ON crop_history
@@ -175,6 +192,10 @@ CREATE POLICY "Allow users to manage their own crop history" ON crop_history
 
 DROP POLICY IF EXISTS "Allow users to manage their own operations" ON operations;
 CREATE POLICY "Allow users to manage their own operations" ON operations
+  FOR ALL USING (auth.uid() = owner_id);
+
+DROP POLICY IF EXISTS "Allow users to manage their own soil analysis history" ON soil_analysis_history;
+CREATE POLICY "Allow users to manage their own soil analysis history" ON soil_analysis_history
   FOR ALL USING (auth.uid() = owner_id);
 
 -- Shared cadastral sheets dataset populated by an external updater.

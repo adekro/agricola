@@ -25,6 +25,7 @@ import {
   DialogActions,
   Stack,
   CircularProgress,
+  IconButton,
 } from "@mui/material";
 import { createFilterOptions } from "@mui/material/Autocomplete";
 import FullScreenDialog from "../UI/FullScreenDialog/FullScreenDialog";
@@ -44,6 +45,7 @@ import { satelliteService } from "../../services/satelliteService";
 import { notebookService } from "../../services/notebookService";
 import { useCadastralWmsError } from "../../hooks/useCadastralWmsError";
 import { ageaCropService } from "../../services/ageaCropService";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const normalizeCompanyName = (name = "") => name.trim().toLowerCase();
 const filterCompanyOptions = createFilterOptions();
@@ -121,7 +123,9 @@ const FarmlandScreen = (props) => {
   const [satelliteLoading, setSatelliteLoading] = useState(false);
 
   const [cropHistory, setCropHistory] = useState([]);
+  const [soilAnalysisHistory, setSoilAnalysisHistory] = useState([]);
   const [openCropDialog, setOpenCropDialog] = useState(false);
+  const [openSoilDialog, setOpenSoilDialog] = useState(false);
   const [ageaCropOptions, setAgeaCropOptions] = useState([]);
   const [ageaCropQuery, setAgeaCropQuery] = useState("");
   const [ageaCropLoading, setAgeaCropLoading] = useState(false);
@@ -137,6 +141,16 @@ const FarmlandScreen = (props) => {
     mappale: "",
     start_date: "",
     end_date: "",
+    notes: "",
+  });
+  const [newSoilAnalysis, setNewSoilAnalysis] = useState({
+    analysis_date: new Date().toISOString().slice(0, 10),
+    texture: "",
+    ph: "",
+    organic_matter: "",
+    nitrogen: "",
+    phosphorus: "",
+    potassium: "",
     notes: "",
   });
 
@@ -345,6 +359,20 @@ const FarmlandScreen = (props) => {
     fetchCropHistory();
   }, [farmlandId]);
 
+  useEffect(() => {
+    const fetchSoilAnalysisHistory = async () => {
+      if (farmlandId && farmlandId !== "new") {
+        try {
+          const history = await notebookService.getSoilAnalysisHistory(farmlandId);
+          setSoilAnalysisHistory(history);
+        } catch (err) {
+          console.error("Error fetching soil analysis history:", err);
+        }
+      }
+    };
+    fetchSoilAnalysisHistory();
+  }, [farmlandId]);
+
   const handleAddCropHistory = async () => {
     if (!newCrop.crop || !newCrop.area || !newCrop.month || !newCrop.year) {
       setError(
@@ -395,6 +423,76 @@ const FarmlandScreen = (props) => {
       setError(err.message || "Errore durante il salvataggio della coltura.");
     }
   };
+
+  const resetSoilAnalysisForm = useCallback(() => {
+    setNewSoilAnalysis({
+      analysis_date: new Date().toISOString().slice(0, 10),
+      texture: "",
+      ph: "",
+      organic_matter: "",
+      nitrogen: "",
+      phosphorus: "",
+      potassium: "",
+      notes: "",
+    });
+  }, []);
+
+  const handleAddSoilAnalysis = async () => {
+    if (!newSoilAnalysis.analysis_date) {
+      setError("La data analisi terreno e obbligatoria.");
+      return;
+    }
+
+    try {
+      await notebookService.saveSoilAnalysis({
+        farmland_id: farmlandId,
+        analysis_date: newSoilAnalysis.analysis_date,
+        texture: newSoilAnalysis.texture || null,
+        ph: newSoilAnalysis.ph === "" ? null : Number.parseFloat(newSoilAnalysis.ph),
+        organic_matter:
+          newSoilAnalysis.organic_matter === ""
+            ? null
+            : Number.parseFloat(newSoilAnalysis.organic_matter),
+        nitrogen:
+          newSoilAnalysis.nitrogen === ""
+            ? null
+            : Number.parseFloat(newSoilAnalysis.nitrogen),
+        phosphorus:
+          newSoilAnalysis.phosphorus === ""
+            ? null
+            : Number.parseFloat(newSoilAnalysis.phosphorus),
+        potassium:
+          newSoilAnalysis.potassium === ""
+            ? null
+            : Number.parseFloat(newSoilAnalysis.potassium),
+        notes: newSoilAnalysis.notes || null,
+      });
+
+      const history = await notebookService.getSoilAnalysisHistory(farmlandId);
+      setSoilAnalysisHistory(history);
+      setOpenSoilDialog(false);
+      resetSoilAnalysisForm();
+    } catch (err) {
+      console.error("Error saving soil analysis history:", err);
+      setError(err.message || "Errore durante il salvataggio dell'analisi terreno.");
+    }
+  };
+
+  const handleDeleteSoilAnalysis = useCallback(
+    async (soilAnalysisId) => {
+      if (!window.confirm("Eliminare questa analisi terreno?")) return;
+
+      try {
+        await notebookService.deleteSoilAnalysis(soilAnalysisId);
+        const history = await notebookService.getSoilAnalysisHistory(farmlandId);
+        setSoilAnalysisHistory(history);
+      } catch (err) {
+        console.error("Error deleting soil analysis history:", err);
+        setError(err.message || "Errore durante l'eliminazione dell'analisi terreno.");
+      }
+    },
+    [farmlandId],
+  );
 
   useEffect(() => {
     const searchAgeaCrops = async () => {
@@ -842,6 +940,68 @@ const FarmlandScreen = (props) => {
             {farmland && (
               <Box sx={{ mt: 3 }}>
                 <Typography variant="h6" gutterBottom>
+                  Analisi terreno
+                </Typography>
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Data</TableCell>
+                        <TableCell>Tessitura</TableCell>
+                        <TableCell>pH</TableCell>
+                        <TableCell>Sostanza organica</TableCell>
+                        <TableCell>N</TableCell>
+                        <TableCell>P</TableCell>
+                        <TableCell>K</TableCell>
+                        <TableCell>Note</TableCell>
+                        <TableCell align="right">Azioni</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {soilAnalysisHistory.map((analysis) => (
+                        <TableRow key={analysis.id}>
+                          <TableCell>{analysis.analysis_date}</TableCell>
+                          <TableCell>{analysis.texture || "-"}</TableCell>
+                          <TableCell>{analysis.ph ?? "-"}</TableCell>
+                          <TableCell>{analysis.organic_matter ?? "-"}</TableCell>
+                          <TableCell>{analysis.nitrogen ?? "-"}</TableCell>
+                          <TableCell>{analysis.phosphorus ?? "-"}</TableCell>
+                          <TableCell>{analysis.potassium ?? "-"}</TableCell>
+                          <TableCell>{analysis.notes || "-"}</TableCell>
+                          <TableCell align="right">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDeleteSoilAnalysis(analysis.id)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {soilAnalysisHistory.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={9} align="center">
+                            Nessuna analisi terreno registrata.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <Button
+                  size="small"
+                  sx={{ mt: 1 }}
+                  onClick={() => setOpenSoilDialog(true)}
+                >
+                  Aggiungi analisi terreno
+                </Button>
+              </Box>
+            )}
+
+            {farmland && (
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="h6" gutterBottom>
                   Storico Colture
                 </Typography>
                 <TableContainer component={Paper} variant="outlined">
@@ -1075,6 +1235,106 @@ const FarmlandScreen = (props) => {
           <Button onClick={() => setOpenCropDialog(false)}>Annulla</Button>
           <Button onClick={handleAddCropHistory} variant="contained">
             Aggiungi
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openSoilDialog} onClose={() => setOpenSoilDialog(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Aggiungi analisi terreno</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Data analisi"
+              type="date"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              value={newSoilAnalysis.analysis_date}
+              onChange={(e) =>
+                setNewSoilAnalysis((prev) => ({
+                  ...prev,
+                  analysis_date: e.target.value,
+                }))
+              }
+            />
+            <TextField
+              label="Tessitura"
+              fullWidth
+              value={newSoilAnalysis.texture}
+              onChange={(e) =>
+                setNewSoilAnalysis((prev) => ({ ...prev, texture: e.target.value }))
+              }
+            />
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField
+                label="pH"
+                type="number"
+                fullWidth
+                value={newSoilAnalysis.ph}
+                onChange={(e) =>
+                  setNewSoilAnalysis((prev) => ({ ...prev, ph: e.target.value }))
+                }
+              />
+              <TextField
+                label="Sostanza organica (%)"
+                type="number"
+                fullWidth
+                value={newSoilAnalysis.organic_matter}
+                onChange={(e) =>
+                  setNewSoilAnalysis((prev) => ({
+                    ...prev,
+                    organic_matter: e.target.value,
+                  }))
+                }
+              />
+            </Stack>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField
+                label="Azoto (N)"
+                type="number"
+                fullWidth
+                value={newSoilAnalysis.nitrogen}
+                onChange={(e) =>
+                  setNewSoilAnalysis((prev) => ({ ...prev, nitrogen: e.target.value }))
+                }
+              />
+              <TextField
+                label="Fosforo (P)"
+                type="number"
+                fullWidth
+                value={newSoilAnalysis.phosphorus}
+                onChange={(e) =>
+                  setNewSoilAnalysis((prev) => ({
+                    ...prev,
+                    phosphorus: e.target.value,
+                  }))
+                }
+              />
+              <TextField
+                label="Potassio (K)"
+                type="number"
+                fullWidth
+                value={newSoilAnalysis.potassium}
+                onChange={(e) =>
+                  setNewSoilAnalysis((prev) => ({ ...prev, potassium: e.target.value }))
+                }
+              />
+            </Stack>
+            <TextField
+              label="Note"
+              fullWidth
+              multiline
+              minRows={2}
+              value={newSoilAnalysis.notes}
+              onChange={(e) =>
+                setNewSoilAnalysis((prev) => ({ ...prev, notes: e.target.value }))
+              }
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenSoilDialog(false)}>Annulla</Button>
+          <Button onClick={handleAddSoilAnalysis} variant="contained">
+            Salva analisi
           </Button>
         </DialogActions>
       </Dialog>

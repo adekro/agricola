@@ -71,6 +71,9 @@ vi.mock("../../services/notebookService", () => ({
   notebookService: {
     getCropHistory: vi.fn(async () => []),
     saveCropHistory: vi.fn(),
+    getSoilAnalysisHistory: vi.fn(async () => []),
+    saveSoilAnalysis: vi.fn(),
+    deleteSoilAnalysis: vi.fn(),
   },
 }));
 
@@ -246,6 +249,57 @@ describe("FarmlandScreen company creation flow", () => {
           year: 2026,
           foglio: "7",
           mappale: "53",
+        }),
+      );
+    });
+  });
+
+  it("saves soil analysis history fields", async () => {
+    mockUseParams.mockReturnValue({ id: "farm-1" });
+    notebookService.getCropHistory.mockResolvedValue([]);
+    notebookService.getSoilAnalysisHistory.mockResolvedValue([]);
+
+    render(
+      <FarmlandScreen
+        farmlandId="farm-1"
+        farmland={{
+          id: "farm-1",
+          type: "Campo 1",
+          area: 12,
+          perimeter: 100,
+          notes: "",
+          ownerDisplayName: "Azienda Test",
+          coordinates: [],
+          cadastralParcel: "",
+          currentCrop: "",
+        }}
+        onClose={onClose}
+        onCreate={onCreate}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Aggiungi analisi terreno" }));
+    await userEvent.type(screen.getByLabelText("Tessitura"), "Franco limoso");
+    await userEvent.type(screen.getByLabelText("pH"), "6.7");
+    await userEvent.type(screen.getByLabelText("Sostanza organica (%)"), "2.4");
+    await userEvent.type(screen.getByLabelText("Azoto (N)"), "58");
+    await userEvent.type(screen.getByLabelText("Fosforo (P)"), "22");
+    await userEvent.type(screen.getByLabelText("Potassio (K)"), "145");
+
+    await userEvent.click(screen.getByRole("button", { name: "Salva analisi" }));
+
+    await waitFor(() => {
+      expect(notebookService.saveSoilAnalysis).toHaveBeenCalledWith(
+        expect.objectContaining({
+          farmland_id: "farm-1",
+          texture: "Franco limoso",
+          ph: 6.7,
+          organic_matter: 2.4,
+          nitrogen: 58,
+          phosphorus: 22,
+          potassium: 145,
         }),
       );
     });

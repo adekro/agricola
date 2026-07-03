@@ -306,4 +306,37 @@ export const notebookService = {
     if (error) throw error;
     return data[0];
   },
+
+  // --- Soil Analysis History ---
+  async getSoilAnalysisHistory(farmlandId) {
+    const { data, error } = await supabase
+      .from("soil_analysis_history")
+      .select("*")
+      .eq("farmland_id", farmlandId)
+      .order("analysis_date", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async saveSoilAnalysis(entry) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+
+    const payload = { ...entry, owner_id: user.id };
+    const { data, error } = await supabase
+      .from("soil_analysis_history")
+      .upsert(payload)
+      .select();
+    if (error) throw error;
+    return data[0];
+  },
+
+  async deleteSoilAnalysis(id) {
+    const { error } = await supabase
+      .from("soil_analysis_history")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+  },
 };

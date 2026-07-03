@@ -19,6 +19,7 @@ import CompanyOverviewPage from "./components/Notebook/CompanyOverviewPage";
 import CompanyContactsPage from "./components/Notebook/CompanyContactsPage";
 import CompanyDocumentsPage from "./components/Notebook/CompanyDocumentsPage";
 import CompanyInventoryPage from "./components/Notebook/CompanyInventoryPage";
+import CompanyFarmlandsPage from "./components/Notebook/CompanyFarmlandsPage";
 import ProductInventory from "./components/Notebook/ProductInventory";
 import OperationsManager from "./components/Notebook/OperationsManager";
 import { supabase } from "./lib/supabaseClient";
@@ -96,6 +97,7 @@ const App = () => {
                   <Route path="operators" element={<CompanyContactsPage sectionKey="operators" />} />
                   <Route path="network" element={<CompanyContactsPage sectionKey="network" />} />
                   <Route path="documents" element={<CompanyDocumentsPage />} />
+                  <Route path="farmlands" element={<CompanyFarmlandsPage />} />
                   <Route path="inventory" element={<CompanyInventoryPage />} />
                 </Route>
               </Route>

@@ -29,6 +29,7 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import DescriptionIcon from "@mui/icons-material/Description";
+import AgricultureIcon from "@mui/icons-material/Agriculture";
 import { useNavigate } from "react-router-dom";
 import { notebookService } from "../../services/notebookService";
 
@@ -252,6 +253,17 @@ const CompanyProfile = () => {
                       title="Documenti"
                     >
                       <DescriptionIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/notebook/company/${item.id}/farmlands`);
+                      }}
+                      title="Terreni"
+                    >
+                      <AgricultureIcon fontSize="small" />
                     </IconButton>
                     <IconButton
                       size="small"

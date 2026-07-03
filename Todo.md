@@ -12,10 +12,10 @@
 ### 2.1 Aziende Agricole
 
 - [x] CRUD anagrafica aziende (CompanyProfile con notebookService - Supabase)
-- [ ] Gestione proprietari e tecnici (presente solo owner_name; mancano tecnici/referente dedicato)
-- [ ] Gestione operatori e fornitori (presenti solo operatori autorizzati; fornitori non gestiti qui)
-- [ ] Gestione clienti, cooperative e consorzi
-- [ ] Documentazione aziendale (allegati, certificazioni)
+- [x] Gestione proprietari e tecnici (CompanyWorkspace + CompanyContactsPage con category owner/technician su Supabase)
+- [x] Gestione operatori e fornitori (CompanyWorkspace + CompanyContactsPage con category operator/supplier su Supabase)
+- [x] Gestione clienti, cooperative e consorzi (CompanyWorkspace + CompanyContactsPage con category client/cooperative/consortium su Supabase)
+- [x] Documentazione aziendale (metadati, link allegati e certificazioni con CompanyDocumentsPage su Supabase; upload file fisico non ancora implementato)
 
 ### 2.2 Appezzamenti
 

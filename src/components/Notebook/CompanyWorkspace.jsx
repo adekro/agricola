@@ -13,6 +13,7 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import GroupsIcon from "@mui/icons-material/Groups";
 import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
 import StorefrontIcon from "@mui/icons-material/Storefront";
+import AgricultureIcon from "@mui/icons-material/Agriculture";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { NavLink, Outlet, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { notebookService } from "../../services/notebookService";
@@ -22,12 +23,14 @@ const navItems = [
   { label: "Rete operativa", to: "operators", icon: <PrecisionManufacturingIcon fontSize="small" /> },
   { label: "Rete commerciale", to: "network", icon: <StorefrontIcon fontSize="small" /> },
   { label: "Documenti", to: "documents", icon: <DescriptionIcon fontSize="small" /> },
+  { label: "Terreni", to: "farmlands", icon: <AgricultureIcon fontSize="small" /> },
   { label: "Magazzino", to: "inventory", icon: <InventoryIcon fontSize="small" /> },
 ];
 
 export const useCompanyWorkspace = () => useOutletContext();
 
 const CompanyWorkspace = () => {
+  const layoutContext = useOutletContext() || {};
   const { companyId } = useParams();
   const navigate = useNavigate();
   const [company, setCompany] = useState(null);
@@ -108,7 +111,14 @@ const CompanyWorkspace = () => {
           </Stack>
         </Paper>
 
-        <Outlet context={{ company, setCompany }} />
+        <Outlet
+          context={{
+            company,
+            setCompany,
+            farmlands: layoutContext.farmlands || [],
+            openFarmland: layoutContext.onClick || (() => {}),
+          }}
+        />
       </Stack>
 
       <Snackbar open={openSnackbar} autoHideDuration={5000} onClose={() => setOpenSnackbar(false)}>
