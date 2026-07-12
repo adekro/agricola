@@ -265,3 +265,20 @@ export async function importCadastralRows(payload) {
   if (error) throw error;
   return data;
 }
+
+export async function getCampaignTerrainCrops(companyId, year) {
+  const { data, error } = await supabase
+    .from("crop_history")
+    .select("farmland_id, agea_code, crop, import_source")
+    .eq("company_id", companyId)
+    .eq("year", year);
+  if (error) throw error;
+  return (data || []).reduce((result, row) => {
+    if (row.import_source === "cadastral_csv") return result;
+    result[row.farmland_id] ||= {
+      ageaCode: row.agea_code || "",
+      crop: row.crop || "",
+    };
+    return result;
+  }, {});
+}

@@ -1,3 +1,5 @@
+BEGIN;
+
 -- Create the farmlands table
 CREATE TABLE IF NOT EXISTS farmlands (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -14,6 +16,18 @@ CREATE TABLE IF NOT EXISTS farmlands (
   current_crop TEXT
 );
 
+-- Upgrade installations created with an older farmlands schema.
+ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL;
+ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS type TEXT;
+ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS area NUMERIC;
+ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS perimeter NUMERIC;
+ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS location TEXT;
+ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS owner_display_name TEXT;
+ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS coordinates JSONB;
+ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS owner_id UUID;
+ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS cadastral_parcel TEXT;
+ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS current_crop TEXT;
 ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS geometry JSONB;
 ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS cadastral_coverage_geometry JSONB;
@@ -77,6 +91,17 @@ CREATE TABLE IF NOT EXISTS company_contacts (
   notes TEXT,
   is_primary BOOLEAN DEFAULT false
 );
+
+-- Upgrade installations created with an older companies schema.
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS vat_number TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS owner_name TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS authorized_operators TEXT[];
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS owner_id UUID;
 
 ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES companies(id) ON DELETE SET NULL;
 
@@ -305,8 +330,36 @@ CREATE TABLE IF NOT EXISTS crop_history (
   owner_id UUID NOT NULL
 );
 
+-- Upgrade installations created with an older crop_history schema.
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS farmland_id UUID REFERENCES farmlands(id) ON DELETE CASCADE;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS crop TEXT;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS agea_code TEXT;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS agea_label TEXT;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS area NUMERIC;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS month INTEGER;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS year INTEGER;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS foglio TEXT;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS mappale TEXT;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS start_date DATE;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS end_date DATE;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS owner_id UUID;
 ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS import_key TEXT;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS source_row_key TEXT;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS import_source TEXT;
+WITH duplicate_import_keys AS (
+  SELECT id,
+    ROW_NUMBER() OVER (PARTITION BY import_key ORDER BY created_at, id) AS duplicate_number
+  FROM crop_history
+  WHERE import_key IS NOT NULL
+)
+UPDATE crop_history
+SET import_key = NULL
+FROM duplicate_import_keys
+WHERE crop_history.id = duplicate_import_keys.id
+  AND duplicate_import_keys.duplicate_number > 1;
 CREATE UNIQUE INDEX IF NOT EXISTS crop_history_import_key_uidx
   ON crop_history(import_key) WHERE import_key IS NOT NULL;
 
@@ -389,15 +442,18 @@ AS $$
 DECLARE
   target_company companies%ROWTYPE;
   row_data JSONB;
-  assignment JSONB;
+  allocation JSONB;
   cadastral_id UUID;
   target_farmland_id UUID;
+  previous_farmland_id UUID;
   new_name TEXT;
   polygon JSONB;
   link_exists BOOLEAN;
+  allocated_total NUMERIC;
+  allocated_area NUMERIC;
+  affected_farmlands JSONB := '{}'::JSONB;
   imported_crops INTEGER := 0;
   created_farmlands INTEGER := 0;
-  sau_totals JSONB := '{}'::JSONB;
   sau_entry RECORD;
   created_current BOOLEAN;
   campaign_year INTEGER := (import_payload->>'campaignYear')::INTEGER;
@@ -407,34 +463,40 @@ BEGIN
   WHERE id = (import_payload->>'companyId')::UUID AND owner_id = auth.uid();
   IF NOT FOUND THEN RAISE EXCEPTION 'Azienda non valida o non autorizzata'; END IF;
 
+  FOR previous_farmland_id IN
+    SELECT DISTINCT farmland_id FROM crop_history
+    WHERE company_id = target_company.id
+      AND year = campaign_year
+      AND import_source = 'cadastral_csv'
+  LOOP
+    affected_farmlands := jsonb_set(affected_farmlands, ARRAY[previous_farmland_id::TEXT], 'true'::JSONB);
+  END LOOP;
+  DELETE FROM crop_history
+  WHERE company_id = target_company.id
+    AND year = campaign_year
+    AND import_source = 'cadastral_csv';
+
   FOR row_data IN SELECT value FROM jsonb_array_elements(import_payload->'rows') LOOP
-    created_current := FALSE;
-    assignment := row_data->'assignment';
-    IF assignment IS NULL OR NOT COALESCE((row_data->>'valid')::BOOLEAN, FALSE) THEN
+    IF NOT COALESCE((row_data->>'valid')::BOOLEAN, FALSE)
+      OR jsonb_typeof(row_data->'allocations') <> 'array'
+      OR jsonb_array_length(row_data->'allocations') = 0 THEN
       RAISE EXCEPTION 'Riga non valida o non assegnata';
     END IF;
 
-    IF assignment->>'type' = 'existing' THEN
-      target_farmland_id := (assignment->>'farmlandId')::UUID;
-      IF NOT EXISTS (SELECT 1 FROM farmlands WHERE id = target_farmland_id AND owner_id = auth.uid() AND (company_id = target_company.id OR owner_display_name = target_company.name)) THEN
-        RAISE EXCEPTION 'Terreno non autorizzato';
-      END IF;
-    ELSE
-      new_name := TRIM(assignment->>'name');
-      IF new_name = '' THEN RAISE EXCEPTION 'Nome terreno mancante'; END IF;
-      SELECT id INTO target_farmland_id FROM farmlands
-      WHERE owner_id = auth.uid() AND company_id = target_company.id
-        AND LOWER(REGEXP_REPLACE(TRIM(name), '\s+', ' ', 'g')) = LOWER(REGEXP_REPLACE(new_name, '\s+', ' ', 'g'))
-      ORDER BY created_at LIMIT 1;
-      IF target_farmland_id IS NULL THEN
-        polygon := row_data->'polygon';
-        INSERT INTO farmlands (name, type, area, owner_display_name, owner_id, company_id, coordinates, geometry, cadastral_coverage_geometry, geometry_status)
-        VALUES (new_name, 'Importato da catasto', (row_data->>'superficie')::NUMERIC, target_company.name, auth.uid(), target_company.id, NULL, NULL,
-          jsonb_build_object('type', 'MultiPolygon', 'coordinates', jsonb_build_array(jsonb_build_array(polygon))), 'cadastral_coverage')
-        RETURNING id INTO target_farmland_id;
-        created_farmlands := created_farmlands + 1;
-        created_current := TRUE;
-      END IF;
+    SELECT COALESCE(SUM((value->>'area')::NUMERIC), 0)
+    INTO allocated_total
+    FROM jsonb_array_elements(row_data->'allocations');
+    IF ABS(allocated_total - (row_data->>'superficie')::NUMERIC) > 0.0001 THEN
+      RAISE EXCEPTION 'Le quote non coincidono con la superficie della riga %', row_data->>'rowKey';
+    END IF;
+    IF (
+      SELECT COUNT(*) <> COUNT(DISTINCT CASE
+        WHEN value->>'type' = 'existing' THEN 'existing:' || (value->>'farmlandId')
+        ELSE 'new:' || LOWER(REGEXP_REPLACE(TRIM(value->>'name'), '\s+', ' ', 'g'))
+      END)
+      FROM jsonb_array_elements(row_data->'allocations')
+    ) THEN
+      RAISE EXCEPTION 'Lo stesso terreno è stato assegnato più volte alla riga %', row_data->>'rowKey';
     END IF;
 
     SELECT id INTO cadastral_id FROM cadastral_identifiers
@@ -449,40 +511,88 @@ BEGIN
       RETURNING id INTO cadastral_id;
     END IF;
 
-    SELECT EXISTS (SELECT 1 FROM farmland_cadastral_identifiers WHERE farmland_id = target_farmland_id AND cadastral_identifier_id = cadastral_id) INTO link_exists;
-    INSERT INTO farmland_cadastral_identifiers (farmland_id, cadastral_identifier_id, owner_id)
-    VALUES (target_farmland_id, cadastral_id, auth.uid()) ON CONFLICT DO NOTHING;
+    FOR allocation IN SELECT value FROM jsonb_array_elements(row_data->'allocations') LOOP
+      created_current := FALSE;
+      allocated_area := (allocation->>'area')::NUMERIC;
+      IF allocated_area < 0 THEN RAISE EXCEPTION 'Superficie assegnata non valida'; END IF;
 
-    IF NOT link_exists AND NOT created_current THEN
-      UPDATE farmlands SET
-        cadastral_coverage_geometry = CASE
-          WHEN cadastral_coverage_geometry IS NULL THEN jsonb_build_object('type','MultiPolygon','coordinates',jsonb_build_array(jsonb_build_array(row_data->'polygon')))
-          ELSE jsonb_set(cadastral_coverage_geometry, '{coordinates}', (cadastral_coverage_geometry->'coordinates') || jsonb_build_array(jsonb_build_array(row_data->'polygon')))
-        END,
-        geometry_status = CASE WHEN geometry IS NULL THEN 'cadastral_coverage' ELSE geometry_status END
-      WHERE id = target_farmland_id;
-    END IF;
+      IF allocation->>'type' = 'existing' THEN
+        target_farmland_id := (allocation->>'farmlandId')::UUID;
+        IF NOT EXISTS (SELECT 1 FROM farmlands WHERE id = target_farmland_id AND owner_id = auth.uid() AND (company_id = target_company.id OR owner_display_name = target_company.name)) THEN
+          RAISE EXCEPTION 'Terreno non autorizzato';
+        END IF;
+      ELSE
+        new_name := TRIM(allocation->>'name');
+        IF new_name = '' THEN RAISE EXCEPTION 'Nome terreno mancante'; END IF;
+        SELECT id INTO target_farmland_id FROM farmlands
+        WHERE owner_id = auth.uid() AND company_id = target_company.id
+          AND LOWER(REGEXP_REPLACE(TRIM(name), '\s+', ' ', 'g')) = LOWER(REGEXP_REPLACE(new_name, '\s+', ' ', 'g'))
+        ORDER BY created_at LIMIT 1;
+        IF target_farmland_id IS NULL THEN
+          polygon := row_data->'polygon';
+          INSERT INTO farmlands (name, type, area, owner_display_name, owner_id, company_id, coordinates, geometry, cadastral_coverage_geometry, geometry_status)
+          VALUES (new_name, 'Importato da catasto', allocated_area, target_company.name, auth.uid(), target_company.id, NULL, NULL,
+            jsonb_build_object('type', 'MultiPolygon', 'coordinates', jsonb_build_array(jsonb_build_array(polygon))), 'cadastral_coverage')
+          RETURNING id INTO target_farmland_id;
+          created_farmlands := created_farmlands + 1;
+          created_current := TRUE;
+        END IF;
+      END IF;
 
-    INSERT INTO crop_history (farmland_id, company_id, crop, agea_code, agea_label, area, year, foglio, mappale, owner_id, import_key)
-    VALUES (target_farmland_id, target_company.id, row_data->>'crop', row_data->>'ageaCode', row_data->>'crop', (row_data->>'superficie')::NUMERIC,
-      campaign_year, row_data->>'foglio', row_data->>'mappale', auth.uid(),
-      target_company.id::TEXT || '|' || campaign_year || '|' || row_data->>'rowKey')
-    ON CONFLICT (import_key) WHERE import_key IS NOT NULL DO UPDATE
-      SET farmland_id = EXCLUDED.farmland_id, crop = EXCLUDED.crop, agea_code = EXCLUDED.agea_code, agea_label = EXCLUDED.agea_label, area = EXCLUDED.area;
-    imported_crops := imported_crops + 1;
-    sau_totals := jsonb_set(sau_totals, ARRAY[target_farmland_id::TEXT],
-      to_jsonb(COALESCE((sau_totals->>target_farmland_id::TEXT)::NUMERIC, 0) + (row_data->>'superficie')::NUMERIC));
+      IF EXISTS (
+        SELECT 1 FROM crop_history
+        WHERE farmland_id = target_farmland_id AND year = campaign_year
+          AND COALESCE(NULLIF(agea_code, ''), crop) <> COALESCE(NULLIF(row_data->>'ageaCode', ''), row_data->>'crop')
+      ) THEN
+        RAISE EXCEPTION 'Il terreno selezionato ha già una coltura diversa nella campagna %', campaign_year;
+      END IF;
+
+      SELECT EXISTS (SELECT 1 FROM farmland_cadastral_identifiers WHERE farmland_id = target_farmland_id AND cadastral_identifier_id = cadastral_id) INTO link_exists;
+      INSERT INTO farmland_cadastral_identifiers (farmland_id, cadastral_identifier_id, owner_id)
+      VALUES (target_farmland_id, cadastral_id, auth.uid()) ON CONFLICT DO NOTHING;
+
+      IF NOT link_exists AND NOT created_current THEN
+        UPDATE farmlands SET
+          cadastral_coverage_geometry = CASE
+            WHEN cadastral_coverage_geometry IS NULL THEN jsonb_build_object('type','MultiPolygon','coordinates',jsonb_build_array(jsonb_build_array(row_data->'polygon')))
+            ELSE jsonb_set(cadastral_coverage_geometry, '{coordinates}', (cadastral_coverage_geometry->'coordinates') || jsonb_build_array(jsonb_build_array(row_data->'polygon')))
+          END,
+          geometry_status = CASE WHEN geometry IS NULL THEN 'cadastral_coverage' ELSE geometry_status END
+        WHERE id = target_farmland_id;
+      END IF;
+
+      INSERT INTO crop_history (farmland_id, company_id, crop, agea_code, agea_label, area, year, foglio, mappale, owner_id, import_key, source_row_key, import_source)
+      VALUES (target_farmland_id, target_company.id, row_data->>'crop', row_data->>'ageaCode', row_data->>'crop', allocated_area,
+        campaign_year, row_data->>'foglio', row_data->>'mappale', auth.uid(),
+        target_company.id::TEXT || '|' || campaign_year || '|' || (row_data->>'rowKey') || '|' || target_farmland_id::TEXT,
+        row_data->>'rowKey', 'cadastral_csv')
+      ON CONFLICT (import_key) WHERE import_key IS NOT NULL DO UPDATE
+        SET farmland_id = EXCLUDED.farmland_id, crop = EXCLUDED.crop, agea_code = EXCLUDED.agea_code, agea_label = EXCLUDED.agea_label, area = EXCLUDED.area;
+      imported_crops := imported_crops + 1;
+      affected_farmlands := jsonb_set(affected_farmlands, ARRAY[target_farmland_id::TEXT], 'true'::JSONB);
+    END LOOP;
   END LOOP;
 
-  FOR sau_entry IN SELECT key, value FROM jsonb_each_text(sau_totals) LOOP
+  FOR sau_entry IN SELECT key FROM jsonb_each(affected_farmlands) LOOP
     INSERT INTO farmland_annual_sau (farmland_id, year, sau, owner_id)
-    VALUES (sau_entry.key::UUID, campaign_year, sau_entry.value::NUMERIC, auth.uid())
+    VALUES (
+      sau_entry.key::UUID,
+      campaign_year,
+      (SELECT COALESCE(SUM(area), 0) FROM crop_history WHERE farmland_id = sau_entry.key::UUID AND year = campaign_year),
+      auth.uid()
+    )
     ON CONFLICT (farmland_id, year) DO UPDATE SET sau = EXCLUDED.sau;
-    UPDATE farmlands SET area = sau_entry.value::NUMERIC WHERE id = sau_entry.key::UUID;
+    UPDATE farmlands SET area = (
+      SELECT COALESCE(SUM(area), 0) FROM crop_history
+      WHERE farmland_id = sau_entry.key::UUID AND year = campaign_year
+    ) WHERE id = sau_entry.key::UUID;
   END LOOP;
   RETURN jsonb_build_object('farmlands', created_farmlands, 'crops', imported_crops);
 END;
 $$;
+
+REVOKE ALL ON FUNCTION import_cadastral_rows(JSONB) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION import_cadastral_rows(JSONB) TO authenticated;
 
 -- Create the soil_analysis_history table
 CREATE TABLE IF NOT EXISTS soil_analysis_history (
@@ -586,3 +696,5 @@ ALTER TABLE cadastral_parcels ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow anonymous read access to cadastral parcels" ON cadastral_parcels;
 CREATE POLICY "Allow anonymous read access to cadastral parcels" ON cadastral_parcels
   FOR SELECT USING (true);
+
+COMMIT;
