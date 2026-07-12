@@ -146,36 +146,6 @@ const EvidenziaMappaliScreen = ({ importData, farmlands = [], onImported, onBack
         if (Number.isFinite(data.lon) && Number.isFinite(data.lat)) {
           setMapCenter(fromLonLat([data.lon, data.lat]));
           setMapZoom(16);
-
-          const uniqueRows = [...new Map(mappaliRows.map((row) => [buildRowKey(row), row])).values()];
-          const resolvedHighlights = (
-            await Promise.all(
-              uniqueRows.map((row) => resolveRowHighlight(row).catch(() => null)),
-            )
-          ).filter(Boolean);
-
-          setHighlightRows(resolvedHighlights);
-          const companyFarmlands = farmlands.filter(
-            (item) => item.company_id === importData.companyId ||
-              item.ownerDisplayName?.trim().toLowerCase() === importData.company?.name?.trim().toLowerCase(),
-          );
-          const proposedAssignments = {};
-          resolvedHighlights.forEach((row) => {
-            const parcelPoint = new Polygon([row.polygon3857]).getInteriorPoint().getCoordinates();
-            const candidates = companyFarmlands.filter((farmland) => {
-              const coords = farmland.coordinates;
-              if (!Array.isArray(coords) || !Array.isArray(coords[0])) return false;
-              const transformed = coords.map((coord) => fromLonLat(coord));
-              return new Polygon([transformed]).intersectsCoordinate(parcelPoint);
-            });
-            proposedAssignments[row.key] = candidates.length === 1
-              ? { type: "existing", farmlandId: candidates[0].id, proposed: true }
-              : candidates.length > 1 ? { type: "ambiguous" } : null;
-          });
-          setAssignments(proposedAssignments);
-          if (resolvedHighlights.length > 0) {
-            setActiveRowKey(resolvedHighlights[0].key);
-          }
         } else {
           setMapCenter(fromLonLat(DEFAULT_CENTER));
           setMapZoom(15);
@@ -186,9 +156,51 @@ const EvidenziaMappaliScreen = ({ importData, farmlands = [], onImported, onBack
         setGeocodeError(
           "Non sono riuscito a centrare automaticamente il comune. La mappa resta navigabile manualmente.",
         );
-      } finally {
-        setLoading(false);
       }
+
+      const uniqueRows = [
+        ...new Map(
+          mappaliRows.map((row) => [buildRowKey(row), row]),
+        ).values(),
+      ];
+      const resolvedHighlights = (
+        await Promise.all(
+          uniqueRows.map((row) =>
+            resolveRowHighlight(row).catch(() => null),
+          ),
+        )
+      ).filter(Boolean);
+
+      setHighlightRows(resolvedHighlights);
+      const companyFarmlands = farmlands.filter(
+        (item) =>
+          item.company_id === importData.companyId ||
+          item.ownerDisplayName?.trim().toLowerCase() ===
+            importData.company?.name?.trim().toLowerCase(),
+      );
+      const proposedAssignments = {};
+      resolvedHighlights.forEach((row) => {
+        const parcelPoint = new Polygon([row.polygon3857])
+          .getInteriorPoint()
+          .getCoordinates();
+        const candidates = companyFarmlands.filter((farmland) => {
+          const coords = farmland.coordinates;
+          if (!Array.isArray(coords) || !Array.isArray(coords[0])) return false;
+          const transformed = coords.map((coord) => fromLonLat(coord));
+          return new Polygon([transformed]).intersectsCoordinate(parcelPoint);
+        });
+        proposedAssignments[row.key] =
+          candidates.length === 1
+            ? { type: "existing", farmlandId: candidates[0].id, proposed: true }
+            : candidates.length > 1
+              ? { type: "ambiguous" }
+              : null;
+      });
+      setAssignments(proposedAssignments);
+      if (resolvedHighlights.length > 0) {
+        setActiveRowKey(resolvedHighlights[0].key);
+      }
+      setLoading(false);
     };
 
     fetchComuneCenter();
