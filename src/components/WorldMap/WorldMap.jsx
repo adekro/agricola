@@ -16,6 +16,7 @@ import Loader from "../UI/Loader/Loader";
 import { Polygon } from "ol/geom";
 import { Feature } from "ol";
 import { Fill, Stroke, Style } from "ol/style";
+import { unByKey } from "ol/Observable.js";
 import { styled } from "@mui/material";
 import { MAP_PROVIDERS } from "../../config/mapProviders";
 import { SATELLITE_LAYERS } from "../../config/satelliteLayers";
