@@ -66,10 +66,15 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
   const mappedCoordinates = mappedFarmlands.map(
     (farmland) => farmland.coordinates,
   );
-  const polygonFeatures = mappedFarmlands.map((farmland) => ({
-    id: farmland.id,
-    coordinates: farmland.coordinates,
-  }));
+  const polygonFeatures = mappedFarmlands.flatMap((farmland) => {
+    const polygons = farmland.geometry?.type === "MultiPolygon"
+      ? farmland.geometry.coordinates.map((polygon) => polygon[0])
+      : [farmland.coordinates];
+    return polygons.filter(Boolean).map((coordinates) => ({
+      id: farmland.id,
+      coordinates,
+    }));
+  });
 
   const handleFarmlandClick = useCallback(async (farmlandId) => {
     const selected = companyFarmlands.find((item) => item.id === farmlandId);

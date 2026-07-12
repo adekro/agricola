@@ -21,37 +21,35 @@ function createQueryMock(result) {
 }
 
 describe("parseExcelRows", () => {
-  it("ignora l'header e normalizza comune, foglio e mappale", () => {
+  it("interpreta le sei colonne XLS e i decimali italiani", () => {
     const text = [
-      "Comune\tFoglio\tMappale",
-      "  Stradella \t002\t000745 ",
-      " Broni \t 03 \t 0010",
+      "COMUNE\tPROV\tFOGLIO\tMAPPALE\tTIPO UTILIZZO\tSUPERFICIE",
+      " Stradella \tPV\t002\t000745\t870-011-000-000 ORZO - FAVE\t9,1337",
     ].join("\n");
 
     expect(parseExcelRows(text)).toEqual([
       {
+        lineNumber: 2,
         comune: "STRADELLA",
+        provincia: "PV",
         foglio: "2",
         mappale: "745",
-      },
-      {
-        comune: "BRONI",
-        foglio: "3",
-        mappale: "10",
+        utilizzo: "870-011-000-000 ORZO - FAVE",
+        ageaCode: "870-011-000-000",
+        crop: "ORZO - FAVE",
+        superficie: 9.1337,
+        valid: true,
+        duplicate: false,
+        rowKey: "STRADELLA|PV|2|745|870-011-000-000",
       },
     ]);
   });
 
-  it("supporta anche separatori punto e virgola", () => {
-    const text = "Stradella;0001;0005";
-
-    expect(parseExcelRows(text)).toEqual([
-      {
-        comune: "STRADELLA",
-        foglio: "1",
-        mappale: "5",
-      },
-    ]);
+  it("segnala righe duplicate senza scartarle silenziosamente", () => {
+    const row = "Stradella\tPV\t1\t5\t921-007-000-000 CIPOLLA\t0,5";
+    const result = parseExcelRows(`${row}\n${row}`);
+    expect(result[0].valid).toBe(true);
+    expect(result[1]).toMatchObject({ valid: false, duplicate: true });
   });
 });
 

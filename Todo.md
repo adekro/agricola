@@ -25,6 +25,7 @@ Questo file è la lista operativa per realizzare quanto descritto in `RelazioneC
 - [ ] Strutturare la ricerca per Provincia, Comune, Foglio e Mappale.
 - [ ] Collegare più mappali a un singolo appezzamento agronomico senza perdere gli identificativi catastali.(attualmente abbiamo la logica, un azienda ha più terreni. dovremmo portare la logica in un azienda ha più terreni, ogni terreno può avere più identificativi catastali, un identificativo catastale può avere più terreni)
 - [ ] Definire e verificare il criterio prestazionale per la ricerca sub-secondo.
+- [x] Importazione assistita da contenuto XLS con anteprima mappali, assegnazione terreni, colture e SAU
 
 ### R2. Parser AI delle etichette fitosanitarie
 

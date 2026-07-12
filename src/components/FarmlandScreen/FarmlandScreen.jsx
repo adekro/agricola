@@ -763,7 +763,9 @@ const FarmlandScreen = (props) => {
 
   const map = (
     <WorldMap
-      coordinates={farmland ? farmland.coordinates : null}
+      coordinates={farmland?.geometry?.type === "MultiPolygon"
+        ? farmland.geometry.coordinates.map((polygon) => polygon[0])
+        : farmland?.coordinates || null}
       mapProviderKey={selectedMapProvider}
       satelliteLayerKey={selectedSatelliteLayer}
       satelliteOpacity={satelliteOpacity}

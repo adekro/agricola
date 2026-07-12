@@ -203,33 +203,64 @@ export function parseExcelRows(text) {
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 
-  // Try to detect separator: tab or semicolon or comma
+  // Excel copia le celle con tab. La virgola resta disponibile per i decimali.
   const sample = lines[0] || "";
   let separator = "\t";
   if (sample.includes(";")) separator = ";";
-  else if (sample.includes(",")) separator = ",";
 
-  return lines
-    .map((line) => {
+  const parsedRows = lines
+    .map((line, lineIndex) => {
       const parts = line.split(separator).map((p) => p.trim());
       const comune = normalizeComune(parts[0] || "");
-      const foglioRaw = parts[1] || "";
-      const mappaleRaw = parts[2] || "";
+      const provincia = normalizeComune(parts[1] || "");
+      const foglioRaw = parts[2] || "";
+      const mappaleRaw = parts[3] || "";
       const foglio = normalizeNumericField(foglioRaw);
       const mappale = normalizeNumericField(mappaleRaw);
+      const utilizzo = parts[4] || "";
+      const superficieRaw = parts[5] || "";
+      const superficie = Number.parseFloat(
+        superficieRaw.replace(/\./g, "").replace(",", "."),
+      );
+      const utilizzoMatch = utilizzo.match(/^(\d{3}-\d{3}-\d{3}-\d{3})\s*(.*)$/);
 
       const isHeaderRow =
         comune === "COMUNE" &&
-        normalizeComune(foglioRaw) === "FOGLIO" &&
-        normalizeComune(mappaleRaw) === "MAPPALE";
+        normalizeComune(foglioRaw) === "FOGLIO";
 
-      if (isHeaderRow || !comune || !foglioRaw || !mappaleRaw) return null;
+      if (isHeaderRow) return null;
 
       return {
+        lineNumber: lineIndex + 1,
         comune,
+        provincia,
         foglio,
         mappale,
+        utilizzo,
+        ageaCode: utilizzoMatch?.[1] || "",
+        crop: utilizzoMatch?.[2]?.trim() || utilizzo,
+        superficie,
+        valid:
+          Boolean(comune && foglioRaw && mappaleRaw && utilizzo) &&
+          Number.isFinite(superficie) &&
+          superficie >= 0,
+        rowKey: `${comune}|${provincia}|${foglio}|${mappale}|${utilizzoMatch?.[1] || utilizzo}`,
       };
     })
     .filter(Boolean);
+
+  const seen = new Set();
+  return parsedRows.map((row) => {
+    const duplicate = seen.has(row.rowKey);
+    seen.add(row.rowKey);
+    return { ...row, duplicate, valid: row.valid && !duplicate };
+  });
+}
+
+export async function importCadastralRows(payload) {
+  const { data, error } = await supabase.rpc("import_cadastral_rows", {
+    import_payload: payload,
+  });
+  if (error) throw error;
+  return data;
 }

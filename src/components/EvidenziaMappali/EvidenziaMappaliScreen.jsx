@@ -6,11 +6,15 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Divider,
+  Drawer,
   FormControl,
   InputLabel,
   MenuItem,
   Paper,
   Select,
+  Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -31,18 +35,9 @@ import { register } from "ol/proj/proj4";
 import proj4 from "proj4";
 import { getEnabledCadastralLayers } from "../../config/cadastralLayers";
 import { getEnabledMapProviders } from "../../config/mapProviders";
-import { getPoligonoMappale } from "../../services/catastoService";
+import { getPoligonoMappale, importCadastralRows } from "../../services/catastoService";
 
 const DEFAULT_CENTER = [9.3, 45.08];
-const HIGHLIGHT_COLORS = [
-  "#d62828",
-  "#1d4ed8",
-  "#0f9d58",
-  "#f59e0b",
-  "#7c3aed",
-  "#db2777",
-];
-
 function getComuneLabel(rows) {
   const comuni = [
     ...new Set((rows || []).map((row) => row.comune).filter(Boolean)),
@@ -75,6 +70,7 @@ async function resolveRowHighlight(row) {
       ...row,
       key: buildRowKey(row),
       polygon3857,
+      polygon4326: coords4326,
       extent3857,
       source: data.source,
       validated: data.validated,
@@ -91,7 +87,8 @@ if (cadastralProjection) {
   cadastralProjection.setExtent([5.93, 34.76, 18.99, 47.1]);
 }
 
-const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
+const EvidenziaMappaliScreen = ({ importData, farmlands = [], onImported, onBack }) => {
+  const mappaliRows = importData?.rows || [];
   const navigate = useNavigate();
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -103,6 +100,12 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
   const [geocodeError, setGeocodeError] = useState("");
   const [highlightRows, setHighlightRows] = useState([]);
   const [activeRowKey, setActiveRowKey] = useState(null);
+  const [assignments, setAssignments] = useState({});
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [newFarmlandName, setNewFarmlandName] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState("");
+  const [importSuccess, setImportSuccess] = useState("");
   const [mapProvider, setMapProvider] = useState(
     enabledMapProviders[0]?.key || "osm",
   );
@@ -144,13 +147,32 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
           setMapCenter(fromLonLat([data.lon, data.lat]));
           setMapZoom(16);
 
+          const uniqueRows = [...new Map(mappaliRows.map((row) => [buildRowKey(row), row])).values()];
           const resolvedHighlights = (
             await Promise.all(
-              mappaliRows.map((row) => resolveRowHighlight(row).catch(() => null)),
+              uniqueRows.map((row) => resolveRowHighlight(row).catch(() => null)),
             )
           ).filter(Boolean);
 
           setHighlightRows(resolvedHighlights);
+          const companyFarmlands = farmlands.filter(
+            (item) => item.company_id === importData.companyId ||
+              item.ownerDisplayName?.trim().toLowerCase() === importData.company?.name?.trim().toLowerCase(),
+          );
+          const proposedAssignments = {};
+          resolvedHighlights.forEach((row) => {
+            const parcelPoint = new Polygon([row.polygon3857]).getInteriorPoint().getCoordinates();
+            const candidates = companyFarmlands.filter((farmland) => {
+              const coords = farmland.coordinates;
+              if (!Array.isArray(coords) || !Array.isArray(coords[0])) return false;
+              const transformed = coords.map((coord) => fromLonLat(coord));
+              return new Polygon([transformed]).intersectsCoordinate(parcelPoint);
+            });
+            proposedAssignments[row.key] = candidates.length === 1
+              ? { type: "existing", farmlandId: candidates[0].id, proposed: true }
+              : candidates.length > 1 ? { type: "ambiguous" } : null;
+          });
+          setAssignments(proposedAssignments);
           if (resolvedHighlights.length > 0) {
             setActiveRowKey(resolvedHighlights[0].key);
           }
@@ -170,7 +192,7 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
     };
 
     fetchComuneCenter();
-  }, [mappaliRows, navigate]);
+  }, [farmlands, importData, mappaliRows, navigate]);
 
   useEffect(() => {
     if (loading || !mapRef.current) return;
@@ -220,13 +242,15 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
       );
     }
 
-    const features = highlightRows.map((row, index) => {
-      const color = HIGHLIGHT_COLORS[index % HIGHLIGHT_COLORS.length];
+    const features = highlightRows.map((row) => {
+      const assignment = assignments[row.key];
+      const color = assignment?.type === "existing" ? "#0f9d58" : assignment?.type === "ambiguous" || assignment?.type === "new" ? "#f59e0b" : "#d62828";
       const feature = new Feature({
         geometry: new Polygon([row.polygon3857]),
       });
 
       feature.setId(row.key);
+      feature.set("rowKey", row.key);
       feature.setStyle(
         new Style({
           fill: new Fill({
@@ -276,6 +300,15 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
     }
 
     mapInstanceRef.current = map;
+    map.on("singleclick", (event) => {
+      const feature = map.forEachFeatureAtPixel(event.pixel, (item) => item);
+      const row = highlightRows.find((item) => item.key === feature?.get("rowKey"));
+      if (row) {
+        setSelectedRow(row);
+        setActiveRowKey(row.key);
+        setNewFarmlandName(assignments[row.key]?.name || "");
+      }
+    });
 
     return () => {
       map.setTarget(undefined);
@@ -283,6 +316,7 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
     };
   }, [
     activeRowKey,
+    assignments,
     cadastralLayerKey,
     enabledCadastralLayers,
     enabledMapProviders,
@@ -313,6 +347,56 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
     }
   }, []);
 
+  const companyFarmlands = farmlands.filter(
+    (item) => item.company_id === importData?.companyId ||
+      item.ownerDisplayName?.trim().toLowerCase() === importData?.company?.name?.trim().toLowerCase(),
+  );
+  const unresolvedCount = highlightRows.filter((row) => !assignments[row.key] || assignments[row.key].type === "ambiguous").length;
+  const missingGeometryCount = new Set(mappaliRows.map(buildRowKey)).size - highlightRows.length;
+  const canImport = !loading && highlightRows.length > 0 && unresolvedCount === 0 && missingGeometryCount === 0 && !importing;
+
+  const assignExisting = (farmlandId) => {
+    setAssignments((prev) => ({
+      ...prev,
+      [selectedRow.key]: { type: "existing", farmlandId, proposed: false },
+    }));
+  };
+
+  const assignNew = () => {
+    const name = newFarmlandName.trim();
+    if (!name || !selectedRow) return;
+    setAssignments((prev) => ({
+      ...prev,
+      [selectedRow.key]: { type: "new", name },
+    }));
+  };
+
+  const handleImport = async () => {
+    setImporting(true);
+    setImportError("");
+    setImportSuccess("");
+    try {
+      const geometryByKey = Object.fromEntries(
+        highlightRows.map((row) => [row.key, row.polygon4326]),
+      );
+      const result = await importCadastralRows({
+        companyId: importData.companyId,
+        campaignYear: importData.campaignYear,
+        rows: mappaliRows.map((row) => ({
+          ...row,
+          assignment: assignments[buildRowKey(row)],
+          polygon: geometryByKey[buildRowKey(row)],
+        })),
+      });
+      setImportSuccess(`Importazione completata: ${result?.farmlands || 0} terreni, ${result?.crops || mappaliRows.length} colture.`);
+      await onImported?.();
+    } catch (error) {
+      setImportError(error.message || "Importazione non riuscita.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Paper
@@ -335,7 +419,7 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
           Indietro
         </Button>
         <Typography variant="h6" sx={{ fontWeight: 700, flex: 1 }}>
-          Evidenzia Mappali
+          Evidenzia Mappali — {importData?.company?.name} ({importData?.campaignYear})
         </Typography>
 
         <FormControl size="small" sx={{ minWidth: 220 }}>
@@ -370,7 +454,13 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
             ))}
           </Select>
         </FormControl>
+        <Button variant="contained" disabled={!canImport} onClick={handleImport}>
+          {importing ? "Importazione..." : "Importa mappali"}
+        </Button>
       </Paper>
+
+      {importError && <Alert severity="error" sx={{ mx: 2, mt: 1 }}>{importError}</Alert>}
+      {importSuccess && <Alert severity="success" sx={{ mx: 2, mt: 1 }}>{importSuccess}</Alert>}
 
       {loading && (
         <Box
@@ -421,6 +511,13 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
         </Alert>
       )}
 
+      {!loading && (unresolvedCount > 0 || missingGeometryCount > 0) && (
+        <Alert severity="warning" sx={{ mx: 2, mt: 1 }}>
+          Da assegnare: {unresolvedCount}. Senza geometria: {missingGeometryCount}.
+          Clicca i poligoni rossi e scegli un terreno o un nuovo nome.
+        </Alert>
+      )}
+
       {!loading && mappaliRows?.length > 0 && (
         <Paper
           elevation={1}
@@ -455,6 +552,22 @@ const EvidenziaMappaliScreen = ({ mappaliRows, onBack }) => {
           })}
         </Paper>
       )}
+
+      <Drawer anchor="right" open={Boolean(selectedRow)} onClose={() => setSelectedRow(null)} PaperProps={{ sx: { width: { xs: "100%", sm: 420 }, p: 3 } }}>
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>Assegna mappale</Typography>
+        <Typography sx={{ mb: 2 }}>{selectedRow?.comune} — Foglio {selectedRow?.foglio}, Mappale {selectedRow?.mappale}</Typography>
+        <FormControl fullWidth sx={{ mb: 2 }}>
+          <InputLabel id="assign-existing-label">Terreno esistente</InputLabel>
+          <Select labelId="assign-existing-label" label="Terreno esistente" value={assignments[selectedRow?.key]?.type === "existing" ? assignments[selectedRow?.key]?.farmlandId : ""} onChange={(e) => assignExisting(e.target.value)}>
+            {companyFarmlands.map((farmland) => <MenuItem key={farmland.id} value={farmland.id}>{farmland.name || farmland.type || "Terreno"}</MenuItem>)}
+          </Select>
+        </FormControl>
+        <Divider sx={{ my: 2 }}>oppure</Divider>
+        <Stack spacing={2}>
+          <TextField label="Nome nuovo terreno" value={newFarmlandName} onChange={(e) => setNewFarmlandName(e.target.value)} helperText="Usa lo stesso nome per raggruppare più mappali." />
+          <Button variant="outlined" disabled={!newFarmlandName.trim()} onClick={assignNew}>Assegna a nuovo terreno</Button>
+        </Stack>
+      </Drawer>
     </Box>
   );
 };

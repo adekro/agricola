@@ -9,12 +9,18 @@ import {
   Typography,
   Alert,
   Box,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
 } from "@mui/material";
 import { parseExcelRows } from "../../services/catastoService";
 
-const EvidenziaMappaliModal = ({ open, onClose, onNavigateToMap }) => {
+const EvidenziaMappaliModal = ({ open, onClose, onNavigateToMap, companies = [] }) => {
   const [text, setText] = useState("");
   const [error, setError] = useState("");
+  const [companyId, setCompanyId] = useState("");
+  const [campaignYear, setCampaignYear] = useState(new Date().getFullYear());
 
   const handleTextChange = useCallback((e) => {
     setText(e.target.value);
@@ -22,6 +28,10 @@ const EvidenziaMappaliModal = ({ open, onClose, onNavigateToMap }) => {
   }, []);
 
   const handleAvanti = useCallback(() => {
+    if (!companyId) {
+      setError("Seleziona l'azienda destinataria.");
+      return;
+    }
     if (!text.trim()) {
       setError("Incolla almeno una riga con i dati catastali.");
       return;
@@ -29,17 +39,22 @@ const EvidenziaMappaliModal = ({ open, onClose, onNavigateToMap }) => {
 
     const rows = parseExcelRows(text);
 
-    if (rows.length === 0) {
+    if (rows.length === 0 || rows.some((row) => !row.valid)) {
       setError(
-        "Nessuna riga valida trovata. Assicurati che ogni riga contenga Comune, Foglio e Mappale separati da tab, punto e virgola o virgola.",
+        "Sono presenti righe non valide. Servono Comune, Provincia, Foglio, Mappale, Tipo utilizzo e Superficie.",
       );
       return;
     }
 
-    onNavigateToMap(rows);
+    onNavigateToMap({
+      companyId,
+      company: companies.find((item) => item.id === companyId),
+      campaignYear: Number(campaignYear),
+      rows,
+    });
     setText("");
     setError("");
-  }, [text, onNavigateToMap]);
+  }, [campaignYear, companies, companyId, text, onNavigateToMap]);
 
   const handleClose = useCallback(() => {
     setText("");
@@ -63,16 +78,23 @@ const EvidenziaMappaliModal = ({ open, onClose, onNavigateToMap }) => {
       </DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Incolla le righe copiate da Excel (Comune / Codice Catastale, Foglio,
-          Mappale). Ogni riga deve contenere i tre valori separati da tab, punto
-          e virgola o virgola.
+          Seleziona azienda e anno, quindi incolla le sei colonne copiate da Excel.
         </Typography>
+        <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+          <FormControl fullWidth required>
+            <InputLabel id="import-company-label">Azienda</InputLabel>
+            <Select labelId="import-company-label" label="Azienda" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
+              {companies.map((company) => <MenuItem key={company.id} value={company.id}>{company.name}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <TextField required type="number" label="Anno campagna" value={campaignYear} onChange={(e) => setCampaignYear(e.target.value)} inputProps={{ min: 1900, max: 2200 }} />
+        </Box>
         <Typography
           variant="caption"
           color="text.secondary"
           sx={{ mb: 1, display: "block" }}
         >
-          Esempio: STRADELLA 2 745
+          Colonne: COMUNE, PROV, FOGLIO, MAPPALE, TIPO UTILIZZO, SUPERFICIE
         </Typography>
         <TextField
           autoFocus
@@ -80,7 +102,7 @@ const EvidenziaMappaliModal = ({ open, onClose, onNavigateToMap }) => {
           rows={12}
           fullWidth
           placeholder={
-            "STRADELLA\t2\t745\nSTRADELLA\t2\t746\nSTRADELLA\t3\t100"
+            "STRADELLA\tPV\t3\t1\t870-011-000-000 ORZO - FAVE, SEMI, GRANELLA\t9,1337"
           }
           value={text}
           onChange={handleTextChange}
@@ -112,7 +134,7 @@ const EvidenziaMappaliModal = ({ open, onClose, onNavigateToMap }) => {
           onClick={handleAvanti}
           variant="contained"
           color="primary"
-          disabled={!text.trim()}
+          disabled={!text.trim() || !companyId}
           sx={{ fontWeight: 700 }}
         >
           Avanti

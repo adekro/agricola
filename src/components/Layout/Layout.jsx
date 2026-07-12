@@ -14,7 +14,7 @@ import {
 } from "../EvidenziaMappali";
 
 const Layout = () => {
-  const { farmlands, addFarmland, updateFarmland, removeFarmland } =
+  const { farmlands, companies, addFarmland, updateFarmland, removeFarmland, reloadFarmland } =
     useFarmlands();
   const [filterString, setFilterString] = useState("");
   const [evidenziaModalOpen, setEvidenziaModalOpen] = useState(false);
@@ -44,9 +44,9 @@ const Layout = () => {
     [navigate],
   );
 
-  const handleEvidenziaNavigateToMap = useCallback((rows) => {
+  const handleEvidenziaNavigateToMap = useCallback((importData) => {
     setEvidenziaModalOpen(false);
-    setEvidenziaRows(rows);
+    setEvidenziaRows(importData);
   }, []);
 
   const handleEvidenziaBack = useCallback(() => {
@@ -167,7 +167,9 @@ const Layout = () => {
         <section className={classes.layoutContent}>
           {evidenziaRows ? (
             <EvidenziaMappaliScreen
-              mappaliRows={evidenziaRows}
+              importData={evidenziaRows}
+              farmlands={farmlands}
+              onImported={reloadFarmland}
               onBack={handleEvidenziaBack}
             />
           ) : (
@@ -189,6 +191,7 @@ const Layout = () => {
         open={evidenziaModalOpen}
         onClose={() => setEvidenziaModalOpen(false)}
         onNavigateToMap={handleEvidenziaNavigateToMap}
+        companies={companies}
       />
     </div>
   );
