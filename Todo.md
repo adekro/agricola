@@ -40,6 +40,7 @@ Questo file è la lista operativa per realizzare quanto descritto in `RelazioneC
 - [ ] Segnalare più di un ristoppio consecutivo per coltura con alert non bloccante.
 - [ ] Tracciare annualmente SAU dichiarata, SAU rilevata e relativa variazione percentuale.
 - [ ] Definire con l'agronomo regole, deroghe e testi degli alert prima dell'implementazione normativa.
+- [x] Predisporre nome terreno, identificazioni catastali molti-a-molti e SAU annuale con riepilogo quinquennale dalla mappa
 
 ### R4. Layer ZVN e fasce tampone
 

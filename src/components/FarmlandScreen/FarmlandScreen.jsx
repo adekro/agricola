@@ -124,6 +124,11 @@ const FarmlandScreen = (props) => {
   const [satelliteLoading, setSatelliteLoading] = useState(false);
 
   const [cropHistory, setCropHistory] = useState([]);
+  const [annualSau, setAnnualSau] = useState([]);
+  const [cadastralIdentifiers, setCadastralIdentifiers] = useState([]);
+  const [newCadastralIdentifier, setNewCadastralIdentifier] = useState({
+    province: "", municipality: "", sheet: "", parcel: "", subaltern: "",
+  });
   const [soilAnalysisHistory, setSoilAnalysisHistory] = useState([]);
   const [treatments, setTreatments] = useState([]);
   const [fertilizationPlans, setFertilizationPlans] = useState([]);
@@ -146,6 +151,7 @@ const FarmlandScreen = (props) => {
     start_date: "",
     end_date: "",
     notes: "",
+    sau: "",
   });
   const [newSoilAnalysis, setNewSoilAnalysis] = useState({
     analysis_date: new Date().toISOString().slice(0, 10),
@@ -191,6 +197,7 @@ const FarmlandScreen = (props) => {
 
   const formik = useFormik({
     initialValues: farmland || {
+      name: "",
       area: "",
       perimeter: "",
       type: "",
@@ -327,6 +334,10 @@ const FarmlandScreen = (props) => {
       ownerDisplayName: owner.trim(),
       coordinates: farmland ? farmland.coordinates : coordinates,
     };
+    if (!newFarmland.name?.trim()) {
+      setError("Il nome del terreno è obbligatorio.");
+      return;
+    }
     if (!newFarmland.area || !newFarmland.perimeter) {
       setError("Please fill all the required data");
       return;
@@ -371,6 +382,49 @@ const FarmlandScreen = (props) => {
     };
     fetchCropHistory();
   }, [farmlandId]);
+
+  useEffect(() => {
+    const fetchSummary = async () => {
+      if (!farmlandId || farmlandId === "new") return;
+      try {
+        const summary = await notebookService.getFarmlandSummary(farmlandId);
+        setAnnualSau(summary.annualSau);
+        setCadastralIdentifiers(summary.cadastralIdentifiers);
+      } catch (err) {
+        console.error("Error fetching farmland summary:", err);
+      }
+    };
+    fetchSummary();
+  }, [farmlandId]);
+
+  const handleAddCadastralIdentifier = async () => {
+    const { municipality, sheet, parcel } = newCadastralIdentifier;
+    if (!municipality.trim() || !sheet.trim() || !parcel.trim()) {
+      setError("Comune, foglio e particella sono obbligatori.");
+      return;
+    }
+    try {
+      const saved = await notebookService.addCadastralIdentifier(
+        farmlandId,
+        newCadastralIdentifier,
+      );
+      setCadastralIdentifiers((prev) =>
+        prev.some((item) => item.id === saved.id) ? prev : [...prev, saved],
+      );
+      setNewCadastralIdentifier({ province: "", municipality: "", sheet: "", parcel: "", subaltern: "" });
+    } catch (err) {
+      setError(err.message || "Errore nel salvataggio catastale.");
+    }
+  };
+
+  const handleRemoveCadastralIdentifier = async (identifierId) => {
+    try {
+      await notebookService.removeCadastralIdentifier(farmlandId, identifierId);
+      setCadastralIdentifiers((prev) => prev.filter((item) => item.id !== identifierId));
+    } catch (err) {
+      setError(err.message || "Errore nella rimozione catastale.");
+    }
+  };
 
   useEffect(() => {
     const fetchSoilAnalysisHistory = async () => {
@@ -425,8 +479,9 @@ const FarmlandScreen = (props) => {
     }
 
     try {
+      const { sau: _sau, ...cropDraft } = newCrop;
       const entry = {
-        ...newCrop,
+        ...cropDraft,
         farmland_id: farmlandId,
         area: Number.parseFloat(newCrop.area),
         month: Number.parseInt(newCrop.month, 10),
@@ -434,6 +489,17 @@ const FarmlandScreen = (props) => {
       };
 
       await notebookService.saveCropHistory(entry);
+      if (newCrop.sau !== "") {
+        const savedSau = await notebookService.saveAnnualSau(
+          farmlandId,
+          Number.parseInt(newCrop.year, 10),
+          Number.parseFloat(newCrop.sau),
+        );
+        setAnnualSau((prev) => [
+          savedSau,
+          ...prev.filter((item) => item.year !== savedSau.year),
+        ].sort((a, b) => b.year - a.year));
+      }
 
       if (farmland && onUpdate) {
         await onUpdate(farmlandId, {
@@ -460,6 +526,7 @@ const FarmlandScreen = (props) => {
         start_date: "",
         end_date: "",
         notes: "",
+        sau: "",
       });
     } catch (err) {
       console.error("Error saving crop history:", err);
@@ -817,6 +884,15 @@ const FarmlandScreen = (props) => {
             >
               <TextField
                 onChange={formik.handleChange}
+                value={formik.values.name || ""}
+                label="Nome terreno"
+                name="name"
+                required
+                className={classes.Input}
+                fullWidth
+              />
+              <TextField
+                onChange={formik.handleChange}
                 value={formik.values.area}
                 label="Area (ettari)"
                 name="area"
@@ -871,6 +947,31 @@ const FarmlandScreen = (props) => {
                   Boolean(formik.errors.currentCrop)
                 }
               />
+              {farmland ? (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>Identificazioni catastali</Typography>
+                  {cadastralIdentifiers.map((item) => (
+                    <Stack key={item.id} direction="row" alignItems="center" spacing={1}>
+                      <Typography variant="body2" sx={{ flex: 1 }}>
+                        {item.province ? `${item.province}, ` : ""}{item.municipality} — F. {item.sheet}, P. {item.parcel}{item.subaltern ? `, Sub. ${item.subaltern}` : ""}
+                      </Typography>
+                      <IconButton size="small" color="error" onClick={() => handleRemoveCadastralIdentifier(item.id)}><DeleteIcon fontSize="small" /></IconButton>
+                    </Stack>
+                  ))}
+                  <Stack spacing={1} sx={{ mt: 1 }}>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <TextField size="small" label="Provincia" value={newCadastralIdentifier.province} onChange={(e) => setNewCadastralIdentifier((prev) => ({ ...prev, province: e.target.value }))} />
+                      <TextField size="small" label="Comune" value={newCadastralIdentifier.municipality} onChange={(e) => setNewCadastralIdentifier((prev) => ({ ...prev, municipality: e.target.value }))} />
+                    </Stack>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <TextField size="small" label="Foglio" value={newCadastralIdentifier.sheet} onChange={(e) => setNewCadastralIdentifier((prev) => ({ ...prev, sheet: e.target.value }))} />
+                      <TextField size="small" label="Particella" value={newCadastralIdentifier.parcel} onChange={(e) => setNewCadastralIdentifier((prev) => ({ ...prev, parcel: e.target.value }))} />
+                      <TextField size="small" label="Subalterno" value={newCadastralIdentifier.subaltern} onChange={(e) => setNewCadastralIdentifier((prev) => ({ ...prev, subaltern: e.target.value }))} />
+                    </Stack>
+                    <Button variant="outlined" onClick={handleAddCadastralIdentifier}>Aggiungi identificazione</Button>
+                  </Stack>
+                </Box>
+              ) : null}
               <TextField
                 onChange={formik.handleChange}
                 value={formik.values.notes}
@@ -1127,6 +1228,7 @@ const FarmlandScreen = (props) => {
                         <TableCell>Mese/Anno</TableCell>
                         <TableCell>Foglio</TableCell>
                         <TableCell>Mappale</TableCell>
+                        <TableCell>SAU annuale</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -1138,11 +1240,12 @@ const FarmlandScreen = (props) => {
                           <TableCell>{formatCropPeriod(h)}</TableCell>
                           <TableCell>{h.foglio || "-"}</TableCell>
                           <TableCell>{h.mappale || "-"}</TableCell>
+                          <TableCell>{annualSau.find((item) => item.year === h.year)?.sau ?? "-"}</TableCell>
                         </TableRow>
                       ))}
                       {cropHistory.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={6} align="center">
+                          <TableCell colSpan={7} align="center">
                             Nessuno storico
                           </TableCell>
                         </TableRow>
@@ -1413,6 +1516,15 @@ const FarmlandScreen = (props) => {
                 }
               />
             </Stack>
+            <TextField
+              label="SAU annuale (ha)"
+              type="number"
+              fullWidth
+              inputProps={{ min: 0, step: "0.01" }}
+              value={newCrop.sau}
+              onChange={(e) => setNewCrop((prev) => ({ ...prev, sau: e.target.value }))}
+              helperText="Un solo valore per terreno e anno; un nuovo inserimento aggiorna quello esistente."
+            />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
                 label="Foglio"

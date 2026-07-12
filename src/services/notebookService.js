@@ -67,6 +67,7 @@ const HARVEST_DESTINATION_SELECT = `
 
 const mapFarmlandRecord = (item) => ({
   id: item.id,
+  name: item.name,
   type: item.type,
   area: item.area,
   perimeter: item.perimeter,
@@ -574,6 +575,98 @@ export const notebookService = {
       .select();
     if (error) throw error;
     return data[0];
+  },
+
+  async getFarmlandSummary(farmlandId) {
+    const minimumYear = new Date().getFullYear() - 4;
+    const [linksResult, cropsResult, sauResult] = await Promise.all([
+      supabase
+        .from("farmland_cadastral_identifiers")
+        .select("cadastral_identifier:cadastral_identifier_id(*)")
+        .eq("farmland_id", farmlandId),
+      supabase
+        .from("crop_history")
+        .select("*")
+        .eq("farmland_id", farmlandId)
+        .gte("year", minimumYear)
+        .order("year", { ascending: false }),
+      supabase
+        .from("farmland_annual_sau")
+        .select("*")
+        .eq("farmland_id", farmlandId)
+        .gte("year", minimumYear)
+        .order("year", { ascending: false }),
+    ]);
+    if (linksResult.error) throw linksResult.error;
+    if (cropsResult.error) throw cropsResult.error;
+    if (sauResult.error) throw sauResult.error;
+    return {
+      cadastralIdentifiers: (linksResult.data || []).map(
+        (item) => item.cadastral_identifier,
+      ),
+      crops: cropsResult.data || [],
+      annualSau: sauResult.data || [],
+    };
+  },
+
+  async addCadastralIdentifier(farmlandId, identifier) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+    const normalized = {
+      province: identifier.province?.trim() || "",
+      municipality: identifier.municipality.trim(),
+      sheet: identifier.sheet.trim(),
+      parcel: identifier.parcel.trim(),
+      subaltern: identifier.subaltern?.trim() || "",
+    };
+    let { data: cadastral, error: cadastralError } = await supabase
+      .from("cadastral_identifiers")
+      .upsert(normalized, {
+        onConflict: "province,municipality,sheet,parcel,subaltern",
+        ignoreDuplicates: true,
+      })
+      .select()
+      .maybeSingle();
+    if (cadastralError) throw cadastralError;
+    if (!cadastral) {
+      const existingResult = await supabase
+        .from("cadastral_identifiers")
+        .select("*")
+        .eq("province", normalized.province)
+        .eq("municipality", normalized.municipality)
+        .eq("sheet", normalized.sheet)
+        .eq("parcel", normalized.parcel)
+        .eq("subaltern", normalized.subaltern)
+        .single();
+      if (existingResult.error) throw existingResult.error;
+      cadastral = existingResult.data;
+    }
+    const { error } = await supabase
+      .from("farmland_cadastral_identifiers")
+      .upsert({ farmland_id: farmlandId, cadastral_identifier_id: cadastral.id, owner_id: user.id });
+    if (error) throw error;
+    return cadastral;
+  },
+
+  async removeCadastralIdentifier(farmlandId, identifierId) {
+    const { error } = await supabase
+      .from("farmland_cadastral_identifiers")
+      .delete()
+      .eq("farmland_id", farmlandId)
+      .eq("cadastral_identifier_id", identifierId);
+    if (error) throw error;
+  },
+
+  async saveAnnualSau(farmlandId, year, sau) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+    const { data, error } = await supabase
+      .from("farmland_annual_sau")
+      .upsert({ farmland_id: farmlandId, year, sau, owner_id: user.id }, { onConflict: "farmland_id,year" })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   // --- Soil Analysis History ---

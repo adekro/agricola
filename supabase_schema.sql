@@ -14,6 +14,12 @@ CREATE TABLE IF NOT EXISTS farmlands (
   current_crop TEXT
 );
 
+ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS name TEXT;
+UPDATE farmlands
+SET name = COALESCE(NULLIF(TRIM(type), ''), NULLIF(TRIM(cadastral_parcel), ''), 'Terreno')
+WHERE name IS NULL OR TRIM(name) = '';
+ALTER TABLE farmlands ALTER COLUMN name SET NOT NULL;
+
 -- Set up Row Level Security (RLS) for farmlands
 ALTER TABLE farmlands ENABLE ROW LEVEL SECURITY;
 
@@ -293,6 +299,77 @@ CREATE TABLE IF NOT EXISTS crop_history (
   notes TEXT,
   owner_id UUID NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS cadastral_identifiers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  province TEXT NOT NULL DEFAULT '',
+  municipality TEXT NOT NULL,
+  sheet TEXT NOT NULL,
+  parcel TEXT NOT NULL,
+  subaltern TEXT NOT NULL DEFAULT '',
+  UNIQUE (province, municipality, sheet, parcel, subaltern)
+);
+
+CREATE TABLE IF NOT EXISTS farmland_cadastral_identifiers (
+  farmland_id UUID NOT NULL REFERENCES farmlands(id) ON DELETE CASCADE,
+  cadastral_identifier_id UUID NOT NULL REFERENCES cadastral_identifiers(id) ON DELETE CASCADE,
+  owner_id UUID NOT NULL,
+  PRIMARY KEY (farmland_id, cadastral_identifier_id)
+);
+
+CREATE TABLE IF NOT EXISTS farmland_annual_sau (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  farmland_id UUID NOT NULL REFERENCES farmlands(id) ON DELETE CASCADE,
+  year INTEGER NOT NULL CHECK (year BETWEEN 1900 AND 2200),
+  sau NUMERIC NOT NULL CHECK (sau >= 0),
+  owner_id UUID NOT NULL,
+  UNIQUE (farmland_id, year)
+);
+
+ALTER TABLE cadastral_identifiers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE farmland_cadastral_identifiers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE farmland_annual_sau ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow authenticated users to read cadastral identifiers" ON cadastral_identifiers;
+CREATE POLICY "Allow authenticated users to read cadastral identifiers" ON cadastral_identifiers
+  FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Allow authenticated users to create cadastral identifiers" ON cadastral_identifiers;
+CREATE POLICY "Allow authenticated users to create cadastral identifiers" ON cadastral_identifiers
+  FOR INSERT TO authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow users to manage farmland cadastral links" ON farmland_cadastral_identifiers;
+CREATE POLICY "Allow users to manage farmland cadastral links" ON farmland_cadastral_identifiers
+  FOR ALL
+  USING (
+    auth.uid() = owner_id AND EXISTS (
+      SELECT 1 FROM farmlands
+      WHERE farmlands.id = farmland_id AND farmlands.owner_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    auth.uid() = owner_id AND EXISTS (
+      SELECT 1 FROM farmlands
+      WHERE farmlands.id = farmland_id AND farmlands.owner_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Allow users to manage farmland annual SAU" ON farmland_annual_sau;
+CREATE POLICY "Allow users to manage farmland annual SAU" ON farmland_annual_sau
+  FOR ALL
+  USING (
+    auth.uid() = owner_id AND EXISTS (
+      SELECT 1 FROM farmlands
+      WHERE farmlands.id = farmland_id AND farmlands.owner_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    auth.uid() = owner_id AND EXISTS (
+      SELECT 1 FROM farmlands
+      WHERE farmlands.id = farmland_id AND farmlands.owner_id = auth.uid()
+    )
+  );
 
 -- Create the soil_analysis_history table
 CREATE TABLE IF NOT EXISTS soil_analysis_history (

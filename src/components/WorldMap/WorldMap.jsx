@@ -31,7 +31,10 @@ export const ResponsiveMap = styled("div")(({ theme }) => ({
 
 const WorldMap = ({
   coordinates,
+  polygonFeatures,
   focusCoordinates,
+  selectedFarmlandId,
+  onFarmlandClick,
   mapProviderKey = "osm",
   satelliteLayerKey = "none",
   satelliteOpacity = 0.75,
@@ -127,15 +130,23 @@ const WorldMap = ({
     let pointInsideTheField = null;
     let polygonLayer = null;
 
-    if (coordinates?.length) {
-      const polygons = Array.isArray(coordinates[0]?.[0])
-        ? coordinates
-        : [coordinates];
-      const features = polygons.map((polygonCoordinates) => {
+    const polygonItems = polygonFeatures?.length
+      ? polygonFeatures
+      : coordinates?.length
+        ? (Array.isArray(coordinates[0]?.[0]) ? coordinates : [coordinates]).map(
+            (item) => ({ coordinates: item }),
+          )
+        : [];
+    if (polygonItems.length) {
+      const features = polygonItems.map((item) => {
         const geometry = new Polygon([
-          polygonCoordinates.map((coord) => fromLonLat(coord)),
+          item.coordinates.map((coord) => fromLonLat(coord)),
         ]);
-        return new Feature({ type: "Polygon", geometry });
+        return new Feature({
+          type: "Polygon",
+          geometry,
+          farmlandId: item.id || null,
+        });
       });
 
       pointInsideTheField = features[0].getGeometry().getInteriorPoint();
@@ -144,13 +155,13 @@ const WorldMap = ({
         source: new VectorSource({
           features,
         }),
-        style: {
-          "fill-color": "rgba(255, 255, 255, 0.2)",
+        style: (feature) => ({
+          "fill-color": feature.get("farmlandId") === selectedFarmlandId
+            ? "rgba(255, 204, 51, 0.45)"
+            : "rgba(255, 255, 255, 0.2)",
           "stroke-color": "#ffcc33",
-          "stroke-width": 2,
-          "circle-radius": 7,
-          "circle-fill-color": "#ffcc33",
-        },
+          "stroke-width": feature.get("farmlandId") === selectedFarmlandId ? 4 : 2,
+        }),
       });
       layers.push(polygonLayer);
     }
@@ -171,6 +182,12 @@ const WorldMap = ({
 
     mapInstanceRef.current = map;
 
+    const clickHandler = map.on("singleclick", (event) => {
+      const feature = map.forEachFeatureAtPixel(event.pixel, (item) => item);
+      const farmlandId = feature?.get("farmlandId");
+      if (farmlandId && onFarmlandClick) onFarmlandClick(farmlandId);
+    });
+
     if (polygonLayer && polygonLayer.getSource().getFeatures().length > 1) {
       map.getView().fit(polygonLayer.getSource().getExtent(), {
         padding: [40, 40, 40, 40],
@@ -179,10 +196,11 @@ const WorldMap = ({
     }
 
     return () => {
+      unByKey(clickHandler);
       map.setTarget(undefined);
       mapInstanceRef.current = null;
     };
-  }, [coordinates, position]);
+  }, [coordinates, polygonFeatures, position, selectedFarmlandId, onFarmlandClick]);
 
   // Handle map provider changes
   useEffect(() => {

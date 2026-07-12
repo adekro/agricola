@@ -1,7 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Box,
   Button,
+  CircularProgress,
+  Divider,
+  Drawer,
   FormControl,
   InputLabel,
   MenuItem,
@@ -15,15 +18,18 @@ import {
   TableHead,
   TableRow,
   Typography,
+  IconButton,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import MapIcon from "@mui/icons-material/Map";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate } from "react-router-dom";
 import { useCompanyWorkspace } from "./CompanyWorkspace";
 import WorldMap from "../WorldMap/WorldMap";
 import { getEnabledMapProviders } from "../../config/mapProviders";
 import { getEnabledCadastralLayers } from "../../config/cadastralLayers";
+import { notebookService } from "../../services/notebookService";
 
 const normalizeCompanyName = (value = "") => value.trim().toLowerCase();
 
@@ -33,6 +39,10 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
   const [selectedMapProvider, setSelectedMapProvider] = useState("osm");
   const [selectedCadastralLayer, setSelectedCadastralLayer] = useState("none");
   const [focusedCoordinates, setFocusedCoordinates] = useState(null);
+  const [selectedFarmland, setSelectedFarmland] = useState(null);
+  const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
   const enabledMapProviders = useMemo(() => getEnabledMapProviders(), []);
   const enabledCadastralLayers = useMemo(
     () => getEnabledCadastralLayers(),
@@ -56,6 +66,26 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
   const mappedCoordinates = mappedFarmlands.map(
     (farmland) => farmland.coordinates,
   );
+  const polygonFeatures = mappedFarmlands.map((farmland) => ({
+    id: farmland.id,
+    coordinates: farmland.coordinates,
+  }));
+
+  const handleFarmlandClick = useCallback(async (farmlandId) => {
+    const selected = companyFarmlands.find((item) => item.id === farmlandId);
+    if (!selected) return;
+    setSelectedFarmland(selected);
+    setSummary(null);
+    setSummaryError("");
+    setSummaryLoading(true);
+    try {
+      setSummary(await notebookService.getFarmlandSummary(farmlandId));
+    } catch (error) {
+      setSummaryError(error.message || "Impossibile caricare i dati del terreno.");
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [companyFarmlands]);
 
   if (mapView) {
     return (
@@ -121,7 +151,10 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
             >
               <WorldMap
                 coordinates={mappedCoordinates}
+                polygonFeatures={polygonFeatures}
                 focusCoordinates={focusedCoordinates}
+                selectedFarmlandId={selectedFarmland?.id}
+                onFarmlandClick={handleFarmlandClick}
                 mapProviderKey={selectedMapProvider}
                 cadastralLayerKey={selectedCadastralLayer}
               />
@@ -134,10 +167,59 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
                   size="small"
                   onClick={() => setFocusedCoordinates(farmland.coordinates)}
                 >
-                  {farmland.type || farmland.cadastralParcel || "Terreno"}
+                  {farmland.name || farmland.type || farmland.cadastralParcel || "Terreno"}
                 </Button>
               ))}
             </Stack>
+            <Drawer
+              anchor="right"
+              open={Boolean(selectedFarmland)}
+              onClose={() => setSelectedFarmland(null)}
+              PaperProps={{ sx: { width: { xs: "100%", sm: 440 }, p: 3 } }}
+            >
+              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+                  {selectedFarmland?.name || selectedFarmland?.type || "Terreno"}
+                </Typography>
+                <IconButton onClick={() => setSelectedFarmland(null)} aria-label="Chiudi">
+                  <CloseIcon />
+                </IconButton>
+              </Stack>
+              <Typography color="text.secondary" sx={{ mt: 1 }}>
+                Area: {selectedFarmland?.area || "-"} ha
+              </Typography>
+              <Divider sx={{ my: 2 }} />
+              {summaryLoading ? <CircularProgress size={28} /> : null}
+              {summaryError ? <Typography color="error">{summaryError}</Typography> : null}
+              {summary ? (
+                <Stack spacing={3}>
+                  <Box>
+                    <Typography variant="h6">Identificazioni catastali</Typography>
+                    {summary.cadastralIdentifiers.length ? summary.cadastralIdentifiers.map((item) => (
+                      <Typography key={item.id} variant="body2">
+                        {item.province ? `${item.province}, ` : ""}{item.municipality} — foglio {item.sheet}, particella {item.parcel}{item.subaltern ? `, sub. ${item.subaltern}` : ""}
+                      </Typography>
+                    )) : <Typography color="text.secondary">Nessuna identificazione.</Typography>}
+                  </Box>
+                  <Box>
+                    <Typography variant="h6">Colture ultimi 5 anni</Typography>
+                    {summary.crops.length ? summary.crops.map((item) => (
+                      <Typography key={item.id} variant="body2">
+                        {item.year}: {item.agea_label || item.crop}
+                      </Typography>
+                    )) : <Typography color="text.secondary">Nessuna coltura registrata.</Typography>}
+                  </Box>
+                  <Box>
+                    <Typography variant="h6">SAU annuale</Typography>
+                    {summary.annualSau.length ? summary.annualSau.map((item) => (
+                      <Typography key={item.id} variant="body2">
+                        {item.year}: {item.sau} ha
+                      </Typography>
+                    )) : <Typography color="text.secondary">Nessun dato SAU registrato.</Typography>}
+                  </Box>
+                </Stack>
+              ) : null}
+            </Drawer>
           </>
         ) : (
           <Typography color="text.secondary">
@@ -182,7 +264,7 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
             {companyFarmlands.map((farmland) => (
               <TableRow key={farmland.id}>
                 <TableCell sx={{ fontWeight: "medium" }}>
-                  {farmland.type || "-"}
+                  {farmland.name || farmland.type || "-"}
                 </TableCell>
                 <TableCell>{farmland.area || "-"}</TableCell>
                 <TableCell>{farmland.perimeter || "-"}</TableCell>

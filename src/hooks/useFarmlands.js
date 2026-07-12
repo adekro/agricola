@@ -5,6 +5,7 @@ const normalizeCompanyName = (name = "") => name.trim().toLowerCase();
 
 const mapFromSupabase = (item) => ({
   id: item.id,
+  name: item.name,
   type: item.type,
   area: item.area,
   perimeter: item.perimeter,
@@ -28,6 +29,7 @@ const mapCompanyFromSupabase = (item) => ({
 });
 
 const mapToSupabase = (item, userId) => ({
+  name: item.name,
   type: item.type,
   area: item.area,
   perimeter: item.perimeter,
