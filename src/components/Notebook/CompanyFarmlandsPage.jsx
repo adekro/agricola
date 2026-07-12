@@ -56,7 +56,15 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
           Terreni collegati a {company.name} evidenziati sulla mappa.
         </Typography>
         {mappedCoordinates.length ? (
-          <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+          <Paper
+            variant="outlined"
+            sx={{
+              width: "100%",
+              height: { xs: "60vh", md: "70vh" },
+              minHeight: 400,
+              overflow: "hidden",
+            }}
+          >
             <WorldMap coordinates={mappedCoordinates} />
           </Paper>
         ) : (
