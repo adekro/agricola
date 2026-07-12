@@ -159,7 +159,7 @@ const EvidenziaMappaliScreen = ({ importData, farmlands = [], onImported, onBack
       }
 
       const uniqueRows = [
-        ...new Map(
+        ...new globalThis.Map(
           mappaliRows.map((row) => [buildRowKey(row), row]),
         ).values(),
       ];
