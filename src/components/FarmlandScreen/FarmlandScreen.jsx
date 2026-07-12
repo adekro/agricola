@@ -127,7 +127,11 @@ const FarmlandScreen = (props) => {
   const [annualSau, setAnnualSau] = useState([]);
   const [cadastralIdentifiers, setCadastralIdentifiers] = useState([]);
   const [newCadastralIdentifier, setNewCadastralIdentifier] = useState({
-    province: "", municipality: "", sheet: "", parcel: "", subaltern: "",
+    province: "",
+    municipality: "",
+    sheet: "",
+    parcel: "",
+    subaltern: "",
   });
   const [soilAnalysisHistory, setSoilAnalysisHistory] = useState([]);
   const [treatments, setTreatments] = useState([]);
@@ -411,7 +415,13 @@ const FarmlandScreen = (props) => {
       setCadastralIdentifiers((prev) =>
         prev.some((item) => item.id === saved.id) ? prev : [...prev, saved],
       );
-      setNewCadastralIdentifier({ province: "", municipality: "", sheet: "", parcel: "", subaltern: "" });
+      setNewCadastralIdentifier({
+        province: "",
+        municipality: "",
+        sheet: "",
+        parcel: "",
+        subaltern: "",
+      });
     } catch (err) {
       setError(err.message || "Errore nel salvataggio catastale.");
     }
@@ -420,7 +430,9 @@ const FarmlandScreen = (props) => {
   const handleRemoveCadastralIdentifier = async (identifierId) => {
     try {
       await notebookService.removeCadastralIdentifier(farmlandId, identifierId);
-      setCadastralIdentifiers((prev) => prev.filter((item) => item.id !== identifierId));
+      setCadastralIdentifiers((prev) =>
+        prev.filter((item) => item.id !== identifierId),
+      );
     } catch (err) {
       setError(err.message || "Errore nella rimozione catastale.");
     }
@@ -430,7 +442,8 @@ const FarmlandScreen = (props) => {
     const fetchSoilAnalysisHistory = async () => {
       if (farmlandId && farmlandId !== "new") {
         try {
-          const history = await notebookService.getSoilAnalysisHistory(farmlandId);
+          const history =
+            await notebookService.getSoilAnalysisHistory(farmlandId);
           setSoilAnalysisHistory(history);
         } catch (err) {
           console.error("Error fetching soil analysis history:", err);
@@ -444,9 +457,12 @@ const FarmlandScreen = (props) => {
     const fetchTreatments = async () => {
       if (farmlandId && farmlandId !== "new") {
         try {
-          const operations = await notebookService.getFarmlandOperations(farmlandId);
+          const operations =
+            await notebookService.getFarmlandOperations(farmlandId);
           setTreatments(
-            operations.filter((item) => item.type === "Trattamento fitosanitario"),
+            operations.filter(
+              (item) => item.type === "Trattamento fitosanitario",
+            ),
           );
         } catch (err) {
           console.error("Error fetching farmland treatments:", err);
@@ -495,10 +511,12 @@ const FarmlandScreen = (props) => {
           Number.parseInt(newCrop.year, 10),
           Number.parseFloat(newCrop.sau),
         );
-        setAnnualSau((prev) => [
-          savedSau,
-          ...prev.filter((item) => item.year !== savedSau.year),
-        ].sort((a, b) => b.year - a.year));
+        setAnnualSau((prev) =>
+          [
+            savedSau,
+            ...prev.filter((item) => item.year !== savedSau.year),
+          ].sort((a, b) => b.year - a.year),
+        );
       }
 
       if (farmland && onUpdate) {
@@ -573,7 +591,10 @@ const FarmlandScreen = (props) => {
         farmland_id: farmlandId,
         analysis_date: newSoilAnalysis.analysis_date,
         texture: newSoilAnalysis.texture || null,
-        ph: newSoilAnalysis.ph === "" ? null : Number.parseFloat(newSoilAnalysis.ph),
+        ph:
+          newSoilAnalysis.ph === ""
+            ? null
+            : Number.parseFloat(newSoilAnalysis.ph),
         organic_matter:
           newSoilAnalysis.organic_matter === ""
             ? null
@@ -599,7 +620,9 @@ const FarmlandScreen = (props) => {
       resetSoilAnalysisForm();
     } catch (err) {
       console.error("Error saving soil analysis history:", err);
-      setError(err.message || "Errore durante il salvataggio dell'analisi terreno.");
+      setError(
+        err.message || "Errore durante il salvataggio dell'analisi terreno.",
+      );
     }
   };
 
@@ -609,11 +632,14 @@ const FarmlandScreen = (props) => {
 
       try {
         await notebookService.deleteSoilAnalysis(soilAnalysisId);
-        const history = await notebookService.getSoilAnalysisHistory(farmlandId);
+        const history =
+          await notebookService.getSoilAnalysisHistory(farmlandId);
         setSoilAnalysisHistory(history);
       } catch (err) {
         console.error("Error deleting soil analysis history:", err);
-        setError(err.message || "Errore durante l'eliminazione dell'analisi terreno.");
+        setError(
+          err.message || "Errore durante l'eliminazione dell'analisi terreno.",
+        );
       }
     },
     [farmlandId],
@@ -654,7 +680,10 @@ const FarmlandScreen = (props) => {
       setOpenFertilizationDialog(false);
     } catch (err) {
       console.error("Error saving fertilization plan:", err);
-      setError(err.message || "Errore durante il salvataggio del piano di fertilizzazione.");
+      setError(
+        err.message ||
+          "Errore durante il salvataggio del piano di fertilizzazione.",
+      );
     }
   };
 
@@ -763,9 +792,11 @@ const FarmlandScreen = (props) => {
 
   const map = (
     <WorldMap
-      coordinates={farmland?.geometry?.type === "MultiPolygon"
-        ? farmland.geometry.coordinates.map((polygon) => polygon[0])
-        : farmland?.coordinates || null}
+      coordinates={
+        farmland?.geometry?.type === "MultiPolygon"
+          ? farmland.geometry.coordinates.map((polygon) => polygon[0])
+          : farmland?.coordinates || null
+      }
       mapProviderKey={selectedMapProvider}
       satelliteLayerKey={selectedSatelliteLayer}
       satelliteOpacity={satelliteOpacity}
@@ -924,53 +955,99 @@ const FarmlandScreen = (props) => {
                 fullWidth
                 error={formik.touched.type && Boolean(formik.errors.type)}
               />
-              <TextField
-                onChange={formik.handleChange}
-                value={formik.values.cadastralParcel}
-                label="Particella Catastale"
-                name="cadastralParcel"
-                className={classes.Input}
-                fullWidth
-                error={
-                  formik.touched.cadastralParcel &&
-                  Boolean(formik.errors.cadastralParcel)
-                }
-              />
-              <TextField
-                onChange={formik.handleChange}
-                value={formik.values.currentCrop}
-                label="Ultima coltura registrata"
-                name="currentCrop"
-                className={classes.Input}
-                fullWidth
-                disabled
-                error={
-                  formik.touched.currentCrop &&
-                  Boolean(formik.errors.currentCrop)
-                }
-              />
+
               {farmland ? (
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom>Identificazioni catastali</Typography>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Identificazioni catastali
+                  </Typography>
                   {cadastralIdentifiers.map((item) => (
-                    <Stack key={item.id} direction="row" alignItems="center" spacing={1}>
+                    <Stack
+                      key={item.id}
+                      direction="row"
+                      alignItems="center"
+                      spacing={1}
+                    >
                       <Typography variant="body2" sx={{ flex: 1 }}>
-                        {item.province ? `${item.province}, ` : ""}{item.municipality} — F. {item.sheet}, P. {item.parcel}{item.subaltern ? `, Sub. ${item.subaltern}` : ""}
+                        {item.province ? `${item.province}, ` : ""}
+                        {item.municipality} — F. {item.sheet}, P. {item.parcel}
+                        {item.subaltern ? `, Sub. ${item.subaltern}` : ""}
                       </Typography>
-                      <IconButton size="small" color="error" onClick={() => handleRemoveCadastralIdentifier(item.id)}><DeleteIcon fontSize="small" /></IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleRemoveCadastralIdentifier(item.id)}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
                     </Stack>
                   ))}
                   <Stack spacing={1} sx={{ mt: 1 }}>
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                      <TextField size="small" label="Provincia" value={newCadastralIdentifier.province} onChange={(e) => setNewCadastralIdentifier((prev) => ({ ...prev, province: e.target.value }))} />
-                      <TextField size="small" label="Comune" value={newCadastralIdentifier.municipality} onChange={(e) => setNewCadastralIdentifier((prev) => ({ ...prev, municipality: e.target.value }))} />
+                      <TextField
+                        size="small"
+                        label="Provincia"
+                        value={newCadastralIdentifier.province}
+                        onChange={(e) =>
+                          setNewCadastralIdentifier((prev) => ({
+                            ...prev,
+                            province: e.target.value,
+                          }))
+                        }
+                      />
+                      <TextField
+                        size="small"
+                        label="Comune"
+                        value={newCadastralIdentifier.municipality}
+                        onChange={(e) =>
+                          setNewCadastralIdentifier((prev) => ({
+                            ...prev,
+                            municipality: e.target.value,
+                          }))
+                        }
+                      />
                     </Stack>
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                      <TextField size="small" label="Foglio" value={newCadastralIdentifier.sheet} onChange={(e) => setNewCadastralIdentifier((prev) => ({ ...prev, sheet: e.target.value }))} />
-                      <TextField size="small" label="Particella" value={newCadastralIdentifier.parcel} onChange={(e) => setNewCadastralIdentifier((prev) => ({ ...prev, parcel: e.target.value }))} />
-                      <TextField size="small" label="Subalterno" value={newCadastralIdentifier.subaltern} onChange={(e) => setNewCadastralIdentifier((prev) => ({ ...prev, subaltern: e.target.value }))} />
+                      <TextField
+                        size="small"
+                        label="Foglio"
+                        value={newCadastralIdentifier.sheet}
+                        onChange={(e) =>
+                          setNewCadastralIdentifier((prev) => ({
+                            ...prev,
+                            sheet: e.target.value,
+                          }))
+                        }
+                      />
+                      <TextField
+                        size="small"
+                        label="Particella"
+                        value={newCadastralIdentifier.parcel}
+                        onChange={(e) =>
+                          setNewCadastralIdentifier((prev) => ({
+                            ...prev,
+                            parcel: e.target.value,
+                          }))
+                        }
+                      />
+                      <TextField
+                        size="small"
+                        label="Subalterno"
+                        value={newCadastralIdentifier.subaltern}
+                        onChange={(e) =>
+                          setNewCadastralIdentifier((prev) => ({
+                            ...prev,
+                            subaltern: e.target.value,
+                          }))
+                        }
+                      />
                     </Stack>
-                    <Button variant="outlined" onClick={handleAddCadastralIdentifier}>Aggiungi identificazione</Button>
+                    <Button
+                      variant="outlined"
+                      onClick={handleAddCadastralIdentifier}
+                    >
+                      Aggiungi identificazione
+                    </Button>
                   </Stack>
                 </Box>
               ) : null}
@@ -1179,7 +1256,9 @@ const FarmlandScreen = (props) => {
                           <TableCell>{analysis.analysis_date}</TableCell>
                           <TableCell>{analysis.texture || "-"}</TableCell>
                           <TableCell>{analysis.ph ?? "-"}</TableCell>
-                          <TableCell>{analysis.organic_matter ?? "-"}</TableCell>
+                          <TableCell>
+                            {analysis.organic_matter ?? "-"}
+                          </TableCell>
                           <TableCell>{analysis.nitrogen ?? "-"}</TableCell>
                           <TableCell>{analysis.phosphorus ?? "-"}</TableCell>
                           <TableCell>{analysis.potassium ?? "-"}</TableCell>
@@ -1188,7 +1267,9 @@ const FarmlandScreen = (props) => {
                             <IconButton
                               size="small"
                               color="error"
-                              onClick={() => handleDeleteSoilAnalysis(analysis.id)}
+                              onClick={() =>
+                                handleDeleteSoilAnalysis(analysis.id)
+                              }
                             >
                               <DeleteIcon fontSize="small" />
                             </IconButton>
@@ -1242,7 +1323,10 @@ const FarmlandScreen = (props) => {
                           <TableCell>{formatCropPeriod(h)}</TableCell>
                           <TableCell>{h.foglio || "-"}</TableCell>
                           <TableCell>{h.mappale || "-"}</TableCell>
-                          <TableCell>{annualSau.find((item) => item.year === h.year)?.sau ?? "-"}</TableCell>
+                          <TableCell>
+                            {annualSau.find((item) => item.year === h.year)
+                              ?.sau ?? "-"}
+                          </TableCell>
                         </TableRow>
                       ))}
                       {cropHistory.length === 0 && (
@@ -1284,11 +1368,22 @@ const FarmlandScreen = (props) => {
                     <TableBody>
                       {treatments.map((treatment) => (
                         <TableRow key={treatment.id}>
-                          <TableCell>{new Date(treatment.operation_date).toLocaleDateString()}</TableCell>
-                          <TableCell>{treatment.product?.name || "-"}</TableCell>
-                          <TableCell>{treatment.quantity || "-"} {treatment.unit_of_measure || ""}</TableCell>
+                          <TableCell>
+                            {new Date(
+                              treatment.operation_date,
+                            ).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            {treatment.product?.name || "-"}
+                          </TableCell>
+                          <TableCell>
+                            {treatment.quantity || "-"}{" "}
+                            {treatment.unit_of_measure || ""}
+                          </TableCell>
                           <TableCell>{treatment.operator || "-"}</TableCell>
-                          <TableCell>{treatment.withholding_period || "-"} gg</TableCell>
+                          <TableCell>
+                            {treatment.withholding_period || "-"} gg
+                          </TableCell>
                         </TableRow>
                       ))}
                       {treatments.length === 0 && (
@@ -1351,7 +1446,9 @@ const FarmlandScreen = (props) => {
                             <IconButton
                               size="small"
                               color="error"
-                              onClick={() => handleDeleteFertilizationPlan(plan.id)}
+                              onClick={() =>
+                                handleDeleteFertilizationPlan(plan.id)
+                              }
                             >
                               <DeleteIcon fontSize="small" />
                             </IconButton>
@@ -1457,8 +1554,7 @@ const FarmlandScreen = (props) => {
                   {...params}
                   label="Coltura AGEA"
                   helperText={
-                    ageaCropError ||
-                    "Seleziona la coltura dal catalogo AGEA."
+                    ageaCropError || "Seleziona la coltura dal catalogo AGEA."
                   }
                   error={!!ageaCropError}
                   InputProps={{
@@ -1524,7 +1620,9 @@ const FarmlandScreen = (props) => {
               fullWidth
               inputProps={{ min: 0, step: "0.01" }}
               value={newCrop.sau}
-              onChange={(e) => setNewCrop((prev) => ({ ...prev, sau: e.target.value }))}
+              onChange={(e) =>
+                setNewCrop((prev) => ({ ...prev, sau: e.target.value }))
+              }
               helperText="Un solo valore per terreno e anno; un nuovo inserimento aggiorna quello esistente."
             />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -1590,7 +1688,12 @@ const FarmlandScreen = (props) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openSoilDialog} onClose={() => setOpenSoilDialog(false)} fullWidth maxWidth="sm">
+      <Dialog
+        open={openSoilDialog}
+        onClose={() => setOpenSoilDialog(false)}
+        fullWidth
+        maxWidth="sm"
+      >
         <DialogTitle>Aggiungi analisi terreno</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -1612,7 +1715,10 @@ const FarmlandScreen = (props) => {
               fullWidth
               value={newSoilAnalysis.texture}
               onChange={(e) =>
-                setNewSoilAnalysis((prev) => ({ ...prev, texture: e.target.value }))
+                setNewSoilAnalysis((prev) => ({
+                  ...prev,
+                  texture: e.target.value,
+                }))
               }
             />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -1622,7 +1728,10 @@ const FarmlandScreen = (props) => {
                 fullWidth
                 value={newSoilAnalysis.ph}
                 onChange={(e) =>
-                  setNewSoilAnalysis((prev) => ({ ...prev, ph: e.target.value }))
+                  setNewSoilAnalysis((prev) => ({
+                    ...prev,
+                    ph: e.target.value,
+                  }))
                 }
               />
               <TextField
@@ -1645,7 +1754,10 @@ const FarmlandScreen = (props) => {
                 fullWidth
                 value={newSoilAnalysis.nitrogen}
                 onChange={(e) =>
-                  setNewSoilAnalysis((prev) => ({ ...prev, nitrogen: e.target.value }))
+                  setNewSoilAnalysis((prev) => ({
+                    ...prev,
+                    nitrogen: e.target.value,
+                  }))
                 }
               />
               <TextField
@@ -1666,7 +1778,10 @@ const FarmlandScreen = (props) => {
                 fullWidth
                 value={newSoilAnalysis.potassium}
                 onChange={(e) =>
-                  setNewSoilAnalysis((prev) => ({ ...prev, potassium: e.target.value }))
+                  setNewSoilAnalysis((prev) => ({
+                    ...prev,
+                    potassium: e.target.value,
+                  }))
                 }
               />
             </Stack>
@@ -1677,7 +1792,10 @@ const FarmlandScreen = (props) => {
               minRows={2}
               value={newSoilAnalysis.notes}
               onChange={(e) =>
-                setNewSoilAnalysis((prev) => ({ ...prev, notes: e.target.value }))
+                setNewSoilAnalysis((prev) => ({
+                  ...prev,
+                  notes: e.target.value,
+                }))
               }
             />
           </Stack>
@@ -1797,7 +1915,9 @@ const FarmlandScreen = (props) => {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenFertilizationDialog(false)}>Annulla</Button>
+          <Button onClick={() => setOpenFertilizationDialog(false)}>
+            Annulla
+          </Button>
           <Button onClick={handleAddFertilizationPlan} variant="contained">
             Salva piano
           </Button>

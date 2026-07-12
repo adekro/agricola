@@ -44,10 +44,7 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState("");
   const enabledMapProviders = useMemo(() => getEnabledMapProviders(), []);
-  const enabledCadastralLayers = useMemo(
-    () => getEnabledCadastralLayers(),
-    [],
-  );
+  const enabledCadastralLayers = useMemo(() => getEnabledCadastralLayers(), []);
 
   const companyFarmlands = useMemo(
     () =>
@@ -67,30 +64,36 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
     (farmland) => farmland.coordinates,
   );
   const polygonFeatures = mappedFarmlands.flatMap((farmland) => {
-    const polygons = farmland.geometry?.type === "MultiPolygon"
-      ? farmland.geometry.coordinates.map((polygon) => polygon[0])
-      : [farmland.coordinates];
+    const polygons =
+      farmland.geometry?.type === "MultiPolygon"
+        ? farmland.geometry.coordinates.map((polygon) => polygon[0])
+        : [farmland.coordinates];
     return polygons.filter(Boolean).map((coordinates) => ({
       id: farmland.id,
       coordinates,
     }));
   });
 
-  const handleFarmlandClick = useCallback(async (farmlandId) => {
-    const selected = companyFarmlands.find((item) => item.id === farmlandId);
-    if (!selected) return;
-    setSelectedFarmland(selected);
-    setSummary(null);
-    setSummaryError("");
-    setSummaryLoading(true);
-    try {
-      setSummary(await notebookService.getFarmlandSummary(farmlandId));
-    } catch (error) {
-      setSummaryError(error.message || "Impossibile caricare i dati del terreno.");
-    } finally {
-      setSummaryLoading(false);
-    }
-  }, [companyFarmlands]);
+  const handleFarmlandClick = useCallback(
+    async (farmlandId) => {
+      const selected = companyFarmlands.find((item) => item.id === farmlandId);
+      if (!selected) return;
+      setSelectedFarmland(selected);
+      setSummary(null);
+      setSummaryError("");
+      setSummaryLoading(true);
+      try {
+        setSummary(await notebookService.getFarmlandSummary(farmlandId));
+      } catch (error) {
+        setSummaryError(
+          error.message || "Impossibile caricare i dati del terreno.",
+        );
+      } finally {
+        setSummaryLoading(false);
+      }
+    },
+    [companyFarmlands],
+  );
 
   if (mapView) {
     return (
@@ -108,9 +111,15 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Terreni collegati a {company.name} evidenziati sulla mappa.
         </Typography>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          sx={{ mb: 2 }}
+        >
           <FormControl fullWidth>
-            <InputLabel id="all-farmlands-map-provider-label">Mappa base</InputLabel>
+            <InputLabel id="all-farmlands-map-provider-label">
+              Mappa base
+            </InputLabel>
             <Select
               labelId="all-farmlands-map-provider-label"
               value={selectedMapProvider}
@@ -132,7 +141,9 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
               labelId="all-farmlands-cadastral-layer-label"
               value={selectedCadastralLayer}
               label="Layer catastale"
-              onChange={(event) => setSelectedCadastralLayer(event.target.value)}
+              onChange={(event) =>
+                setSelectedCadastralLayer(event.target.value)
+              }
             >
               <MenuItem value="none">Nessuno</MenuItem>
               {enabledCadastralLayers.map((layer) => (
@@ -164,7 +175,13 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
                 cadastralLayerKey={selectedCadastralLayer}
               />
             </Paper>
-            <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1} sx={{ mt: 2 }}>
+            <Stack
+              direction="row"
+              useFlexGap
+              flexWrap="wrap"
+              spacing={1}
+              sx={{ mt: 2 }}
+            >
               {mappedFarmlands.map((farmland) => (
                 <Button
                   key={farmland.id}
@@ -172,7 +189,10 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
                   size="small"
                   onClick={() => setFocusedCoordinates(farmland.coordinates)}
                 >
-                  {farmland.name || farmland.type || farmland.cadastralParcel || "Terreno"}
+                  {farmland.name ||
+                    farmland.type ||
+                    farmland.cadastralParcel ||
+                    "Terreno"}
                 </Button>
               ))}
             </Stack>
@@ -182,11 +202,20 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
               onClose={() => setSelectedFarmland(null)}
               PaperProps={{ sx: { width: { xs: "100%", sm: 440 }, p: 3 } }}
             >
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+              >
                 <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-                  {selectedFarmland?.name || selectedFarmland?.type || "Terreno"}
+                  {selectedFarmland?.name ||
+                    selectedFarmland?.type ||
+                    "Terreno"}
                 </Typography>
-                <IconButton onClick={() => setSelectedFarmland(null)} aria-label="Chiudi">
+                <IconButton
+                  onClick={() => setSelectedFarmland(null)}
+                  aria-label="Chiudi"
+                >
                   <CloseIcon />
                 </IconButton>
               </Stack>
@@ -195,32 +224,57 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
               </Typography>
               <Divider sx={{ my: 2 }} />
               {summaryLoading ? <CircularProgress size={28} /> : null}
-              {summaryError ? <Typography color="error">{summaryError}</Typography> : null}
+              {summaryError ? (
+                <Typography color="error">{summaryError}</Typography>
+              ) : null}
               {summary ? (
                 <Stack spacing={3}>
                   <Box>
-                    <Typography variant="h6">Identificazioni catastali</Typography>
-                    {summary.cadastralIdentifiers.length ? summary.cadastralIdentifiers.map((item) => (
-                      <Typography key={item.id} variant="body2">
-                        {item.province ? `${item.province}, ` : ""}{item.municipality} — foglio {item.sheet}, particella {item.parcel}{item.subaltern ? `, sub. ${item.subaltern}` : ""}
+                    <Typography variant="h6">
+                      Identificazioni catastali
+                    </Typography>
+                    {summary.cadastralIdentifiers.length ? (
+                      summary.cadastralIdentifiers.map((item) => (
+                        <Typography key={item.id} variant="body2">
+                          {item.province ? `${item.province}, ` : ""}
+                          {item.municipality} — foglio {item.sheet}, particella{" "}
+                          {item.parcel}
+                          {item.subaltern ? `, sub. ${item.subaltern}` : ""}
+                        </Typography>
+                      ))
+                    ) : (
+                      <Typography color="text.secondary">
+                        Nessuna identificazione.
                       </Typography>
-                    )) : <Typography color="text.secondary">Nessuna identificazione.</Typography>}
+                    )}
                   </Box>
                   <Box>
                     <Typography variant="h6">Colture ultimi 5 anni</Typography>
-                    {summary.crops.length ? summary.crops.map((item) => (
-                      <Typography key={item.id} variant="body2">
-                        {item.year}: {item.agea_label || item.crop}
+                    {summary.crops.length ? (
+                      summary.crops.map((item) => (
+                        <Typography key={item.id} variant="body2">
+                          {item.year}: {item.agea_label || item.crop}
+                        </Typography>
+                      ))
+                    ) : (
+                      <Typography color="text.secondary">
+                        Nessuna coltura registrata.
                       </Typography>
-                    )) : <Typography color="text.secondary">Nessuna coltura registrata.</Typography>}
+                    )}
                   </Box>
                   <Box>
                     <Typography variant="h6">SAU annuale</Typography>
-                    {summary.annualSau.length ? summary.annualSau.map((item) => (
-                      <Typography key={item.id} variant="body2">
-                        {item.year}: {item.sau} ha
+                    {summary.annualSau.length ? (
+                      summary.annualSau.map((item) => (
+                        <Typography key={item.id} variant="body2">
+                          {item.year}: {item.sau} ha
+                        </Typography>
+                      ))
+                    ) : (
+                      <Typography color="text.secondary">
+                        Nessun dato SAU registrato.
                       </Typography>
-                    )) : <Typography color="text.secondary">Nessun dato SAU registrato.</Typography>}
+                    )}
                   </Box>
                 </Stack>
               ) : null}
@@ -237,7 +291,12 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
 
   return (
     <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ mb: 1 }}
+      >
         <Typography variant="h5" sx={{ fontWeight: "bold" }}>
           Terreni azienda
         </Typography>
@@ -260,7 +319,6 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
               <TableCell>Appezzamento</TableCell>
               <TableCell>Area</TableCell>
               <TableCell>Perimetro</TableCell>
-              <TableCell>Particella catastale</TableCell>
               <TableCell>Coltura attuale</TableCell>
               <TableCell align="right">Azioni</TableCell>
             </TableRow>
