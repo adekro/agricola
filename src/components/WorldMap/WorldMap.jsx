@@ -15,6 +15,7 @@ import { useGeolocation } from "../../hooks/useGeolocation";
 import Loader from "../UI/Loader/Loader";
 import { Polygon } from "ol/geom";
 import { Feature } from "ol";
+import { Fill, Stroke, Style } from "ol/style";
 import { styled } from "@mui/material";
 import { MAP_PROVIDERS } from "../../config/mapProviders";
 import { SATELLITE_LAYERS } from "../../config/satelliteLayers";
@@ -155,13 +156,21 @@ const WorldMap = ({
         source: new VectorSource({
           features,
         }),
-        style: (feature) => ({
-          "fill-color": feature.get("farmlandId") === selectedFarmlandId
-            ? "rgba(255, 204, 51, 0.45)"
-            : "rgba(255, 255, 255, 0.2)",
-          "stroke-color": "#ffcc33",
-          "stroke-width": feature.get("farmlandId") === selectedFarmlandId ? 4 : 2,
-        }),
+        style: (feature) => {
+          const isSelected =
+            feature.get("farmlandId") === selectedFarmlandId;
+          return new Style({
+            fill: new Fill({
+              color: isSelected
+                ? "rgba(255, 204, 51, 0.45)"
+                : "rgba(255, 255, 255, 0.2)",
+            }),
+            stroke: new Stroke({
+              color: "#ffcc33",
+              width: isSelected ? 4 : 2,
+            }),
+          });
+        },
       });
       layers.push(polygonLayer);
     }
