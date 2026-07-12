@@ -31,6 +31,7 @@ export const ResponsiveMap = styled("div")(({ theme }) => ({
 
 const WorldMap = ({
   coordinates,
+  focusCoordinates,
   mapProviderKey = "osm",
   satelliteLayerKey = "none",
   satelliteOpacity = 0.75,
@@ -291,6 +292,19 @@ const WorldMap = ({
       cadastralLayerRef.current.setOpacity(cadastralOpacity);
     }
   }, [cadastralOpacity]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current || !focusCoordinates?.length) return;
+
+    const geometry = new Polygon([
+      focusCoordinates.map((coord) => fromLonLat(coord)),
+    ]);
+    mapInstanceRef.current.getView().fit(geometry.getExtent(), {
+      padding: [60, 60, 60, 60],
+      maxZoom: 17,
+      duration: 500,
+    });
+  }, [focusCoordinates]);
 
   return position ? (
     <div id="genMap" className={classes.genMap}>

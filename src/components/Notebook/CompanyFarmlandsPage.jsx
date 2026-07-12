@@ -1,8 +1,12 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Box,
   Button,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -18,12 +22,22 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
 import { useCompanyWorkspace } from "./CompanyWorkspace";
 import WorldMap from "../WorldMap/WorldMap";
+import { getEnabledMapProviders } from "../../config/mapProviders";
+import { getEnabledCadastralLayers } from "../../config/cadastralLayers";
 
 const normalizeCompanyName = (value = "") => value.trim().toLowerCase();
 
 const CompanyFarmlandsPage = ({ mapView = false }) => {
   const { company, farmlands, openFarmland } = useCompanyWorkspace();
   const navigate = useNavigate();
+  const [selectedMapProvider, setSelectedMapProvider] = useState("osm");
+  const [selectedCadastralLayer, setSelectedCadastralLayer] = useState("none");
+  const [focusedCoordinates, setFocusedCoordinates] = useState(null);
+  const enabledMapProviders = useMemo(() => getEnabledMapProviders(), []);
+  const enabledCadastralLayers = useMemo(
+    () => getEnabledCadastralLayers(),
+    [],
+  );
 
   const companyFarmlands = useMemo(
     () =>
@@ -35,9 +49,13 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
     [company.name, farmlands],
   );
 
-  const mappedCoordinates = companyFarmlands
-    .map((farmland) => farmland.coordinates)
-    .filter((coordinates) => Array.isArray(coordinates) && coordinates.length);
+  const mappedFarmlands = companyFarmlands.filter(
+    (farmland) =>
+      Array.isArray(farmland.coordinates) && farmland.coordinates.length,
+  );
+  const mappedCoordinates = mappedFarmlands.map(
+    (farmland) => farmland.coordinates,
+  );
 
   if (mapView) {
     return (
@@ -55,18 +73,72 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Terreni collegati a {company.name} evidenziati sulla mappa.
         </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }}>
+          <FormControl fullWidth>
+            <InputLabel id="all-farmlands-map-provider-label">Mappa base</InputLabel>
+            <Select
+              labelId="all-farmlands-map-provider-label"
+              value={selectedMapProvider}
+              label="Mappa base"
+              onChange={(event) => setSelectedMapProvider(event.target.value)}
+            >
+              {enabledMapProviders.map((provider) => (
+                <MenuItem key={provider.key} value={provider.key}>
+                  {provider.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel id="all-farmlands-cadastral-layer-label">
+              Layer catastale
+            </InputLabel>
+            <Select
+              labelId="all-farmlands-cadastral-layer-label"
+              value={selectedCadastralLayer}
+              label="Layer catastale"
+              onChange={(event) => setSelectedCadastralLayer(event.target.value)}
+            >
+              <MenuItem value="none">Nessuno</MenuItem>
+              {enabledCadastralLayers.map((layer) => (
+                <MenuItem key={layer.key} value={layer.key}>
+                  {layer.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
         {mappedCoordinates.length ? (
-          <Paper
-            variant="outlined"
-            sx={{
-              width: "100%",
-              height: { xs: "60vh", md: "70vh" },
-              minHeight: 400,
-              overflow: "hidden",
-            }}
-          >
-            <WorldMap coordinates={mappedCoordinates} />
-          </Paper>
+          <>
+            <Paper
+              variant="outlined"
+              sx={{
+                width: "100%",
+                height: { xs: "60vh", md: "70vh" },
+                minHeight: 400,
+                overflow: "hidden",
+              }}
+            >
+              <WorldMap
+                coordinates={mappedCoordinates}
+                focusCoordinates={focusedCoordinates}
+                mapProviderKey={selectedMapProvider}
+                cadastralLayerKey={selectedCadastralLayer}
+              />
+            </Paper>
+            <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1} sx={{ mt: 2 }}>
+              {mappedFarmlands.map((farmland) => (
+                <Button
+                  key={farmland.id}
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setFocusedCoordinates(farmland.coordinates)}
+                >
+                  {farmland.type || farmland.cadastralParcel || "Terreno"}
+                </Button>
+              ))}
+            </Stack>
+          </>
         ) : (
           <Typography color="text.secondary">
             Nessun terreno con coordinate disponibile.
