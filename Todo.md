@@ -1,5 +1,60 @@
 # Todo List - Software Gestionale per Agronomi e Aziende Agricole
 
+## Istruzioni operative
+
+Questo file è la lista operativa per realizzare quanto descritto in `RelazioneConAgronomo.md`.
+
+- Inserire qui le future istruzioni dell'utente prima di iniziare una nuova attività.
+- Collegare ogni istruzione alla voce pertinente della roadmap, aggiungendo sotto-attività e criteri di completamento verificabili.
+- Considerare `RelazioneConAgronomo.md` come riferimento funzionale; in caso di contrasto prevalgono le istruzioni più recenti presenti in questo file.
+- Implementare una sola attività alla volta, partendo dalla prima voce prioritaria non completata per cui siano disponibili istruzioni sufficienti.
+- Non dedurre requisiti normativi, formule, fonti dati, credenziali o infrastrutture mancanti: registrarli come informazioni necessarie prima dell'implementazione.
+- Al termine, segnare come completate solo le attività effettivamente implementate e annotare i file modificati e la verifica manuale richiesta.
+
+### Istruzioni future dell'utente
+
+<!-- Aggiungere qui le nuove istruzioni, mantenendole in ordine cronologico e indicando la voce della roadmap a cui si riferiscono. -->
+
+- Nessuna istruzione aggiuntiva ricevuta.
+
+## Priorità da RelazioneConAgronomo
+
+### R1. Ottimizzazione catasto
+
+- [ ] Definire formato, provenienza, licenza e aggiornamento mensile del database catastale.(questa operazione verrà fatta tramite script nodejs che vengono schedulati in un'altro server ed inseriscono in db i nuovi dati)
+- [ ] Strutturare la ricerca per Provincia, Comune, Foglio e Mappale.
+- [ ] Collegare più mappali a un singolo appezzamento agronomico senza perdere gli identificativi catastali.(attualmente abbiamo la logica, un azienda ha più terreni. dovremmo portare la logica in un azienda ha più terreni, ogni terreno può avere più identificativi catastali, un identificativo catastale può avere più terreni)
+- [ ] Definire e verificare il criterio prestazionale per la ricerca sub-secondo.
+
+### R2. Parser AI delle etichette fitosanitarie
+
+- [ ] Definire sorgente e modalità di acquisizione delle etichette PDF del Ministero della Salute.(dal sito del ministero si riesce ad arrivare all'etichetta in formato pdf, uno script dovrebbe leggerla e con un ia openrouter/ocr estrarre i valori)
+- [ ] Estrarre colture autorizzate, dosi minime/massime, tempi di carenza e intervalli tra trattamenti.
+- [ ] Estrarre il contenuto di rame e calcolare il totale annuo per ettaro tra prodotti diversi.
+- [ ] Prevedere revisione manuale e tracciabilità del dato estratto prima dell'uso operativo.
+
+### R3. Motore di compliance
+
+- [ ] Importare e normalizzare lo storico colturale quinquennale dal Fascicolo Aziendale Excel.
+- [ ] Verificare la presenza di almeno tre colture diverse nel quinquennio.
+- [ ] Segnalare più di un ristoppio consecutivo per coltura con alert non bloccante.
+- [ ] Tracciare annualmente SAU dichiarata, SAU rilevata e relativa variazione percentuale.
+- [ ] Definire con l'agronomo regole, deroghe e testi degli alert prima dell'implementazione normativa.
+
+### R4. Layer ZVN e fasce tampone
+
+- [ ] Identificare fonti cartografiche regionali ufficiali, formati e frequenza di aggiornamento.
+- [ ] Classificare gli appezzamenti come ZVN o non ZVN tramite intersezione geografica.
+- [ ] Applicare i limiti configurabili di azoto organico e il coefficiente di efficienza agronomica.
+- [ ] Individuare corpi idrici e fasce tampone, mostrando alert non bloccanti sugli spandimenti.
+
+### R5. Tracciabilità e DDT
+
+- [ ] Collegare raccolte e lotti ai mappali, allo storico trattamenti e alle analisi del terreno.
+- [ ] Definire i dati obbligatori e il modello del DDT con il partner di filiera.
+- [ ] Generare il DDT dai dati reali di raccolta evitando duplicazioni manuali.
+- [ ] Pianificare il beta-test con partner industriali e registrare criteri ed esito della validazione.
+
 ## Fase 1: Setup e Infrastruttura
 
 - [x] Setup progetto React/Vite (Vite 7, React 18, configurazione completata)
@@ -139,6 +194,7 @@
 - [x] Layer satellitari (Sentinel-2 Cloudless EOX)
 - [ ] Geolocalizzazione interventi (presenti coordinate degli appezzamenti, non dei singoli interventi)
 - [ ] Disegno appezzamenti manuale (DrawableMap esistente)
+- [x] Vista aziendale con tutti i terreni evidenziati sulla stessa mappa
 
 ### 5.3 Sensori IoT
 

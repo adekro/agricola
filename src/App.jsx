@@ -99,6 +99,7 @@ const App = () => {
                   <Route path="network" element={<CompanyContactsPage sectionKey="network" />} />
                   <Route path="documents" element={<CompanyDocumentsPage />} />
                   <Route path="farmlands" element={<CompanyFarmlandsPage />} />
+                  <Route path="farmlands/map" element={<CompanyFarmlandsPage mapView />} />
                   <Route path="inventory" element={<CompanyInventoryPage />} />
                 </Route>
               </Route>

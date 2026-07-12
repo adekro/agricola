@@ -13,12 +13,17 @@ import {
   Typography,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import MapIcon from "@mui/icons-material/Map";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { useNavigate } from "react-router-dom";
 import { useCompanyWorkspace } from "./CompanyWorkspace";
+import WorldMap from "../WorldMap/WorldMap";
 
 const normalizeCompanyName = (value = "") => value.trim().toLowerCase();
 
-const CompanyFarmlandsPage = () => {
+const CompanyFarmlandsPage = ({ mapView = false }) => {
   const { company, farmlands, openFarmland } = useCompanyWorkspace();
+  const navigate = useNavigate();
 
   const companyFarmlands = useMemo(
     () =>
@@ -30,11 +35,53 @@ const CompanyFarmlandsPage = () => {
     [company.name, farmlands],
   );
 
+  const mappedCoordinates = companyFarmlands
+    .map((farmland) => farmland.coordinates)
+    .filter((coordinates) => Array.isArray(coordinates) && coordinates.length);
+
+  if (mapView) {
+    return (
+      <Box>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate("../farmlands")}
+          sx={{ mb: 2 }}
+        >
+          Torna all'elenco
+        </Button>
+        <Typography variant="h5" sx={{ fontWeight: "bold", mb: 1 }}>
+          Tutti i terreni
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Terreni collegati a {company.name} evidenziati sulla mappa.
+        </Typography>
+        {mappedCoordinates.length ? (
+          <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+            <WorldMap coordinates={mappedCoordinates} />
+          </Paper>
+        ) : (
+          <Typography color="text.secondary">
+            Nessun terreno con coordinate disponibile.
+          </Typography>
+        )}
+      </Box>
+    );
+  }
+
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: "bold", mb: 1 }}>
-        Terreni azienda
-      </Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+        <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+          Terreni azienda
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<MapIcon />}
+          onClick={() => navigate("map")}
+        >
+          Visualizza tutti i terreni
+        </Button>
+      </Stack>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Elenco degli appezzamenti collegati a {company.name}.
       </Typography>

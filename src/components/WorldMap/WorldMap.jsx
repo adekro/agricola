@@ -126,19 +126,22 @@ const WorldMap = ({
     let pointInsideTheField = null;
     let polygonLayer = null;
 
-    if (coordinates) {
-      const transformedCoords = coordinates.map((coord) => fromLonLat(coord));
-      const geometry = new Polygon([transformedCoords]);
-      const polygon = new Feature({
-        type: "Polygon",
-        geometry: geometry,
+    if (coordinates?.length) {
+      const polygons = Array.isArray(coordinates[0]?.[0])
+        ? coordinates
+        : [coordinates];
+      const features = polygons.map((polygonCoordinates) => {
+        const geometry = new Polygon([
+          polygonCoordinates.map((coord) => fromLonLat(coord)),
+        ]);
+        return new Feature({ type: "Polygon", geometry });
       });
 
-      pointInsideTheField = geometry.getInteriorPoint();
+      pointInsideTheField = features[0].getGeometry().getInteriorPoint();
 
       polygonLayer = new VectorLayer({
         source: new VectorSource({
-          features: [polygon],
+          features,
         }),
         style: {
           "fill-color": "rgba(255, 255, 255, 0.2)",
@@ -166,6 +169,13 @@ const WorldMap = ({
     });
 
     mapInstanceRef.current = map;
+
+    if (polygonLayer && polygonLayer.getSource().getFeatures().length > 1) {
+      map.getView().fit(polygonLayer.getSource().getExtent(), {
+        padding: [40, 40, 40, 40],
+        maxZoom: 17,
+      });
+    }
 
     return () => {
       map.setTarget(undefined);
