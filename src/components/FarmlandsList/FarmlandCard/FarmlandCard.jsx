@@ -2,6 +2,7 @@ import Button from "../../UI/Button/Button";
 import styles from "./FarmlandCard.module.scss";
 
 const FarmlandCard = ({
+  name,
   type,
   area,
   location,
@@ -20,6 +21,8 @@ const FarmlandCard = ({
         <div>
           <h6 className={styles.label}>Farming</h6>
           <h2 className={styles.value}>{type}</h2>
+          <h6 className={styles.label}>Name</h6>
+          <h2 className={styles.value}>{name}</h2>
         </div>
         <div>
           <div className={`${styles.label} ${styles.labelSmall}`}>

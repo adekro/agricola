@@ -793,8 +793,8 @@ const FarmlandScreen = (props) => {
   const map = (
     <WorldMap
       coordinates={
-        farmland?.geometry?.type === "MultiPolygon"
-          ? farmland.geometry.coordinates.map((polygon) => polygon[0])
+        (farmland?.geometry || farmland?.cadastralCoverageGeometry)?.type === "MultiPolygon"
+          ? (farmland.geometry || farmland.cadastralCoverageGeometry).coordinates.map((polygon) => polygon[0])
           : farmland?.coordinates || null
       }
       mapProviderKey={selectedMapProvider}

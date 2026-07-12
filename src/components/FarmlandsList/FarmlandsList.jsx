@@ -13,11 +13,14 @@ const FarmlandsList = (props) => {
     onClick(id);
   };
 
+  console.log("FarmlandsList rendering with farmlands:", farmlands);
+
   return (
     <div className={styles.farmlandList}>
       {farmlands &&
         farmlands.map((farm) => (
           <FarmlandCard
+            name={farm.name}
             type={farm.type}
             area={farm.area}
             perimeter={farm.perimeter}

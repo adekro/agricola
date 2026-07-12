@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS farmlands (
 
 ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS geometry JSONB;
+ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS cadastral_coverage_geometry JSONB;
+ALTER TABLE farmlands ADD COLUMN IF NOT EXISTS geometry_status TEXT NOT NULL DEFAULT 'defined';
 UPDATE farmlands
 SET name = COALESCE(NULLIF(TRIM(type), ''), NULLIF(TRIM(cadastral_parcel), ''), 'Terreno')
 WHERE name IS NULL OR TRIM(name) = '';
@@ -421,13 +423,14 @@ BEGIN
       new_name := TRIM(assignment->>'name');
       IF new_name = '' THEN RAISE EXCEPTION 'Nome terreno mancante'; END IF;
       SELECT id INTO target_farmland_id FROM farmlands
-      WHERE owner_id = auth.uid() AND company_id = target_company.id AND name = new_name
+      WHERE owner_id = auth.uid() AND company_id = target_company.id
+        AND LOWER(REGEXP_REPLACE(TRIM(name), '\s+', ' ', 'g')) = LOWER(REGEXP_REPLACE(new_name, '\s+', ' ', 'g'))
       ORDER BY created_at LIMIT 1;
       IF target_farmland_id IS NULL THEN
         polygon := row_data->'polygon';
-        INSERT INTO farmlands (name, type, area, owner_display_name, owner_id, company_id, coordinates, geometry)
-        VALUES (new_name, 'Importato da catasto', (row_data->>'superficie')::NUMERIC, target_company.name, auth.uid(), target_company.id, polygon,
-          jsonb_build_object('type', 'MultiPolygon', 'coordinates', jsonb_build_array(jsonb_build_array(polygon))))
+        INSERT INTO farmlands (name, type, area, owner_display_name, owner_id, company_id, coordinates, geometry, cadastral_coverage_geometry, geometry_status)
+        VALUES (new_name, 'Importato da catasto', (row_data->>'superficie')::NUMERIC, target_company.name, auth.uid(), target_company.id, NULL, NULL,
+          jsonb_build_object('type', 'MultiPolygon', 'coordinates', jsonb_build_array(jsonb_build_array(polygon))), 'cadastral_coverage')
         RETURNING id INTO target_farmland_id;
         created_farmlands := created_farmlands + 1;
         created_current := TRUE;
@@ -450,11 +453,14 @@ BEGIN
     INSERT INTO farmland_cadastral_identifiers (farmland_id, cadastral_identifier_id, owner_id)
     VALUES (target_farmland_id, cadastral_id, auth.uid()) ON CONFLICT DO NOTHING;
 
-    IF assignment->>'type' = 'new' AND NOT link_exists AND NOT created_current THEN
-      UPDATE farmlands SET geometry = CASE
-        WHEN geometry IS NULL THEN jsonb_build_object('type','MultiPolygon','coordinates',jsonb_build_array(jsonb_build_array(row_data->'polygon')))
-        ELSE jsonb_set(geometry, '{coordinates}', (geometry->'coordinates') || jsonb_build_array(jsonb_build_array(row_data->'polygon')))
-      END WHERE id = target_farmland_id;
+    IF NOT link_exists AND NOT created_current THEN
+      UPDATE farmlands SET
+        cadastral_coverage_geometry = CASE
+          WHEN cadastral_coverage_geometry IS NULL THEN jsonb_build_object('type','MultiPolygon','coordinates',jsonb_build_array(jsonb_build_array(row_data->'polygon')))
+          ELSE jsonb_set(cadastral_coverage_geometry, '{coordinates}', (cadastral_coverage_geometry->'coordinates') || jsonb_build_array(jsonb_build_array(row_data->'polygon')))
+        END,
+        geometry_status = CASE WHEN geometry IS NULL THEN 'cadastral_coverage' ELSE geometry_status END
+      WHERE id = target_farmland_id;
     END IF;
 
     INSERT INTO crop_history (farmland_id, company_id, crop, agea_code, agea_label, area, year, foglio, mappale, owner_id, import_key)

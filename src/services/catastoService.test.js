@@ -40,6 +40,7 @@ describe("parseExcelRows", () => {
         superficie: 9.1337,
         valid: true,
         duplicate: false,
+        parcelKey: "STRADELLA|PV|2|745",
         rowKey: "STRADELLA|PV|2|745|870-011-000-000",
       },
     ]);

@@ -148,6 +148,7 @@ const WorldMap = ({
           type: "Polygon",
           geometry,
           farmlandId: item.id || null,
+          geometryStatus: item.geometryStatus || "defined",
         });
       });
 
@@ -169,6 +170,10 @@ const WorldMap = ({
             stroke: new Stroke({
               color: "#ffcc33",
               width: isSelected ? 4 : 2,
+              lineDash:
+                feature.get("geometryStatus") === "cadastral_coverage"
+                  ? [8, 6]
+                  : undefined,
             }),
           });
         },

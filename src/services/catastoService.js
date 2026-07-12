@@ -244,6 +244,7 @@ export function parseExcelRows(text) {
           Boolean(comune && foglioRaw && mappaleRaw && utilizzo) &&
           Number.isFinite(superficie) &&
           superficie >= 0,
+        parcelKey: `${comune}|${provincia}|${foglio}|${mappale}`,
         rowKey: `${comune}|${provincia}|${foglio}|${mappale}|${utilizzoMatch?.[1] || utilizzo}`,
       };
     })

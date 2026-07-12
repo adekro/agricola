@@ -48,7 +48,21 @@ function getComuneLabel(rows) {
 }
 
 function buildRowKey(row) {
-  return `${row.comune}-${row.foglio}-${row.mappale}`;
+  return row.parcelKey || `${row.comune}|${row.provincia || ""}|${row.foglio}|${row.mappale}`;
+}
+
+const normalizeName = (value = "") => value.trim().replace(/\s+/g, " ").toLowerCase();
+const getCropName = (row) => (row.crop || row.utilizzo || "Terreno").split(" - ")[0].trim();
+const GROUP_COLORS = ["#2563eb", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#be123c"];
+function colorForGroup(value = "") {
+  const hash = [...value].reduce((total, char) => total + char.charCodeAt(0), 0);
+  return GROUP_COLORS[hash % GROUP_COLORS.length];
+}
+
+function extentsAreAdjacent(left, right, tolerance = 3) {
+  const dx = Math.max(left[0] - right[2], right[0] - left[2], 0);
+  const dy = Math.max(left[1] - right[3], right[1] - left[3], 0);
+  return Math.hypot(dx, dy) <= tolerance;
 }
 
 async function resolveRowHighlight(row) {
@@ -103,6 +117,7 @@ const EvidenziaMappaliScreen = ({ importData, farmlands = [], onImported, onBack
   const [assignments, setAssignments] = useState({});
   const [selectedRow, setSelectedRow] = useState(null);
   const [newFarmlandName, setNewFarmlandName] = useState("");
+  const [sessionFarmlandNames, setSessionFarmlandNames] = useState([]);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
   const [importSuccess, setImportSuccess] = useState("");
@@ -179,22 +194,59 @@ const EvidenziaMappaliScreen = ({ importData, farmlands = [], onImported, onBack
             importData.company?.name?.trim().toLowerCase(),
       );
       const proposedAssignments = {};
-      resolvedHighlights.forEach((row) => {
-        const parcelPoint = new Polygon([row.polygon3857])
-          .getInteriorPoint()
-          .getCoordinates();
-        const candidates = companyFarmlands.filter((farmland) => {
-          const coords = farmland.coordinates;
-          if (!Array.isArray(coords) || !Array.isArray(coords[0])) return false;
-          const transformed = coords.map((coord) => fromLonLat(coord));
-          return new Polygon([transformed]).intersectsCoordinate(parcelPoint);
+      const highlightsByParcel = Object.fromEntries(
+        resolvedHighlights.map((row) => [row.key, row]),
+      );
+      const rowsByCrop = mappaliRows.reduce((groups, row) => {
+        const cropKey = row.ageaCode || normalizeName(row.crop);
+        groups[cropKey] = [...(groups[cropKey] || []), row];
+        return groups;
+      }, {});
+
+      Object.values(rowsByCrop).forEach((cropRows) => {
+        const parcels = [
+          ...new globalThis.Map(
+            cropRows.map((row) => [row.parcelKey, row]),
+          ).values(),
+        ].filter((row) => highlightsByParcel[row.parcelKey]);
+        const unvisited = new Set(parcels.map((row) => row.parcelKey));
+        const components = [];
+        while (unvisited.size) {
+          const queue = [unvisited.values().next().value];
+          const component = [];
+          unvisited.delete(queue[0]);
+          while (queue.length) {
+            const key = queue.shift();
+            component.push(key);
+            [...unvisited].forEach((candidateKey) => {
+              if (extentsAreAdjacent(
+                highlightsByParcel[key].extent3857,
+                highlightsByParcel[candidateKey].extent3857,
+              )) {
+                unvisited.delete(candidateKey);
+                queue.push(candidateKey);
+              }
+            });
+          }
+          components.push(component);
+        }
+
+        components.forEach((parcelKeys, componentIndex) => {
+          const baseName = getCropName(cropRows[0]);
+          const proposedName = components.length > 1
+            ? `${baseName} ${componentIndex + 1}`
+            : baseName;
+          const matchingExisting = companyFarmlands.find(
+            (farmland) => normalizeName(farmland.name) === normalizeName(proposedName),
+          );
+          cropRows
+            .filter((row) => parcelKeys.includes(row.parcelKey))
+            .forEach((row) => {
+              proposedAssignments[row.rowKey] = matchingExisting
+                ? { type: "existing", farmlandId: matchingExisting.id, proposed: true }
+                : { type: "new", name: proposedName, proposed: true };
+            });
         });
-        proposedAssignments[row.key] =
-          candidates.length === 1
-            ? { type: "existing", farmlandId: candidates[0].id, proposed: true }
-            : candidates.length > 1
-              ? { type: "ambiguous" }
-              : null;
       });
       setAssignments(proposedAssignments);
       if (resolvedHighlights.length > 0) {
@@ -255,8 +307,19 @@ const EvidenziaMappaliScreen = ({ importData, farmlands = [], onImported, onBack
     }
 
     const features = highlightRows.map((row) => {
-      const assignment = assignments[row.key];
-      const color = assignment?.type === "existing" ? "#0f9d58" : assignment?.type === "ambiguous" || assignment?.type === "new" ? "#f59e0b" : "#d62828";
+      const parcelAssignments = mappaliRows
+        .filter((item) => item.parcelKey === row.key)
+        .map((item) => assignments[item.rowKey])
+        .filter(Boolean);
+      const groupToken = parcelAssignments[0]?.type === "existing"
+        ? parcelAssignments[0].farmlandId
+        : parcelAssignments[0]?.name;
+      const color = groupToken ? colorForGroup(groupToken) : "#d62828";
+      const assignedNames = [...new Set(parcelAssignments.map((assignment) =>
+        assignment.type === "existing"
+          ? companyFarmlands.find((item) => item.id === assignment.farmlandId)?.name || "Terreno"
+          : assignment.name,
+      ).filter(Boolean))];
       const feature = new Feature({
         geometry: new Polygon([row.polygon3857]),
       });
@@ -273,7 +336,7 @@ const EvidenziaMappaliScreen = ({ importData, farmlands = [], onImported, onBack
             width: row.key === activeRowKey ? 3 : 2,
           }),
           text: new OlText({
-            text: `${row.foglio}/${row.mappale}`,
+            text: `${row.foglio}/${row.mappale}${assignedNames.length ? `\n${assignedNames.join(", ")}` : ""}`,
             font: "bold 12px sans-serif",
             fill: new Fill({ color: "#111827" }),
             stroke: new Stroke({ color: "#ffffff", width: 3 }),
@@ -318,7 +381,7 @@ const EvidenziaMappaliScreen = ({ importData, farmlands = [], onImported, onBack
       if (row) {
         setSelectedRow(row);
         setActiveRowKey(row.key);
-        setNewFarmlandName(assignments[row.key]?.name || "");
+        setNewFarmlandName("");
       }
     });
 
@@ -363,24 +426,67 @@ const EvidenziaMappaliScreen = ({ importData, farmlands = [], onImported, onBack
     (item) => item.company_id === importData?.companyId ||
       item.ownerDisplayName?.trim().toLowerCase() === importData?.company?.name?.trim().toLowerCase(),
   );
-  const unresolvedCount = highlightRows.filter((row) => !assignments[row.key] || assignments[row.key].type === "ambiguous").length;
+  const unresolvedCount = mappaliRows.filter((row) => !assignments[row.rowKey] || assignments[row.rowKey].type === "ambiguous").length;
   const missingGeometryCount = new Set(mappaliRows.map(buildRowKey)).size - highlightRows.length;
   const canImport = !loading && highlightRows.length > 0 && unresolvedCount === 0 && missingGeometryCount === 0 && !importing;
 
-  const assignExisting = (farmlandId) => {
+  const virtualFarmlandNames = [...new Set([
+    ...sessionFarmlandNames,
+    ...Object.values(assignments)
+      .filter((assignment) => assignment?.type === "new")
+      .map((assignment) => assignment.name),
+  ])].sort((left, right) => left.localeCompare(right));
+
+  const getAssignmentName = (assignment) => assignment?.type === "existing"
+    ? companyFarmlands.find((item) => item.id === assignment.farmlandId)?.name || "Terreno esistente"
+    : assignment?.name || "";
+
+  const terrainSummaries = Object.values(
+    mappaliRows.reduce((summary, row) => {
+      const assignment = assignments[row.rowKey];
+      if (!assignment || assignment.type === "ambiguous") return summary;
+      const key = assignment.type === "existing"
+        ? `existing:${assignment.farmlandId}`
+        : `new:${normalizeName(assignment.name)}`;
+      summary[key] ||= {
+        key,
+        name: getAssignmentName(assignment),
+        parcels: new Set(),
+        crops: new Set(),
+        rows: 0,
+        sau: 0,
+      };
+      summary[key].parcels.add(row.parcelKey);
+      summary[key].crops.add(row.ageaCode || row.crop);
+      summary[key].rows += 1;
+      summary[key].sau += Number(row.superficie) || 0;
+      return summary;
+    }, {}),
+  );
+  const selectedParcelRows = selectedRow
+    ? mappaliRows.filter((row) => row.parcelKey === selectedRow.key)
+    : [];
+
+  const handleAssignmentChange = (rowKey, value) => {
+    const [type, identifier] = value.split(":");
     setAssignments((prev) => ({
       ...prev,
-      [selectedRow.key]: { type: "existing", farmlandId, proposed: false },
+      [rowKey]: type === "existing"
+        ? { type: "existing", farmlandId: identifier, proposed: false }
+        : { type: "new", name: identifier, proposed: false },
     }));
   };
 
-  const assignNew = () => {
+  const addSessionFarmland = () => {
     const name = newFarmlandName.trim();
-    if (!name || !selectedRow) return;
-    setAssignments((prev) => ({
-      ...prev,
-      [selectedRow.key]: { type: "new", name },
-    }));
+    if (!name) return;
+    const existing = companyFarmlands.find(
+      (farmland) => normalizeName(farmland.name) === normalizeName(name),
+    );
+    if (!existing && !virtualFarmlandNames.some((item) => normalizeName(item) === normalizeName(name))) {
+      setSessionFarmlandNames((prev) => [...prev, name]);
+    }
+    setNewFarmlandName("");
   };
 
   const handleImport = async () => {
@@ -396,7 +502,7 @@ const EvidenziaMappaliScreen = ({ importData, farmlands = [], onImported, onBack
         campaignYear: importData.campaignYear,
         rows: mappaliRows.map((row) => ({
           ...row,
-          assignment: assignments[buildRowKey(row)],
+          assignment: assignments[row.rowKey],
           polygon: geometryByKey[buildRowKey(row)],
         })),
       });
@@ -542,14 +648,20 @@ const EvidenziaMappaliScreen = ({ importData, farmlands = [], onImported, onBack
             overflow: "auto",
           }}
         >
-          {mappaliRows.map((row, idx) => {
-            const key = buildRowKey(row);
+          {highlightRows.map((row) => {
+            const key = row.key;
             const isActive = key === activeRowKey;
+            const terrainNames = [...new Set(
+              mappaliRows
+                .filter((item) => item.parcelKey === key)
+                .map((item) => getAssignmentName(assignments[item.rowKey]))
+                .filter(Boolean),
+            )];
 
             return (
               <Chip
-                key={`${key}-${idx}`}
-                label={`${row.comune} - F${row.foglio} - M${row.mappale}`}
+                key={key}
+                label={`${row.comune} - F${row.foglio} - M${row.mappale}${terrainNames.length ? ` — ${terrainNames.join(", ")}` : ""}`}
                 size="small"
                 color={isActive ? "primary" : "default"}
                 variant={isActive ? "filled" : "outlined"}
@@ -565,19 +677,54 @@ const EvidenziaMappaliScreen = ({ importData, farmlands = [], onImported, onBack
         </Paper>
       )}
 
+      {!loading && terrainSummaries.length > 0 && (
+        <Paper elevation={1} sx={{ p: 1.5, display: "flex", flexWrap: "wrap", gap: 1 }}>
+          {terrainSummaries.map((item) => (
+            <Chip
+              key={item.key}
+              sx={{ borderColor: colorForGroup(item.key) }}
+              variant="outlined"
+              label={`${item.name}: ${item.parcels.size} particelle, ${item.crops.size} colture, ${item.sau.toFixed(4)} ha`}
+            />
+          ))}
+        </Paper>
+      )}
+
       <Drawer anchor="right" open={Boolean(selectedRow)} onClose={() => setSelectedRow(null)} PaperProps={{ sx: { width: { xs: "100%", sm: 420 }, p: 3 } }}>
         <Typography variant="h6" sx={{ fontWeight: 700 }}>Assegna mappale</Typography>
         <Typography sx={{ mb: 2 }}>{selectedRow?.comune} — Foglio {selectedRow?.foglio}, Mappale {selectedRow?.mappale}</Typography>
-        <FormControl fullWidth sx={{ mb: 2 }}>
-          <InputLabel id="assign-existing-label">Terreno esistente</InputLabel>
-          <Select labelId="assign-existing-label" label="Terreno esistente" value={assignments[selectedRow?.key]?.type === "existing" ? assignments[selectedRow?.key]?.farmlandId : ""} onChange={(e) => assignExisting(e.target.value)}>
-            {companyFarmlands.map((farmland) => <MenuItem key={farmland.id} value={farmland.id}>{farmland.name || farmland.type || "Terreno"}</MenuItem>)}
-          </Select>
-        </FormControl>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Il CSV non contiene i confini interni delle colture: il mappale sarà salvato come copertura catastale, non come confine agronomico.
+        </Alert>
+        <Stack spacing={2}>
+          {selectedParcelRows.map((row) => {
+            const assignment = assignments[row.rowKey];
+            const value = assignment?.type === "existing"
+              ? `existing:${assignment.farmlandId}`
+              : assignment?.type === "new" ? `new:${assignment.name}` : "";
+            return (
+              <Paper key={row.rowKey} variant="outlined" sx={{ p: 2 }}>
+                <Typography sx={{ fontWeight: 700 }}>{getCropName(row)}</Typography>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                  {row.ageaCode || "Senza codice AGEA"} — {row.superficie} ha
+                </Typography>
+                <FormControl fullWidth size="small">
+                  <InputLabel id={`terrain-${row.lineNumber}`}>Terreno</InputLabel>
+                  <Select labelId={`terrain-${row.lineNumber}`} label="Terreno" value={value} onChange={(e) => handleAssignmentChange(row.rowKey, e.target.value)}>
+                    <MenuItem disabled>Terreni esistenti</MenuItem>
+                    {companyFarmlands.map((farmland) => <MenuItem key={`existing:${farmland.id}`} value={`existing:${farmland.id}`}>{farmland.name || farmland.type || "Terreno"}</MenuItem>)}
+                    <MenuItem disabled>Terreni da creare</MenuItem>
+                    {virtualFarmlandNames.map((name) => <MenuItem key={`new:${name}`} value={`new:${name}`}>{name}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Paper>
+            );
+          })}
+        </Stack>
         <Divider sx={{ my: 2 }}>oppure</Divider>
         <Stack spacing={2}>
           <TextField label="Nome nuovo terreno" value={newFarmlandName} onChange={(e) => setNewFarmlandName(e.target.value)} helperText="Usa lo stesso nome per raggruppare più mappali." />
-          <Button variant="outlined" disabled={!newFarmlandName.trim()} onClick={assignNew}>Assegna a nuovo terreno</Button>
+          <Button variant="outlined" disabled={!newFarmlandName.trim()} onClick={addSessionFarmland}>Aggiungi terreno alla selezione</Button>
         </Stack>
       </Drawer>
     </Box>

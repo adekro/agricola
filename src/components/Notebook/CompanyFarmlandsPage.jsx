@@ -58,19 +58,23 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
 
   const mappedFarmlands = companyFarmlands.filter(
     (farmland) =>
-      Array.isArray(farmland.coordinates) && farmland.coordinates.length,
+      (Array.isArray(farmland.coordinates) && farmland.coordinates.length) ||
+      farmland.geometry?.coordinates?.length ||
+      farmland.cadastralCoverageGeometry?.coordinates?.length,
   );
   const mappedCoordinates = mappedFarmlands.map(
     (farmland) => farmland.coordinates,
   );
   const polygonFeatures = mappedFarmlands.flatMap((farmland) => {
+    const displayGeometry = farmland.geometry || farmland.cadastralCoverageGeometry;
     const polygons =
-      farmland.geometry?.type === "MultiPolygon"
-        ? farmland.geometry.coordinates.map((polygon) => polygon[0])
+      displayGeometry?.type === "MultiPolygon"
+        ? displayGeometry.coordinates.map((polygon) => polygon[0])
         : [farmland.coordinates];
     return polygons.filter(Boolean).map((coordinates) => ({
       id: farmland.id,
       coordinates,
+      geometryStatus: farmland.geometry ? "defined" : farmland.geometryStatus,
     }));
   });
 
@@ -222,6 +226,11 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
               <Typography color="text.secondary" sx={{ mt: 1 }}>
                 Area: {selectedFarmland?.area || "-"} ha
               </Typography>
+              {selectedFarmland?.geometryStatus === "cadastral_coverage" ? (
+                <Typography color="warning.main" variant="body2" sx={{ mt: 1 }}>
+                  La geometria visualizzata è una copertura catastale; il confine agronomico non è definito.
+                </Typography>
+              ) : null}
               <Divider sx={{ my: 2 }} />
               {summaryLoading ? <CircularProgress size={28} /> : null}
               {summaryError ? (
