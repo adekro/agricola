@@ -697,4 +697,98 @@ DROP POLICY IF EXISTS "Allow anonymous read access to cadastral parcels" ON cada
 CREATE POLICY "Allow anonymous read access to cadastral parcels" ON cadastral_parcels
   FOR SELECT USING (true);
 
+-- Shared phytosanitary catalogue synchronized from the Ministry of Health dataset.
+CREATE TABLE IF NOT EXISTS phytosanitary_products (
+  num_registration TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  company_name TEXT,
+  administrative_status TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT false,
+  current_label_id BIGINT,
+  source_data JSONB NOT NULL,
+  dataset_file TEXT NOT NULL,
+  last_synced_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE TABLE IF NOT EXISTS phytosanitary_sync_runs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  dataset_file TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'failed')),
+  products_total INTEGER NOT NULL DEFAULT 0,
+  products_active INTEGER NOT NULL DEFAULT 0,
+  labels_downloaded INTEGER NOT NULL DEFAULT 0,
+  labels_existing INTEGER NOT NULL DEFAULT 0,
+  labels_missing INTEGER NOT NULL DEFAULT 0,
+  labels_processed INTEGER NOT NULL DEFAULT 0,
+  labels_skipped INTEGER NOT NULL DEFAULT 0,
+  labels_failed INTEGER NOT NULL DEFAULT 0,
+  error_message TEXT,
+  started_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now()),
+  completed_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS phytosanitary_labels (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  num_registration TEXT NOT NULL REFERENCES phytosanitary_products(num_registration) ON DELETE CASCADE,
+  ministry_label_id BIGINT NOT NULL,
+  pdf_path TEXT,
+  extraction_status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (extraction_status IN ('pending', 'completed', 'review_required', 'failed')),
+  ocr_text TEXT,
+  copper_g_per_kg NUMERIC,
+  copper_raw_value NUMERIC,
+  copper_raw_unit TEXT,
+  copper_source_text TEXT,
+  copper_confidence NUMERIC CHECK (copper_confidence BETWEEN 0 AND 1),
+  ai_model TEXT,
+  ai_raw_response JSONB,
+  error_message TEXT,
+  extracted_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now()),
+  UNIQUE (num_registration, ministry_label_id)
+);
+
+CREATE TABLE IF NOT EXISTS phytosanitary_authorized_uses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  label_id UUID NOT NULL REFERENCES phytosanitary_labels(id) ON DELETE CASCADE,
+  crop_name TEXT NOT NULL,
+  dose_min NUMERIC,
+  dose_max NUMERIC,
+  dose_unit TEXT,
+  max_treatments INTEGER,
+  interval_min_days INTEGER,
+  interval_max_days INTEGER,
+  preharvest_interval_days INTEGER,
+  source_text TEXT,
+  confidence NUMERIC CHECK (confidence BETWEEN 0 AND 1),
+  review_required BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_phytosanitary_products_active
+  ON phytosanitary_products (is_active);
+CREATE INDEX IF NOT EXISTS idx_phytosanitary_labels_registration
+  ON phytosanitary_labels (num_registration, ministry_label_id);
+CREATE INDEX IF NOT EXISTS idx_phytosanitary_uses_label
+  ON phytosanitary_authorized_uses (label_id);
+
+ALTER TABLE phytosanitary_products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE phytosanitary_sync_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE phytosanitary_labels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE phytosanitary_authorized_uses ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow authenticated read access to phytosanitary products" ON phytosanitary_products;
+CREATE POLICY "Allow authenticated read access to phytosanitary products" ON phytosanitary_products
+  FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Allow authenticated read access to phytosanitary sync runs" ON phytosanitary_sync_runs;
+CREATE POLICY "Allow authenticated read access to phytosanitary sync runs" ON phytosanitary_sync_runs
+  FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Allow authenticated read access to phytosanitary labels" ON phytosanitary_labels;
+CREATE POLICY "Allow authenticated read access to phytosanitary labels" ON phytosanitary_labels
+  FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Allow authenticated read access to phytosanitary uses" ON phytosanitary_authorized_uses;
+CREATE POLICY "Allow authenticated read access to phytosanitary uses" ON phytosanitary_authorized_uses
+  FOR SELECT TO authenticated USING (true);
+
 COMMIT;

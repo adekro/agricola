@@ -30,9 +30,9 @@ Questo file è la lista operativa per realizzare quanto descritto in `RelazioneC
 
 ### R2. Parser AI delle etichette fitosanitarie
 
-- [ ] Definire sorgente e modalità di acquisizione delle etichette PDF del Ministero della Salute.(dal sito del ministero si riesce ad arrivare all'etichetta in formato pdf, uno script dovrebbe leggerla e con un ia openrouter/ocr estrarre i valori)
-- [ ] Estrarre colture autorizzate, dosi minime/massime, tempi di carenza e intervalli tra trattamenti.
-- [ ] Estrarre il contenuto di rame e calcolare il totale annuo per ettaro tra prodotti diversi.
+- [x] Definire sorgente e modalità di acquisizione delle etichette PDF del Ministero della Salute (script Node con ricerca per numero registrazione).
+- [x] Estrarre con OpenRouter colture autorizzate, dosi minime/massime, tempi di carenza e intervalli tra trattamenti, predisponendo revisione manuale.
+- [ ] Estrarre il contenuto di rame e calcolare il totale annuo per ettaro tra prodotti diversi (estrazione rame predisposta; calcolo annuale ancora da implementare).
 - [ ] Prevedere revisione manuale e tracciabilità del dato estratto prima dell'uso operativo.
 
 ### R3. Motore di compliance
