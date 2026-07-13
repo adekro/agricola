@@ -102,6 +102,7 @@ Questo file è la lista operativa per realizzare quanto descritto in `RelazioneC
 
 - [x] Archivio prodotti fitosanitari (FitosanitariScreen - dati da opendata Ministero Salute, salvataggio su IndexedDB)
 - [x] Download della singola etichetta PDF tramite proxy ministeriale per i soli prodotti attivi (FitosanitariScreen)
+- [x] Griglia fitosanitari da Supabase con dati estratti, filtri e preferenze colonne in localStorage
 - [x] Script Node per recuperare e scaricare in C:\\siti\\id le etichette ministeriali dei prodotti attivi
 - [x] Controlli automatici (tempi di carenza, dose per ettaro nei trattamenti) (OperationsManager calcola dose attesa per appezzamento, segnala scostamenti e mostra la fine del tempo di carenza)
 - [x] Registrazione trattamenti con costi (OperationsManager - trattamento fitosanitario)

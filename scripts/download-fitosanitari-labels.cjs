@@ -32,6 +32,24 @@ const SUPABASE_URL = requiredEnvironment("SUPABASE_URL").replace(/\/$/, "");
 const SUPABASE_SERVICE_ROLE_KEY = requiredEnvironment("SUPABASE_SERVICE_ROLE_KEY");
 const OPENROUTER_API_KEY = requiredEnvironment("OPENROUTER_API_KEY");
 
+function validateSupabaseServiceKey(key) {
+  if (key.startsWith("sb_secret_")) return;
+  try {
+    const payload = JSON.parse(
+      Buffer.from(key.split(".")[1], "base64url").toString("utf8"),
+    );
+    if (payload.role === "service_role") return;
+  } catch {
+    // Gestito dal messaggio esplicito seguente.
+  }
+  throw new Error(
+    "SUPABASE_SERVICE_ROLE_KEY deve contenere la chiave service_role (legacy) " +
+      "oppure una secret key sb_secret_, non la chiave anon/publishable",
+  );
+}
+
+validateSupabaseServiceKey(SUPABASE_SERVICE_ROLE_KEY);
+
 function requestMinisterial(requestUrl, options = {}) {
   return new Promise((resolve, reject) => {
     const socket = tls.connect(
@@ -170,6 +188,11 @@ async function supabaseRequest(table, options = {}) {
     },
   });
   if (response.statusCode < 200 || response.statusCode >= 300) {
+    if (response.statusCode === 401 && response.body.toString("utf8").includes("row-level security")) {
+      throw new Error(
+        `Supabase ${table}: la chiave configurata non dispone dei privilegi service_role`,
+      );
+    }
     throw new Error(
       `Supabase ${table}: HTTP ${response.statusCode} ${response.body.toString("utf8")}`,
     );
