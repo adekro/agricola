@@ -211,18 +211,19 @@ const FitosanitariScreen = () => {
                   {p.data_registrazione || "-"}
                 </TableCell>
                 <TableCell>
-                  {isActive(p.stato_amministrativo) && p.id && (
-                    <Button
-                      component="a"
-                      href={`https://www.fitosanitari.salute.gov.it/fitosanitariws_new/EtichettaServlet?id=${encodeURIComponent(p.id)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      size="small"
-                      variant="outlined"
-                    >
-                      PDF
-                    </Button>
-                  )}
+                  {isActive(p.stato_amministrativo) &&
+                    (p.num_registrazione || p.NUMERO_REGISTRAZIONE) && (
+                      <Button
+                        component="a"
+                        href={`/api/fitosanitari-label?registration=${encodeURIComponent(
+                          p.num_registrazione || p.NUMERO_REGISTRAZIONE,
+                        )}`}
+                        size="small"
+                        variant="outlined"
+                      >
+                        PDF
+                      </Button>
+                    )}
                 </TableCell>
               </TableRow>
             ))}
