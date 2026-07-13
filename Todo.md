@@ -101,7 +101,7 @@ Questo file è la lista operativa per realizzare quanto descritto in `RelazioneC
 ### 2.5 Trattamenti Fitosanitari
 
 - [x] Archivio prodotti fitosanitari (FitosanitariScreen - dati da opendata Ministero Salute, salvataggio su IndexedDB)
-- [x] Collegamento all'etichetta PDF nella banca dati ministeriale per i soli prodotti attivi (FitosanitariScreen)
+- [x] Download diretto dell'etichetta PDF ministeriale tramite ID per i soli prodotti attivi (FitosanitariScreen)
 - [x] Controlli automatici (tempi di carenza, dose per ettaro nei trattamenti) (OperationsManager calcola dose attesa per appezzamento, segnala scostamenti e mostra la fine del tempo di carenza)
 - [x] Registrazione trattamenti con costi (OperationsManager - trattamento fitosanitario)
 - [x] Piano di fertilizzazione (modulo dedicato in FarmlandScreen con righe collegate all'appezzamento e prefill dall'ultima analisi terreno)

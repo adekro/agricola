@@ -211,26 +211,17 @@ const FitosanitariScreen = () => {
                   {p.data_registrazione || "-"}
                 </TableCell>
                 <TableCell>
-                  {isActive(p.stato_amministrativo) && (
-                    <Box
-                      component="form"
-                      method="post"
-                      action="https://www.fitosanitari.salute.gov.it/fitosanitariws_new/FitosanitariServlet"
+                  {isActive(p.stato_amministrativo) && p.id && (
+                    <Button
+                      component="a"
+                      href={`https://www.fitosanitari.salute.gov.it/fitosanitariws_new/EtichettaServlet?id=${encodeURIComponent(p.id)}`}
                       target="_blank"
+                      rel="noopener noreferrer"
+                      size="small"
+                      variant="outlined"
                     >
-                      <input type="hidden" name="ACTION" value="cercaProdotti" />
-                      <input type="hidden" name="FROM" value="0" />
-                      <input type="hidden" name="TO" value="49" />
-                      <input type="hidden" name="PROVENIENZA" value="RICERCA" />
-                      <input
-                        type="hidden"
-                        name="NUMERO_REGISTRAZIONE"
-                        value={p.num_registrazione || p.NUMERO_REGISTRAZIONE}
-                      />
-                      <Button type="submit" size="small" variant="outlined">
-                        PDF
-                      </Button>
-                    </Box>
+                      PDF
+                    </Button>
                   )}
                 </TableCell>
               </TableRow>
