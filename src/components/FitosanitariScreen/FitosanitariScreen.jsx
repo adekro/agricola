@@ -97,6 +97,11 @@ const FitosanitariScreen = () => {
     return matchesFilter && matchesStatus;
   });
 
+  const isActive = (status = "") =>
+    status.startsWith("Autorizzato") ||
+    status.startsWith("Ri-registrato") ||
+    status.startsWith("Rinnovato");
+
   return (
     <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
       <Box
@@ -173,6 +178,7 @@ const FitosanitariScreen = () => {
               <TableCell sx={{ display: { xs: "none", lg: "table-cell" } }}>
                 Data Reg.
               </TableCell>
+              <TableCell>Etichetta</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -204,11 +210,34 @@ const FitosanitariScreen = () => {
                 <TableCell sx={{ display: { xs: "none", lg: "table-cell" } }}>
                   {p.data_registrazione || "-"}
                 </TableCell>
+                <TableCell>
+                  {isActive(p.stato_amministrativo) && (
+                    <Box
+                      component="form"
+                      method="post"
+                      action="https://www.fitosanitari.salute.gov.it/fitosanitariws_new/FitosanitariServlet"
+                      target="_blank"
+                    >
+                      <input type="hidden" name="ACTION" value="cercaProdotti" />
+                      <input type="hidden" name="FROM" value="0" />
+                      <input type="hidden" name="TO" value="49" />
+                      <input type="hidden" name="PROVENIENZA" value="RICERCA" />
+                      <input
+                        type="hidden"
+                        name="NUMERO_REGISTRAZIONE"
+                        value={p.num_registrazione || p.NUMERO_REGISTRAZIONE}
+                      />
+                      <Button type="submit" size="small" variant="outlined">
+                        PDF
+                      </Button>
+                    </Box>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
             {filteredProducts.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} align="center">
+                <TableCell colSpan={7} align="center">
                   Nessun dato disponibile
                 </TableCell>
               </TableRow>
