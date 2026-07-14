@@ -29,7 +29,11 @@
     "build": "vite build --outDir build",
     "preview": "vite preview",
     "test": "vitest run",
-    "download-fitosanitari-labels": "node scripts/download-fitosanitari-labels.cjs",
+    "download-fitosanitari-labels": "node scripts/download-fitosanitari-labels.cjs --phase=all",
+    "fitosanitari:download": "node scripts/download-fitosanitari-labels.cjs --phase=download",
+    "fitosanitari:images": "node scripts/download-fitosanitari-labels.cjs --phase=images",
+    "fitosanitari:ocr": "node scripts/download-fitosanitari-labels.cjs --phase=ocr",
+    "fitosanitari:extract": "node scripts/download-fitosanitari-labels.cjs --phase=extract",
     "eject": "react-scripts eject",
     "version": "standard-version"
   },

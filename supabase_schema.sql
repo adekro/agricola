@@ -734,6 +734,7 @@ CREATE TABLE IF NOT EXISTS phytosanitary_labels (
   pdf_path TEXT,
   extraction_status TEXT NOT NULL DEFAULT 'pending'
     CHECK (extraction_status IN ('pending', 'completed', 'review_required', 'failed')),
+  ocr_engine TEXT,
   ocr_text TEXT,
   copper_g_per_kg NUMERIC,
   copper_raw_value NUMERIC,
@@ -748,6 +749,8 @@ CREATE TABLE IF NOT EXISTS phytosanitary_labels (
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now()),
   UNIQUE (num_registration, ministry_label_id)
 );
+
+ALTER TABLE phytosanitary_labels ADD COLUMN IF NOT EXISTS ocr_engine TEXT;
 
 CREATE TABLE IF NOT EXISTS phytosanitary_authorized_uses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

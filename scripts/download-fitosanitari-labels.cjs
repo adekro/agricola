@@ -1,8 +1,10 @@
 const crypto = require("node:crypto");
+const { execFile } = require("node:child_process");
 const fs = require("node:fs/promises");
 const https = require("node:https");
 const path = require("node:path");
 const tls = require("node:tls");
+const { promisify } = require("node:util");
 
 try {
   process.loadEnvFile?.();
@@ -16,8 +18,13 @@ const REQUEST_DELAY_MS = 300;
 const SUPABASE_BATCH_SIZE = 200;
 const FITOSANITARI_HOST = "www.fitosanitari.salute.gov.it";
 const FITOSANITARI_PATH = "/fitosanitariws_new/FitosanitariServlet";
+const PHASE =
+  process.argv.find((argument) => argument.startsWith("--phase="))?.split("=")[1] ||
+  "all";
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openrouter/free";
 const defaultAgent = new https.Agent({ keepAlive: true });
+const execFileAsync = promisify(execFile);
+let ocrTools;
 
 const delay = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -28,9 +35,9 @@ function requiredEnvironment(name) {
   return value;
 }
 
-const SUPABASE_URL = requiredEnvironment("SUPABASE_URL").replace(/\/$/, "");
-const SUPABASE_SERVICE_ROLE_KEY = requiredEnvironment("SUPABASE_SERVICE_ROLE_KEY");
-const OPENROUTER_API_KEY = requiredEnvironment("OPENROUTER_API_KEY");
+const SUPABASE_URL = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 
 function validateSupabaseServiceKey(key) {
   if (key.startsWith("sb_secret_")) return;
@@ -48,7 +55,81 @@ function validateSupabaseServiceKey(key) {
   );
 }
 
-validateSupabaseServiceKey(SUPABASE_SERVICE_ROLE_KEY);
+function validatePhaseEnvironment() {
+  if (!["all", "download", "images", "ocr", "extract"].includes(PHASE)) {
+    throw new Error(`Fase non valida: ${PHASE}`);
+  }
+  if (["all", "download", "extract"].includes(PHASE)) {
+    requiredEnvironment("SUPABASE_URL");
+    validateSupabaseServiceKey(requiredEnvironment("SUPABASE_SERVICE_ROLE_KEY"));
+  }
+  if (["all", "extract"].includes(PHASE)) {
+    requiredEnvironment("OPENROUTER_API_KEY");
+  }
+}
+
+async function findExecutable(command, configuredPath, fallbackPaths = []) {
+  const candidates = [configuredPath, ...fallbackPaths].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      // Prova il candidato successivo.
+    }
+  }
+  try {
+    const { stdout } = await execFileAsync("where.exe", [command]);
+    const resolved = stdout.split(/\r?\n/).find(Boolean);
+    if (resolved) return resolved.trim();
+  } catch {
+    // Gestito dal messaggio seguente.
+  }
+  throw new Error(`${command} non trovato; configurare il relativo percorso in .env`);
+}
+
+async function findWingetPdftoppm() {
+  const packagesRoot = path.join(
+    process.env.LOCALAPPDATA || "",
+    "Microsoft",
+    "WinGet",
+    "Packages",
+  );
+  try {
+    const packages = await fs.readdir(packagesRoot);
+    const popplerPackage = packages.find((name) =>
+      name.startsWith("oschwartz10612.Poppler_"),
+    );
+    if (!popplerPackage) return null;
+    const packagePath = path.join(packagesRoot, popplerPackage);
+    const versions = await fs.readdir(packagePath);
+    const popplerFolder = versions.find((name) => name.startsWith("poppler-"));
+    return popplerFolder
+      ? path.join(packagePath, popplerFolder, "Library", "bin", "pdftoppm.exe")
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveOcrTools() {
+  const pdftoppmFallback = await findWingetPdftoppm();
+  const tools = {
+    tesseract: await findExecutable(
+      "tesseract",
+      process.env.TESSERACT_PATH,
+      ["C:\\Program Files\\Tesseract-OCR\\tesseract.exe"],
+    ),
+    pdftoppm: await findExecutable(
+      "pdftoppm",
+      process.env.PDFTOPPM_PATH,
+      [pdftoppmFallback],
+    ),
+    tessdata: process.env.TESSDATA_PATH || "C:\\siti\\tessdata",
+  };
+  await fs.access(path.join(tools.tessdata, "ita.traineddata"));
+  return tools;
+}
 
 function requestMinisterial(requestUrl, options = {}) {
   return new Promise((resolve, reject) => {
@@ -322,7 +403,6 @@ const extractionSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
-    ocr_text: { type: "string" },
     review_required: { type: "boolean" },
     copper: {
       type: "object",
@@ -363,14 +443,14 @@ const extractionSchema = {
       },
     },
   },
-  required: ["ocr_text", "review_required", "copper", "authorized_uses"],
+  required: ["review_required", "copper", "authorized_uses"],
 };
 
 function validateExtraction(value) {
   if (!value || typeof value !== "object" || !Array.isArray(value.authorized_uses)) {
     throw new Error("Risposta AI priva degli usi autorizzati");
   }
-  if (typeof value.ocr_text !== "string" || !value.copper) {
+  if (!value.copper) {
     throw new Error("Risposta AI incompleta");
   }
   for (const use of value.authorized_uses) {
@@ -381,36 +461,93 @@ function validateExtraction(value) {
   return value;
 }
 
-async function extractLabel(pdfPath) {
-  const pdf = await fs.readFile(pdfPath);
+async function ensureLabelImages(registrationNumber, labelId, pdfPath) {
+  const imageDirectory = path.join(
+    OUTPUT_DIR,
+    "images",
+    `${registrationNumber}_${labelId}`,
+  );
+  const existingImages = await fs
+    .readdir(imageDirectory)
+    .catch((error) => (error.code === "ENOENT" ? [] : Promise.reject(error)));
+  if (existingImages.some((name) => /^page-\d+\.jpg$/i.test(name))) {
+    return { imageDirectory, result: "existing" };
+  }
+
+  await fs.rm(imageDirectory, { recursive: true, force: true });
+  await fs.mkdir(imageDirectory, { recursive: true });
+  const imagePrefix = path.join(imageDirectory, "page");
+  await execFileAsync(
+    ocrTools.pdftoppm,
+    ["-jpeg", "-r", "220", pdfPath, imagePrefix],
+    { maxBuffer: 50 * 1024 * 1024 },
+  );
+  const images = (await fs.readdir(imageDirectory)).filter((name) =>
+    /^page-\d+\.jpg$/i.test(name),
+  );
+  if (!images.length) throw new Error("Poppler non ha generato immagini dal PDF");
+  return { imageDirectory, result: "created" };
+}
+
+async function runLocalOcr(registrationNumber, labelId, imageDirectory) {
+  const ocrDirectory = path.join(OUTPUT_DIR, "ocr");
+  const ocrPath = path.join(ocrDirectory, `${registrationNumber}_${labelId}.txt`);
+  try {
+    const existingText = await fs.readFile(ocrPath, "utf8");
+    if (existingText.trim()) return { ocrText: existingText, result: "existing" };
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+
+  const images = (await fs.readdir(imageDirectory))
+    .filter((name) => /^page-\d+\.jpg$/i.test(name))
+    .sort((left, right) =>
+      left.localeCompare(right, undefined, { numeric: true }),
+    );
+  if (!images.length) throw new Error("Immagini OCR non disponibili");
+
+  const pages = [];
+  for (const [index, image] of images.entries()) {
+    const { stdout } = await execFileAsync(
+      ocrTools.tesseract,
+      [
+        path.join(imageDirectory, image),
+        "stdout",
+        "--tessdata-dir",
+        ocrTools.tessdata,
+        "-l",
+        "ita+eng",
+        "--psm",
+        "3",
+      ],
+      { encoding: "utf8", maxBuffer: 50 * 1024 * 1024 },
+    );
+    pages.push(`--- PAGINA ${index + 1} ---\n${stdout.trim()}`);
+  }
+  const ocrText = pages.join("\n\n");
+  await fs.mkdir(ocrDirectory, { recursive: true });
+  await fs.writeFile(ocrPath, ocrText, "utf8");
+  return { ocrText, result: "created" };
+}
+
+async function extractLabel(ocrText) {
   const payload = JSON.stringify({
     model: OPENROUTER_MODEL,
     messages: [
       {
         role: "user",
         content: [
-          {
-            type: "text",
-            text: [
-              "Trascrivi e analizza questa etichetta fitosanitaria italiana.",
-              "Estrai ogni coltura separatamente con dose minima/massima e unità originali,",
-              "numero massimo di trattamenti, intervallo minimo/massimo e tempo di carenza.",
-              "Estrai il rame in g/kg solo quando ricavabile senza densità o assunzioni;",
-              "altrimenti conserva valore e unità originali e marca ambiguous=true.",
-              "Non inventare dati mancanti. source_text deve riportare il passaggio utile.",
-            ].join(" "),
-          },
-          {
-            type: "file",
-            file: {
-              filename: path.basename(pdfPath),
-              file_data: `data:application/pdf;base64,${pdf.toString("base64")}`,
-            },
-          },
-        ],
+          "Analizza il seguente testo OCR di un'etichetta fitosanitaria italiana.",
+          "Estrai ogni coltura separatamente con dose minima/massima e unità originali,",
+          "numero massimo di trattamenti, intervallo minimo/massimo e tempo di carenza.",
+          "Estrai il rame in g/kg solo quando ricavabile senza densità o assunzioni;",
+          "altrimenti conserva valore e unità originali e marca ambiguous=true.",
+          "Non inventare dati mancanti. source_text deve riportare il passaggio utile.",
+          "\n\nTESTO OCR:\n",
+          ocrText,
+        ].join(" "),
       },
     ],
-    plugins: [{ id: "file-parser", pdf: { engine: "cloudflare-ai" } }],
     response_format: {
       type: "json_schema",
       json_schema: { name: "phytosanitary_label", strict: true, schema: extractionSchema },
@@ -435,12 +572,15 @@ async function extractLabel(pdfPath) {
   const rawResponse = JSON.parse(response.body.toString("utf8"));
   const content = rawResponse.choices?.[0]?.message?.content;
   if (typeof content !== "string") throw new Error("OpenRouter non ha restituito JSON testuale");
-  return { extraction: validateExtraction(JSON.parse(content)), rawResponse };
+  return {
+    extraction: { ...validateExtraction(JSON.parse(content)), ocr_text: ocrText },
+    rawResponse,
+  };
 }
 
 async function getExistingLabel(registrationNumber, labelId) {
   const query = new URLSearchParams({
-    select: "id,extraction_status",
+    select: "id,extraction_status,ocr_engine",
     num_registration: `eq.${registrationNumber}`,
     ministry_label_id: `eq.${labelId}`,
     limit: "1",
@@ -462,6 +602,7 @@ async function saveExtraction(labelRecord, registrationNumber, labelId, pdfPath,
       ministry_label_id: Number(labelId),
       pdf_path: pdfPath,
       extraction_status: needsReview ? "review_required" : "completed",
+      ocr_engine: "tesseract-5-ita-eng",
       ocr_text: result.extraction.ocr_text,
       copper_g_per_kg: result.extraction.copper.value_g_per_kg,
       copper_raw_value: result.extraction.copper.raw_value,
@@ -538,8 +679,135 @@ async function updateSyncRun(runId, values) {
   });
 }
 
+async function listPdfTasks() {
+  const files = await fs.readdir(OUTPUT_DIR);
+  return files
+    .map((fileName) => {
+      const match = fileName.match(/^(\d+)_(\d+)\.pdf$/i);
+      return match
+        ? {
+            registrationNumber: match[1],
+            labelId: match[2],
+            pdfPath: path.join(OUTPUT_DIR, fileName),
+          }
+        : null;
+    })
+    .filter(Boolean);
+}
+
+async function runImagesOnly() {
+  const tasks = await listPdfTasks();
+  console.log(`FASE IMMAGINI - Conversione di ${tasks.length} PDF`);
+  for (const [index, task] of tasks.entries()) {
+    try {
+      const images = await ensureLabelImages(
+        task.registrationNumber,
+        task.labelId,
+        task.pdfPath,
+      );
+      console.log(
+        `[${index + 1}/${tasks.length}] ${task.registrationNumber}_${task.labelId}: ${images.result}`,
+      );
+    } catch (error) {
+      console.error(
+        `[${index + 1}/${tasks.length}] ${task.registrationNumber}_${task.labelId}: ${error.message}`,
+      );
+    }
+  }
+}
+
+async function readLocalOcr(registrationNumber, labelId) {
+  const ocrPath = path.join(
+    OUTPUT_DIR,
+    "ocr",
+    `${registrationNumber}_${labelId}.txt`,
+  );
+  const ocrText = await fs.readFile(ocrPath, "utf8");
+  if (!ocrText.trim()) throw new Error(`Testo OCR vuoto: ${ocrPath}`);
+  return ocrText;
+}
+
+async function runOcrOnly() {
+  const tasks = await listPdfTasks();
+  console.log(`FASE OCR - Elaborazione locale di ${tasks.length} etichette`);
+  for (const [index, task] of tasks.entries()) {
+    const imageDirectory = path.join(
+      OUTPUT_DIR,
+      "images",
+      `${task.registrationNumber}_${task.labelId}`,
+    );
+    try {
+      const ocr = await runLocalOcr(
+        task.registrationNumber,
+        task.labelId,
+        imageDirectory,
+      );
+      console.log(
+        `[${index + 1}/${tasks.length}] ${task.registrationNumber}_${task.labelId}: ${ocr.result}`,
+      );
+    } catch (error) {
+      console.error(
+        `[${index + 1}/${tasks.length}] ${task.registrationNumber}_${task.labelId}: ${error.message}`,
+      );
+    }
+  }
+}
+
+async function runExtractionOnly() {
+  const tasks = await listPdfTasks();
+  console.log(`FASE ESTRAZIONE - OpenRouter per ${tasks.length} etichette OCR`);
+  for (const [index, task] of tasks.entries()) {
+    let labelRecord = null;
+    try {
+      labelRecord = await getExistingLabel(task.registrationNumber, task.labelId);
+      if (
+        ["completed", "review_required"].includes(labelRecord?.extraction_status) &&
+        labelRecord.ocr_engine === "tesseract-5-ita-eng"
+      ) {
+        console.log(
+          `[${index + 1}/${tasks.length}] ${task.registrationNumber}_${task.labelId}: già elaborata`,
+        );
+        continue;
+      }
+      const ocrText = await readLocalOcr(task.registrationNumber, task.labelId);
+      const extraction = await withRetry(() => extractLabel(ocrText));
+      await saveExtraction(
+        labelRecord,
+        task.registrationNumber,
+        task.labelId,
+        task.pdfPath,
+        extraction,
+      );
+      console.log(
+        `[${index + 1}/${tasks.length}] ${task.registrationNumber}_${task.labelId}: analizzata`,
+      );
+    } catch (error) {
+      await saveFailure(
+        labelRecord,
+        task.registrationNumber,
+        task.labelId,
+        task.pdfPath,
+        error,
+      ).catch(() => {});
+      console.error(
+        `[${index + 1}/${tasks.length}] ${task.registrationNumber}_${task.labelId}: ${error.message}`,
+      );
+    }
+    await delay(REQUEST_DELAY_MS);
+  }
+}
+
 async function main() {
+  validatePhaseEnvironment();
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
+  if (["all", "images", "ocr"].includes(PHASE)) {
+    ocrTools = await resolveOcrTools();
+    console.log(`OCR locale: ${ocrTools.tesseract}`);
+  }
+  if (PHASE === "images") return runImagesOnly();
+  if (PHASE === "ocr") return runOcrOnly();
+  if (PHASE === "extract") return runExtractionOnly();
+
   const { fileName, products } = await loadLatestDataset();
   const uniqueProducts = [...new Map(products.map((item) => [item.num_registrazione, item])).values()];
   const activeProducts = uniqueProducts.filter(isActive);
@@ -569,6 +837,8 @@ async function main() {
     await synchronizeProducts(uniqueProducts, fileName);
     const cookies = await createMinisterialSession();
     console.log(`Prodotti attivi da elaborare: ${activeProducts.length}`);
+    console.log("FASE 1/4 - Ricerca etichette e download di tutti i PDF");
+    const tasks = [];
 
     for (const [index, product] of activeProducts.entries()) {
       const registrationNumber = product.num_registrazione;
@@ -584,7 +854,11 @@ async function main() {
         }
         await updateProductLabel(registrationNumber, labelId);
         labelRecord = await getExistingLabel(registrationNumber, labelId);
-        if (["completed", "review_required"].includes(labelRecord?.extraction_status)) {
+        if (
+          ["completed", "review_required"].includes(labelRecord?.extraction_status) &&
+          labelRecord.ocr_engine === "tesseract-5-ita-eng" &&
+          PHASE !== "download"
+        ) {
           summary.labels_skipped += 1;
           console.log(`[${index + 1}/${activeProducts.length}] ${registrationNumber}: già elaborata`);
           continue;
@@ -593,16 +867,117 @@ async function main() {
         const pdf = await withRetry(() => ensureLabelPdf(registrationNumber, labelId));
         pdfPath = pdf.destination;
         summary[`labels_${pdf.result}`] += 1;
-        const extraction = await withRetry(() => extractLabel(pdfPath));
-        await saveExtraction(labelRecord, registrationNumber, labelId, pdfPath, extraction);
-        summary.labels_processed += 1;
-        console.log(`[${index + 1}/${activeProducts.length}] ${registrationNumber}_${labelId}.pdf: analizzata`);
+        tasks.push({ registrationNumber, labelId, labelRecord, pdfPath });
+        console.log(
+          `[${index + 1}/${activeProducts.length}] ${registrationNumber}_${labelId}.pdf: ${pdf.result}`,
+        );
       } catch (error) {
         summary.labels_failed += 1;
         if (labelId) {
           await saveFailure(labelRecord, registrationNumber, labelId, pdfPath, error).catch(() => {});
         }
         console.error(`[${index + 1}/${activeProducts.length}] ${registrationNumber}: ${error.message}`);
+      }
+      await delay(REQUEST_DELAY_MS);
+    }
+
+    if (PHASE === "download") {
+      await updateSyncRun(runId, {
+        status: "completed",
+        ...summary,
+        completed_at: new Date().toISOString(),
+      });
+      console.log("Download completato:", summary);
+      return;
+    }
+
+    console.log(`FASE 2/4 - Conversione in immagini di ${tasks.length} etichette`);
+    for (const [index, task] of tasks.entries()) {
+      try {
+        const images = await ensureLabelImages(
+          task.registrationNumber,
+          task.labelId,
+          task.pdfPath,
+        );
+        task.imageDirectory = images.imageDirectory;
+        console.log(
+          `[${index + 1}/${tasks.length}] ${task.registrationNumber}_${task.labelId}: immagini ${images.result}`,
+        );
+      } catch (error) {
+        task.failed = true;
+        summary.labels_failed += 1;
+        await saveFailure(
+          task.labelRecord,
+          task.registrationNumber,
+          task.labelId,
+          task.pdfPath,
+          error,
+        ).catch(() => {});
+        console.error(
+          `[${index + 1}/${tasks.length}] ${task.registrationNumber}_${task.labelId}: ${error.message}`,
+        );
+      }
+    }
+
+    const extractionTasks = tasks.filter((task) => !task.failed);
+    console.log(
+      `FASE 3/4 - OCR locale di ${extractionTasks.length} etichette`,
+    );
+    for (const [index, task] of extractionTasks.entries()) {
+      try {
+        const ocr = await runLocalOcr(
+          task.registrationNumber,
+          task.labelId,
+          task.imageDirectory,
+        );
+        console.log(
+          `[${index + 1}/${extractionTasks.length}] ${task.registrationNumber}_${task.labelId}: OCR ${ocr.result}`,
+        );
+        task.ocrText = ocr.ocrText;
+      } catch (error) {
+        task.failed = true;
+        summary.labels_failed += 1;
+        await saveFailure(
+          task.labelRecord,
+          task.registrationNumber,
+          task.labelId,
+          task.pdfPath,
+          error,
+        ).catch(() => {});
+        console.error(
+          `[${index + 1}/${extractionTasks.length}] ${task.registrationNumber}_${task.labelId}: ${error.message}`,
+        );
+      }
+    }
+
+    const aiTasks = extractionTasks.filter((task) => !task.failed);
+    console.log(`FASE 4/4 - OpenRouter per ${aiTasks.length} etichette OCR`);
+    for (const [index, task] of aiTasks.entries()) {
+      try {
+        const extraction = await withRetry(() => extractLabel(task.ocrText));
+        await saveExtraction(
+          task.labelRecord,
+          task.registrationNumber,
+          task.labelId,
+          task.pdfPath,
+          extraction,
+        );
+        summary.labels_processed += 1;
+        console.log(
+          `[${index + 1}/${aiTasks.length}] ${task.registrationNumber}_${task.labelId}: analizzata`,
+        );
+      } catch (error) {
+        summary.labels_failed += 1;
+        await saveFailure(
+          task.labelRecord,
+          task.registrationNumber,
+          task.labelId,
+          task.pdfPath,
+          error,
+        ).catch(() => {});
+        console.error(
+          `[${index + 1}/${aiTasks.length}] ${task.registrationNumber}_${task.labelId}: ${error.message}`,
+        );
       }
       await delay(REQUEST_DELAY_MS);
     }

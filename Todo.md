@@ -31,7 +31,7 @@ Questo file è la lista operativa per realizzare quanto descritto in `RelazioneC
 ### R2. Parser AI delle etichette fitosanitarie
 
 - [x] Definire sorgente e modalità di acquisizione delle etichette PDF del Ministero della Salute (script Node con ricerca per numero registrazione).
-- [x] Estrarre con OpenRouter colture autorizzate, dosi minime/massime, tempi di carenza e intervalli tra trattamenti, predisponendo revisione manuale.
+- [x] Estrarre con OCR locale e OpenRouter colture autorizzate, dosi minime/massime, tempi di carenza e intervalli tra trattamenti, predisponendo revisione manuale.
 - [ ] Estrarre il contenuto di rame e calcolare il totale annuo per ettaro tra prodotti diversi (estrazione rame predisposta; calcolo annuale ancora da implementare).
 - [ ] Prevedere revisione manuale e tracciabilità del dato estratto prima dell'uso operativo.
 
@@ -103,7 +103,7 @@ Questo file è la lista operativa per realizzare quanto descritto in `RelazioneC
 - [x] Archivio prodotti fitosanitari (FitosanitariScreen - dati da opendata Ministero Salute, salvataggio su IndexedDB)
 - [x] Download della singola etichetta PDF tramite proxy ministeriale per i soli prodotti attivi (FitosanitariScreen)
 - [x] Griglia fitosanitari da Supabase con dati estratti, filtri e preferenze colonne in localStorage
-- [x] Script Node per recuperare e scaricare in C:\\siti\\id le etichette ministeriali dei prodotti attivi
+- [x] Script Node in comandi separati per download PDF, conversione immagini, OCR locale ed estrazione AI
 - [x] Controlli automatici (tempi di carenza, dose per ettaro nei trattamenti) (OperationsManager calcola dose attesa per appezzamento, segnala scostamenti e mostra la fine del tempo di carenza)
 - [x] Registrazione trattamenti con costi (OperationsManager - trattamento fitosanitario)
 - [x] Piano di fertilizzazione (modulo dedicato in FarmlandScreen con righe collegate all'appezzamento e prefill dall'ultima analisi terreno)
