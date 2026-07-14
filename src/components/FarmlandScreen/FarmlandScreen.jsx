@@ -925,15 +925,7 @@ const FarmlandScreen = (props) => {
         formik.setFieldValue("currentCrop", nextCurrentCrop, false);
       }
     }
-  }, [
-    farmland,
-    formik.values.area,
-    formik.values.perimeter,
-    formik.values.type,
-    formik.values.notes,
-    formik.values.cadastralParcel,
-    formik.values.currentCrop,
-  ]);
+  }, [farmland]);
 
   useEffect(() => {
     if (farmland) {
