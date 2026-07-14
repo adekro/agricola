@@ -4,6 +4,7 @@ import { defaults as defaultControls } from "ol/control.js";
 import Map from "ol/Map.js";
 import { Vector as VectorSource } from "ol/source.js";
 import Draw from "ol/interaction/Draw.js";
+import Modify from "ol/interaction/Modify.js";
 import { fromLonLat } from "ol/proj";
 import TileLayer from "ol/layer/Tile.js";
 import Overlay from "ol/Overlay.js";
@@ -24,6 +25,9 @@ import { CADASTRAL_LAYERS } from "../../../config/cadastralLayers";
 import { createCadastralSource } from "../../../lib/cadastralWms";
 import GeoJSON from "ol/format/GeoJSON";
 import { Fill, Stroke, Style } from "ol/style";
+import Feature from "ol/Feature";
+import Polygon from "ol/geom/Polygon";
+import Collection from "ol/Collection";
 
 const DrawableMap = ({
   onDrawCompleted,
@@ -34,6 +38,8 @@ const DrawableMap = ({
   cadastralOpacity = 0.9,
   vulnerableZonesGeoJson = null,
   vulnerableZonesOpacity = 0.35,
+  terrainPolygons = [],
+  cadastralPolygons = [],
 }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -57,14 +63,34 @@ const DrawableMap = ({
 
     const source = new VectorSource({ wrapX: false });
 
+    const addInitialPolygons = (polygons, geometryType) => {
+      polygons.forEach((coordinates) => {
+        if (!coordinates?.length) return;
+        const feature = new Feature({
+          geometry: new Polygon([
+            coordinates.map((coordinate) => fromLonLat(coordinate)),
+          ]),
+          geometryType,
+        });
+        source.addFeature(feature);
+      });
+    };
+    addInitialPolygons(cadastralPolygons, "cadastral");
+    addInitialPolygons(terrainPolygons, "terrain");
+
     const vector = new VectorLayer({
       source,
-      style: {
-        "fill-color": "rgba(255, 255, 255, 0.2)",
-        "stroke-color": "#ffcc33",
-        "stroke-width": 2,
-        "circle-radius": 7,
-        "circle-fill-color": "#ffcc33",
+      style: (feature) => {
+        const isCadastral = feature.get("geometryType") === "cadastral";
+        const color = isCadastral ? "#f57c00" : "#1976d2";
+        return new Style({
+          fill: new Fill({
+            color: isCadastral
+              ? "rgba(245, 124, 0, 0.18)"
+              : "rgba(25, 118, 210, 0.22)",
+          }),
+          stroke: new Stroke({ color, width: 3 }),
+        });
       },
     });
     vector.setZIndex(2);
@@ -156,13 +182,39 @@ const DrawableMap = ({
 
     mapInstanceRef.current = map;
 
+    if (source.getFeatures().length) {
+      map.getView().fit(source.getExtent(), {
+        padding: [40, 40, 40, 40],
+        maxZoom: 17,
+      });
+    }
+
     let sketch;
     let draw;
+    let modify;
     let helpTooltip;
     let measureTooltip;
     let helpTooltipElement;
     let measureTooltipElement;
     let listener;
+    const editableTerrainFeatures = new Collection(
+      source
+        .getFeatures()
+        .filter((feature) => feature.get("geometryType") === "terrain"),
+    );
+
+    const notifyGeometryChanged = (geometry) => {
+      const area = formatArea(geometry);
+      const perimeter = formatLength(geometry);
+      const transformedGeometry = geometry
+        .clone()
+        .transform("EPSG:3857", "EPSG:4326");
+      onDrawCompletedRef.current?.({
+        area: area.split(" ")[0],
+        perimeter: perimeter.split(" ")[0],
+        coordinates: transformedGeometry.getCoordinates()[0],
+      });
+    };
 
     const continuePolygonMsg = "Click to continue drawing the polygon";
 
@@ -232,6 +284,15 @@ const DrawableMap = ({
 
       draw.on("drawstart", function (evt) {
         sketch = evt.feature;
+        sketch.set("geometryType", "terrain");
+        source
+          .getFeatures()
+          .filter(
+            (feature) =>
+              feature !== sketch && feature.get("geometryType") === "terrain",
+          )
+          .forEach((feature) => source.removeFeature(feature));
+        editableTerrainFeatures.clear();
 
         let tooltipCoord = evt.coordinate;
 
@@ -251,17 +312,14 @@ const DrawableMap = ({
         measureTooltipElement.className = "ol-tooltip ol-tooltip-static";
         measureTooltip.setOffset([0, -7]);
 
-        let geometry = sketch.getGeometry();
+        const geometry = sketch.getGeometry();
 
         const area = formatArea(geometry);
         const perimeter = formatLength(geometry);
 
         console.log(`Area: ${area}, Perimeter: ${perimeter}`);
 
-        geometry = geometry.clone().transform("EPSG:3857", "EPSG:4326");
-        console.log(`Transformed Geometry: ${geometry.getCoordinates()}`);
-        const coordinates = geometry.getCoordinates()[0];
-        console.log(`Coordinates: ${JSON.stringify(coordinates)}`);
+        editableTerrainFeatures.push(sketch);
 
         sketch = null;
         measureTooltipElement = null;
@@ -284,13 +342,8 @@ const DrawableMap = ({
         map.un("pointermove", pointerMoveHandler);
 
         console.log("Pointer move handler removed after drawing completed");
-        const payload = {
-          area: area.split(" ")[0],
-          perimeter: perimeter.split(" ")[0],
-          coordinates,
-        };
         requestAnimationFrame(() => {
-          onDrawCompletedRef.current?.(payload);
+          notifyGeometryChanged(geometry);
         });
         console.log(
           "onDrawCompleted callback executed with area, perimeter, and coordinates",
@@ -308,9 +361,19 @@ const DrawableMap = ({
 
     addInteraction();
 
+    modify = new Modify({ features: editableTerrainFeatures });
+    modify.on("modifyend", (event) => {
+      const feature = event.features.item(0);
+      if (feature) notifyGeometryChanged(feature.getGeometry());
+    });
+    map.addInteraction(modify);
+
     return () => {
       if (draw) {
         map.removeInteraction(draw);
+      }
+      if (modify) {
+        map.removeInteraction(modify);
       }
 
       if (helpTooltip) {
@@ -329,7 +392,7 @@ const DrawableMap = ({
       map.setTarget(undefined);
       mapInstanceRef.current = null;
     };
-  }, [position]);
+  }, [position, terrainPolygons, cadastralPolygons]);
 
   // Handle map provider changes
   useEffect(() => {

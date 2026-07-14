@@ -35,7 +35,6 @@ import DrawableMap from "../WorldMap/DrawableMap/DrawableMap";
 import { useFormik } from "formik";
 import useFarmlands from "../../hooks/useFarmlands";
 import Modal from "../UI/Modal/Modal";
-import WorldMap from "../WorldMap/WorldMap";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { getEnabledMapProviders } from "../../config/mapProviders";
 import { getEnabledSatelliteLayers } from "../../config/satelliteLayers";
@@ -366,10 +365,16 @@ const FarmlandScreen = (props) => {
   }, [companyDraft.name, createCompany, findCompanyByName, selectCompany]);
 
   const onSaveFarmHandler = useCallback(() => {
+    const drawnGeometry = coordinates
+      ? { type: "Polygon", coordinates: [coordinates] }
+      : null;
     const newFarmland = {
       ...formik.values,
       ownerDisplayName: owner.trim(),
-      coordinates: farmland ? farmland.coordinates : coordinates,
+      coordinates: coordinates || farmland?.coordinates || null,
+      geometry: drawnGeometry || farmland?.geometry || null,
+      cadastralCoverageGeometry: farmland?.cadastralCoverageGeometry || null,
+      geometryStatus: drawnGeometry ? "defined" : farmland?.geometryStatus || "defined",
     };
     if (!newFarmland.name?.trim()) {
       setError("Il nome del terreno è obbligatorio.");
@@ -812,29 +817,29 @@ const FarmlandScreen = (props) => {
     handleOnClose();
   }, [farmland, onDelete, handleOnClose]);
 
-  const optimizedMap = (
-    <DrawableMap
-      onDrawCompleted={drawCompletedHandler}
-      mapProviderKey={selectedMapProvider}
-      satelliteLayerKey={selectedSatelliteLayer}
-      satelliteOpacity={satelliteOpacity}
-      cadastralLayerKey={selectedCadastralLayer}
-      cadastralOpacity={cadastralOpacity}
-      vulnerableZonesGeoJson={vulnerableZonesGeoJson}
-      vulnerableZonesOpacity={vulnerableZonesOpacity}
-    />
-  );
+  const terrainPolygons = useMemo(() => {
+    const geometry = farmland?.geometry;
+    if (geometry?.type === "MultiPolygon") {
+      return geometry.coordinates.map((polygon) => polygon[0]);
+    }
+    if (geometry?.type === "Polygon") return [geometry.coordinates[0]];
+    return farmland?.coordinates?.length ? [farmland.coordinates] : [];
+  }, [farmland]);
 
-  const mapCoordinates = useMemo(() => {
-    const displayGeometry = farmland?.geometry || farmland?.cadastralCoverageGeometry;
-    return displayGeometry?.type === "MultiPolygon"
-      ? displayGeometry.coordinates.map((polygon) => polygon[0])
-      : farmland?.coordinates || null;
+  const cadastralPolygons = useMemo(() => {
+    const geometry = farmland?.cadastralCoverageGeometry;
+    if (geometry?.type === "MultiPolygon") {
+      return geometry.coordinates.map((polygon) => polygon[0]);
+    }
+    if (geometry?.type === "Polygon") return [geometry.coordinates[0]];
+    return [];
   }, [farmland]);
 
   const map = (
-    <WorldMap
-      coordinates={mapCoordinates}
+    <DrawableMap
+      onDrawCompleted={drawCompletedHandler}
+      terrainPolygons={terrainPolygons}
+      cadastralPolygons={cadastralPolygons}
       mapProviderKey={selectedMapProvider}
       satelliteLayerKey={selectedSatelliteLayer}
       satelliteOpacity={satelliteOpacity}
@@ -947,8 +952,7 @@ const FarmlandScreen = (props) => {
       <div className={classes.MapForm}>
         <div className={classes.MapContent}>
           <div className={classes.MapWrapper}>
-            {!farmland && optimizedMap}
-            {farmland && map}
+            {map}
           </div>
           <div className={classes.FormSide}>
             <form
