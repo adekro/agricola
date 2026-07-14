@@ -609,6 +609,44 @@ export const notebookService = {
     };
   },
 
+  async getFarmlandsCadastralMapData(farmlandIds) {
+    if (!farmlandIds.length) return [];
+    const { data: links, error } = await supabase
+      .from("farmland_cadastral_identifiers")
+      .select("farmland_id, cadastral_identifier:cadastral_identifier_id(*)")
+      .in("farmland_id", farmlandIds);
+    if (error) throw error;
+
+    const identifiers = [
+      ...new Map(
+        (links || []).map((link) => [
+          link.cadastral_identifier.id,
+          link.cadastral_identifier,
+        ]),
+      ).values(),
+    ];
+    const parcelEntries = await Promise.all(
+      identifiers.map(async (identifier) => {
+        const { data, error: parcelError } = await supabase
+          .from("cadastral_parcels")
+          .select("polygon_4326")
+          .eq("comune", identifier.municipality)
+          .eq("foglio", identifier.sheet)
+          .eq("mappale", identifier.parcel)
+          .maybeSingle();
+        if (parcelError) throw parcelError;
+        return [identifier.id, data?.polygon_4326 || null];
+      }),
+    );
+    const polygonsByIdentifier = Object.fromEntries(parcelEntries);
+
+    return (links || []).map((link) => ({
+      farmlandId: link.farmland_id,
+      identifier: link.cadastral_identifier,
+      coordinates: polygonsByIdentifier[link.cadastral_identifier.id],
+    }));
+  },
+
   async addCadastralIdentifier(farmlandId, identifier) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated");

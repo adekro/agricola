@@ -22,6 +22,7 @@ Questo file è la lista operativa per realizzare quanto descritto in `RelazioneC
 - [x] Calcolare ettari e perimetro esclusivamente dalla geometria blu del terreno effettivo.
 - [x] Aggiungere in Farmland l'eliminazione confermata del disegno blu senza rimuovere i mappali.
 - [x] Mostrare nella mappa di tutti i terreni aziendali mappali arancioni e terreni agronomici blu.
+- [x] Aggiungere pulsanti di centratura separati, priorita click blu/arancione e dettaglio dei terreni collegati al mappale.
 
 ## Priorità da RelazioneConAgronomo
 

@@ -45,6 +45,7 @@ const WorldMap = ({
   cadastralOpacity = 0.9,
   vulnerableZonesGeoJson = null,
   vulnerableZonesOpacity = 0.35,
+  clickPriority = "terrain",
 }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -154,6 +155,7 @@ const WorldMap = ({
           farmlandId: item.id || null,
           geometryStatus: item.geometryStatus || "defined",
           geometryType: item.geometryType || "terrain",
+          cadastralKey: item.cadastralKey || null,
         });
       });
 
@@ -205,9 +207,21 @@ const WorldMap = ({
     mapInstanceRef.current = map;
 
     const clickHandler = map.on("singleclick", (event) => {
-      const feature = map.forEachFeatureAtPixel(event.pixel, (item) => item);
+      const candidates = [];
+      map.forEachFeatureAtPixel(event.pixel, (item) => {
+        if (item.get("farmlandId")) candidates.push(item);
+      });
+      const feature =
+        candidates.find(
+          (item) => item.get("geometryType") === clickPriority,
+        ) || candidates[0];
       const farmlandId = feature?.get("farmlandId");
-      if (farmlandId && onFarmlandClick) onFarmlandClick(farmlandId);
+      if (farmlandId && onFarmlandClick) {
+        onFarmlandClick(farmlandId, {
+          geometryType: feature.get("geometryType"),
+          cadastralKey: feature.get("cadastralKey"),
+        });
+      }
     });
 
     if (polygonLayer && polygonLayer.getSource().getFeatures().length > 1) {
@@ -223,7 +237,7 @@ const WorldMap = ({
       map.setTarget(undefined);
       mapInstanceRef.current = null;
     };
-  }, [coordinates, polygonFeatures, position, selectedFarmlandId, onFarmlandClick]);
+  }, [coordinates, polygonFeatures, position, selectedFarmlandId, onFarmlandClick, clickPriority]);
 
   // Handle map provider changes
   useEffect(() => {

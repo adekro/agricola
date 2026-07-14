@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -19,6 +19,8 @@ import {
   TableRow,
   Typography,
   IconButton,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import MapIcon from "@mui/icons-material/Map";
@@ -43,6 +45,9 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
   const [summary, setSummary] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState("");
+  const [clickPriority, setClickPriority] = useState("terrain");
+  const [cadastralMapData, setCadastralMapData] = useState([]);
+  const [selectedParcel, setSelectedParcel] = useState(null);
   const enabledMapProviders = useMemo(() => getEnabledMapProviders(), []);
   const enabledCadastralLayers = useMemo(() => getEnabledCadastralLayers(), []);
 
@@ -64,17 +69,44 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
     return fallbackCoordinates?.length ? [fallbackCoordinates] : [];
   }, []);
 
+  useEffect(() => {
+    if (!mapView || !companyFarmlands.length) {
+      setCadastralMapData([]);
+      return;
+    }
+    let active = true;
+    notebookService
+      .getFarmlandsCadastralMapData(companyFarmlands.map((item) => item.id))
+      .then((items) => active && setCadastralMapData(items))
+      .catch((error) => active && setSummaryError(error.message));
+    return () => {
+      active = false;
+    };
+  }, [companyFarmlands, mapView]);
+
   const polygonFeatures = useMemo(
     () =>
       companyFarmlands.flatMap((farmland) => {
-        const cadastralFeatures = geometryPolygons(
-          farmland.cadastralCoverageGeometry,
-          null,
-        ).map((coordinates) => ({
-          id: farmland.id,
-          coordinates,
-          geometryType: "cadastral",
-        }));
+        const parcelFeatures = cadastralMapData
+          .filter(
+            (item) => item.farmlandId === farmland.id && item.coordinates,
+          )
+          .map((item) => ({
+            id: farmland.id,
+            coordinates: item.coordinates,
+            geometryType: "cadastral",
+            cadastralKey: item.identifier.id,
+          }));
+        const cadastralFeatures = parcelFeatures.length
+          ? parcelFeatures
+          : geometryPolygons(
+              farmland.cadastralCoverageGeometry,
+              null,
+            ).map((coordinates) => ({
+              id: farmland.id,
+              coordinates,
+              geometryType: "cadastral",
+            }));
         const terrainFeatures = geometryPolygons(
           farmland.geometry,
           farmland.coordinates,
@@ -85,7 +117,7 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
         }));
         return [...cadastralFeatures, ...terrainFeatures];
       }),
-    [companyFarmlands, geometryPolygons],
+    [cadastralMapData, companyFarmlands, geometryPolygons],
   );
 
   const mappedFarmlands = companyFarmlands.filter((farmland) =>
@@ -102,12 +134,39 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
       null,
     [polygonFeatures],
   );
+  const terrainFarmlands = mappedFarmlands.filter((farmland) =>
+    polygonFeatures.some(
+      (feature) =>
+        feature.id === farmland.id && feature.geometryType === "terrain",
+    ),
+  );
+  const cadastralButtons = [
+    ...new Map(
+      cadastralMapData
+        .filter((item) => item.coordinates)
+        .map((item) => [item.identifier.id, item]),
+    ).values(),
+  ];
 
   const handleFarmlandClick = useCallback(
-    async (farmlandId) => {
+    async (farmlandId, featureInfo = { geometryType: "terrain" }) => {
+      if (featureInfo.geometryType === "cadastral" && featureInfo.cadastralKey) {
+        const parcelLinks = cadastralMapData.filter(
+          (item) => item.identifier.id === featureInfo.cadastralKey,
+        );
+        setSelectedParcel({
+          identifier: parcelLinks[0]?.identifier,
+          farmlands: companyFarmlands.filter((farmland) =>
+            parcelLinks.some((link) => link.farmlandId === farmland.id),
+          ),
+        });
+        setSelectedFarmland(null);
+        return;
+      }
       const selected = companyFarmlands.find((item) => item.id === farmlandId);
       if (!selected) return;
       setSelectedFarmland(selected);
+      setSelectedParcel(null);
       setSummary(null);
       setSummaryError("");
       setSummaryLoading(true);
@@ -121,7 +180,7 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
         setSummaryLoading(false);
       }
     },
-    [companyFarmlands],
+    [cadastralMapData, companyFarmlands],
   );
 
   if (mapView) {
@@ -183,6 +242,18 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
             </Select>
           </FormControl>
         </Stack>
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
+          <Typography variant="body2">Priorita click:</Typography>
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            value={clickPriority}
+            onChange={(_event, value) => value && setClickPriority(value)}
+          >
+            <ToggleButton value="terrain">Terreni blu</ToggleButton>
+            <ToggleButton value="cadastral">Mappali arancioni</ToggleButton>
+          </ToggleButtonGroup>
+        </Stack>
         {polygonFeatures.length ? (
           <>
             <Paper
@@ -199,10 +270,14 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
                 focusCoordinates={focusedCoordinates}
                 selectedFarmlandId={selectedFarmland?.id}
                 onFarmlandClick={handleFarmlandClick}
+                clickPriority={clickPriority}
                 mapProviderKey={selectedMapProvider}
                 cadastralLayerKey={selectedCadastralLayer}
               />
             </Paper>
+            <Typography variant="subtitle2" sx={{ mt: 2 }}>
+              Terreni
+            </Typography>
             <Stack
               direction="row"
               useFlexGap
@@ -210,7 +285,7 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
               spacing={1}
               sx={{ mt: 2 }}
             >
-              {mappedFarmlands.map((farmland) => (
+              {terrainFarmlands.map((farmland) => (
                 <Button
                   key={farmland.id}
                   variant="outlined"
@@ -226,10 +301,33 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
                 </Button>
               ))}
             </Stack>
+            {cadastralButtons.length ? (
+              <>
+                <Typography variant="subtitle2" sx={{ mt: 2 }}>
+                  Mappali
+                </Typography>
+                <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1}>
+                  {cadastralButtons.map((item) => (
+                    <Button
+                      key={item.identifier.id}
+                      variant="outlined"
+                      color="warning"
+                      size="small"
+                      onClick={() => setFocusedCoordinates(item.coordinates)}
+                    >
+                      F. {item.identifier.sheet}, P. {item.identifier.parcel}
+                    </Button>
+                  ))}
+                </Stack>
+              </>
+            ) : null}
             <Drawer
               anchor="right"
-              open={Boolean(selectedFarmland)}
-              onClose={() => setSelectedFarmland(null)}
+              open={Boolean(selectedFarmland || selectedParcel)}
+              onClose={() => {
+                setSelectedFarmland(null);
+                setSelectedParcel(null);
+              }}
               PaperProps={{ sx: { width: { xs: "100%", sm: 440 }, p: 3 } }}
             >
               <Stack
@@ -238,17 +336,44 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
                 alignItems="center"
               >
                 <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-                  {selectedFarmland?.name ||
+                  {selectedParcel
+                    ? `Mappale ${selectedParcel.identifier?.sheet || "-"}/${selectedParcel.identifier?.parcel || "-"}`
+                    : selectedFarmland?.name ||
                     selectedFarmland?.type ||
                     "Terreno"}
                 </Typography>
                 <IconButton
-                  onClick={() => setSelectedFarmland(null)}
+                  onClick={() => {
+                    setSelectedFarmland(null);
+                    setSelectedParcel(null);
+                  }}
                   aria-label="Chiudi"
                 >
                   <CloseIcon />
                 </IconButton>
               </Stack>
+              {selectedParcel ? (
+                <Box sx={{ mt: 2 }}>
+                  <Typography color="text.secondary" variant="body2">
+                    {selectedParcel.identifier?.municipality} — foglio {selectedParcel.identifier?.sheet}, particella {selectedParcel.identifier?.parcel}
+                  </Typography>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="h6">Terreni che comprendono il mappale</Typography>
+                  <Stack spacing={1} sx={{ mt: 1 }}>
+                    {selectedParcel.farmlands.map((farmland) => (
+                      <Button
+                        key={farmland.id}
+                        variant="outlined"
+                        onClick={() => openFarmland(farmland.id)}
+                      >
+                        {farmland.name || farmland.type || "Terreno"}
+                      </Button>
+                    ))}
+                  </Stack>
+                </Box>
+              ) : null}
+              {selectedFarmland ? (
+                <>
               <Typography color="text.secondary" sx={{ mt: 1 }}>
                 Area: {selectedFarmland?.area || "-"} ha
               </Typography>
@@ -312,6 +437,8 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
                     )}
                   </Box>
                 </Stack>
+              ) : null}
+                </>
               ) : null}
             </Drawer>
           </>
