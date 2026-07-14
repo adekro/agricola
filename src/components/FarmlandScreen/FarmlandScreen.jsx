@@ -825,13 +825,16 @@ const FarmlandScreen = (props) => {
     />
   );
 
+  const mapCoordinates = useMemo(() => {
+    const displayGeometry = farmland?.geometry || farmland?.cadastralCoverageGeometry;
+    return displayGeometry?.type === "MultiPolygon"
+      ? displayGeometry.coordinates.map((polygon) => polygon[0])
+      : farmland?.coordinates || null;
+  }, [farmland]);
+
   const map = (
     <WorldMap
-      coordinates={
-        (farmland?.geometry || farmland?.cadastralCoverageGeometry)?.type === "MultiPolygon"
-          ? (farmland.geometry || farmland.cadastralCoverageGeometry).coordinates.map((polygon) => polygon[0])
-          : farmland?.coordinates || null
-      }
+      coordinates={mapCoordinates}
       mapProviderKey={selectedMapProvider}
       satelliteLayerKey={selectedSatelliteLayer}
       satelliteOpacity={satelliteOpacity}
