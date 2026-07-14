@@ -28,6 +28,7 @@ import { Fill, Stroke, Style } from "ol/style";
 import Feature from "ol/Feature";
 import Polygon from "ol/geom/Polygon";
 import Collection from "ol/Collection";
+import { getArea, getLength } from "ol/sphere.js";
 
 const DrawableMap = ({
   onDrawCompleted,
@@ -204,14 +205,14 @@ const DrawableMap = ({
     );
 
     const notifyGeometryChanged = (geometry) => {
-      const area = formatArea(geometry);
-      const perimeter = formatLength(geometry);
+      const areaHectares = getArea(geometry) / 10000;
+      const perimeterMeters = getLength(geometry.getLinearRing(0));
       const transformedGeometry = geometry
         .clone()
         .transform("EPSG:3857", "EPSG:4326");
       onDrawCompletedRef.current?.({
-        area: area.split(" ")[0],
-        perimeter: perimeter.split(" ")[0],
+        area: Number(areaHectares.toFixed(4)),
+        perimeter: Number(perimeterMeters.toFixed(2)),
         coordinates: transformedGeometry.getCoordinates()[0],
       });
     };

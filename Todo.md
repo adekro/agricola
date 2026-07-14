@@ -19,6 +19,8 @@ Questo file è la lista operativa per realizzare quanto descritto in `RelazioneC
 - [x] Aggiungere in Farmland il layer ZVN Lombardia sincronizzato da fonte ufficiale in Supabase e rimuovere le mappe base CartoDB, MapTiler e Thunderforest.
 - [x] Distinguere in Farmland i mappali catastali arancioni dal terreno effettivo blu e consentire il disegno della geometria agronomica.
 - [x] Rendere modificabile tramite trascinamento dei vertici il terreno effettivo disegnato in Farmland.
+- [x] Calcolare ettari e perimetro esclusivamente dalla geometria blu del terreno effettivo.
+- [x] Aggiungere in Farmland l'eliminazione confermata del disegno blu senza rimuovere i mappali.
 
 ## Priorità da RelazioneConAgronomo
 

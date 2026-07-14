@@ -121,6 +121,7 @@ const FarmlandScreen = (props) => {
     useState("none");
   const [vulnerableZonesOpacity, setVulnerableZonesOpacity] = useState(0.35);
   const [vulnerableZonesGeoJson, setVulnerableZonesGeoJson] = useState(null);
+  const [terrainDeleted, setTerrainDeleted] = useState(false);
 
   const [satelliteIndices, setSatelliteIndices] = useState(null);
   const [satelliteApiResponse, setSatelliteApiResponse] = useState(null);
@@ -371,10 +372,20 @@ const FarmlandScreen = (props) => {
     const newFarmland = {
       ...formik.values,
       ownerDisplayName: owner.trim(),
-      coordinates: coordinates || farmland?.coordinates || null,
-      geometry: drawnGeometry || farmland?.geometry || null,
+      coordinates: terrainDeleted
+        ? null
+        : coordinates || farmland?.coordinates || null,
+      geometry: terrainDeleted
+        ? null
+        : drawnGeometry || farmland?.geometry || null,
       cadastralCoverageGeometry: farmland?.cadastralCoverageGeometry || null,
-      geometryStatus: drawnGeometry ? "defined" : farmland?.geometryStatus || "defined",
+      geometryStatus: terrainDeleted
+        ? farmland?.cadastralCoverageGeometry
+          ? "cadastral_coverage"
+          : "defined"
+        : drawnGeometry
+          ? "defined"
+          : farmland?.geometryStatus || "defined",
     };
     if (!newFarmland.name?.trim()) {
       setError("Il nome del terreno è obbligatorio.");
@@ -400,16 +411,40 @@ const FarmlandScreen = (props) => {
     onUpdate,
     handleOnClose,
     formik.values,
+    terrainDeleted,
   ]);
 
   const drawCompletedHandler = useCallback(
     ({ area, perimeter, coordinates }) => {
+      setTerrainDeleted(false);
       setArea(area);
       setPerimeter(perimeter);
       setCoordinates(coordinates);
     },
     [],
   );
+
+  const handleDeleteTerrainGeometry = useCallback(async () => {
+    if (!farmland || !window.confirm("Eliminare il disegno blu del terreno? I mappali arancioni resteranno invariati.")) {
+      return;
+    }
+
+    try {
+      setTerrainDeleted(true);
+      setCoordinates(null);
+      await onUpdate(farmlandId, {
+        ...farmland,
+        coordinates: null,
+        geometry: null,
+        geometryStatus: farmland.cadastralCoverageGeometry
+          ? "cadastral_coverage"
+          : "defined",
+      });
+    } catch (err) {
+      setTerrainDeleted(false);
+      setError(err.message || "Errore durante l'eliminazione del disegno del terreno.");
+    }
+  }, [farmland, farmlandId, onUpdate]);
 
   useEffect(() => {
     const fetchCropHistory = async () => {
@@ -818,13 +853,14 @@ const FarmlandScreen = (props) => {
   }, [farmland, onDelete, handleOnClose]);
 
   const terrainPolygons = useMemo(() => {
+    if (terrainDeleted) return [];
     const geometry = farmland?.geometry;
     if (geometry?.type === "MultiPolygon") {
       return geometry.coordinates.map((polygon) => polygon[0]);
     }
     if (geometry?.type === "Polygon") return [geometry.coordinates[0]];
     return farmland?.coordinates?.length ? [farmland.coordinates] : [];
-  }, [farmland]);
+  }, [farmland, terrainDeleted]);
 
   const cadastralPolygons = useMemo(() => {
     const geometry = farmland?.cadastralCoverageGeometry;
@@ -1146,6 +1182,19 @@ const FarmlandScreen = (props) => {
               <Typography variant="h6" gutterBottom>
                 Map Configuration
               </Typography>
+
+              {farmland && !terrainDeleted &&
+                (farmland.geometry || farmland.coordinates?.length) && (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    fullWidth
+                    sx={{ mb: 2 }}
+                    onClick={handleDeleteTerrainGeometry}
+                  >
+                    Elimina disegno terreno blu
+                  </Button>
+                )}
 
               <FormControl fullWidth className={classes.Input}>
                 <InputLabel id="map-provider-label">Mappa base</InputLabel>
