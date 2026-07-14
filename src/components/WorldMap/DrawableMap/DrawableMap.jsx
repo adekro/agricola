@@ -81,6 +81,11 @@ const DrawableMap = ({
 
     const vector = new VectorLayer({
       source,
+      renderOrder: (firstFeature, secondFeature) => {
+        const priority = (feature) =>
+          feature.get("geometryType") === "cadastral" ? 0 : 1;
+        return priority(firstFeature) - priority(secondFeature);
+      },
       style: (feature) => {
         const isCadastral = feature.get("geometryType") === "cadastral";
         const color = isCadastral ? "#f57c00" : "#1976d2";
