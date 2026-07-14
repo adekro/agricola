@@ -97,15 +97,20 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
             geometryType: "cadastral",
             cadastralKey: item.identifier.id,
           }));
+        const farmlandParcelLinks = cadastralMapData.filter(
+          (item) => item.farmlandId === farmland.id,
+        );
         const cadastralFeatures = parcelFeatures.length
           ? parcelFeatures
           : geometryPolygons(
               farmland.cadastralCoverageGeometry,
               null,
-            ).map((coordinates) => ({
+            ).map((coordinates, index) => ({
               id: farmland.id,
               coordinates,
               geometryType: "cadastral",
+              cadastralKey:
+                farmlandParcelLinks[index]?.identifier.id || null,
             }));
         const terrainFeatures = geometryPolygons(
           farmland.geometry,
@@ -150,17 +155,44 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
 
   const handleFarmlandClick = useCallback(
     async (farmlandId, featureInfo = { geometryType: "terrain" }) => {
-      if (featureInfo.geometryType === "cadastral" && featureInfo.cadastralKey) {
-        const parcelLinks = cadastralMapData.filter(
-          (item) => item.identifier.id === featureInfo.cadastralKey,
-        );
-        setSelectedParcel({
-          identifier: parcelLinks[0]?.identifier,
-          farmlands: companyFarmlands.filter((farmland) =>
-            parcelLinks.some((link) => link.farmlandId === farmland.id),
-          ),
-        });
+      if (featureInfo.geometryType === "cadastral") {
         setSelectedFarmland(null);
+        setSelectedParcel(null);
+        setSummaryError("");
+        setSummaryLoading(true);
+        try {
+          const freshCadastralData =
+            await notebookService.getFarmlandsCadastralMapData(
+              companyFarmlands.map((item) => item.id),
+            );
+          const clickedFarmlandLinks = freshCadastralData.filter(
+            (item) => item.farmlandId === farmlandId,
+          );
+          const parcelLinks = featureInfo.cadastralKey
+            ? freshCadastralData.filter(
+                (item) => item.identifier.id === featureInfo.cadastralKey,
+              )
+            : clickedFarmlandLinks;
+          const identifiers = [
+            ...new Map(
+              parcelLinks.map((item) => [item.identifier.id, item.identifier]),
+            ).values(),
+          ];
+          setSelectedParcel({
+            identifier: identifiers.length === 1 ? identifiers[0] : null,
+            identifiers,
+            farmlands: companyFarmlands.filter((farmland) =>
+              parcelLinks.some((link) => link.farmlandId === farmland.id),
+            ),
+          });
+        } catch (error) {
+          setSummaryError(
+            error.message || "Impossibile caricare i dati catastali.",
+          );
+          setSelectedParcel({ identifiers: [], farmlands: [] });
+        } finally {
+          setSummaryLoading(false);
+        }
         return;
       }
       const selected = companyFarmlands.find((item) => item.id === farmlandId);
@@ -337,7 +369,9 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
               >
                 <Typography variant="h5" sx={{ fontWeight: "bold" }}>
                   {selectedParcel
-                    ? `Mappale ${selectedParcel.identifier?.sheet || "-"}/${selectedParcel.identifier?.parcel || "-"}`
+                    ? selectedParcel.identifier
+                      ? `Mappale ${selectedParcel.identifier.sheet}/${selectedParcel.identifier.parcel}`
+                      : "Dati catastali"
                     : selectedFarmland?.name ||
                     selectedFarmland?.type ||
                     "Terreno"}
@@ -354,9 +388,19 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
               </Stack>
               {selectedParcel ? (
                 <Box sx={{ mt: 2 }}>
-                  <Typography color="text.secondary" variant="body2">
-                    {selectedParcel.identifier?.municipality} — foglio {selectedParcel.identifier?.sheet}, particella {selectedParcel.identifier?.parcel}
-                  </Typography>
+                  {summaryLoading ? <CircularProgress size={28} /> : null}
+                  {summaryError ? (
+                    <Typography color="error">{summaryError}</Typography>
+                  ) : null}
+                  {(selectedParcel.identifiers || []).map((identifier) => (
+                    <Typography
+                      key={identifier.id}
+                      color="text.secondary"
+                      variant="body2"
+                    >
+                      {identifier.municipality} — foglio {identifier.sheet}, particella {identifier.parcel}
+                    </Typography>
+                  ))}
                   <Divider sx={{ my: 2 }} />
                   <Typography variant="h6">Terreni che comprendono il mappale</Typography>
                   <Stack spacing={1} sx={{ mt: 1 }}>
