@@ -22,6 +22,8 @@ import { MAP_PROVIDERS } from "../../../config/mapProviders";
 import { SATELLITE_LAYERS } from "../../../config/satelliteLayers";
 import { CADASTRAL_LAYERS } from "../../../config/cadastralLayers";
 import { createCadastralSource } from "../../../lib/cadastralWms";
+import GeoJSON from "ol/format/GeoJSON";
+import { Fill, Stroke, Style } from "ol/style";
 
 const DrawableMap = ({
   onDrawCompleted,
@@ -30,6 +32,8 @@ const DrawableMap = ({
   satelliteOpacity = 0.75,
   cadastralLayerKey = "none",
   cadastralOpacity = 0.9,
+  vulnerableZonesGeoJson = null,
+  vulnerableZonesOpacity = 0.35,
 }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -40,6 +44,7 @@ const DrawableMap = ({
   const baseLayerRef = useRef(null);
   const satelliteLayerRef = useRef(null);
   const cadastralLayerRef = useRef(null);
+  const vulnerableZonesLayerRef = useRef(null);
 
   useEffect(() => {
     onDrawCompletedRef.current = onDrawCompleted;
@@ -62,6 +67,7 @@ const DrawableMap = ({
         "circle-fill-color": "#ffcc33",
       },
     });
+    vector.setZIndex(2);
 
     // Initial base layer
     const provider =
@@ -421,6 +427,37 @@ const DrawableMap = ({
       }
     }
   }, [cadastralLayerKey]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    if (vulnerableZonesLayerRef.current) {
+      mapInstanceRef.current.removeLayer(vulnerableZonesLayerRef.current);
+      vulnerableZonesLayerRef.current = null;
+    }
+
+    if (vulnerableZonesGeoJson) {
+      const layer = new VectorLayer({
+        opacity: vulnerableZonesOpacity,
+        source: new VectorSource({
+          features: new GeoJSON().readFeatures(vulnerableZonesGeoJson, {
+            featureProjection: "EPSG:3857",
+          }),
+        }),
+        style: new Style({
+          fill: new Fill({ color: "rgba(156, 39, 176, 0.45)" }),
+          stroke: new Stroke({ color: "#7b1fa2", width: 2 }),
+        }),
+      });
+      layer.setZIndex(1);
+      mapInstanceRef.current.addLayer(layer);
+      vulnerableZonesLayerRef.current = layer;
+    }
+  }, [vulnerableZonesGeoJson]);
+
+  useEffect(() => {
+    vulnerableZonesLayerRef.current?.setOpacity(vulnerableZonesOpacity);
+  }, [vulnerableZonesOpacity]);
 
   // Handle opacity changes
   useEffect(() => {

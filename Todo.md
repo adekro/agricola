@@ -16,6 +16,7 @@ Questo file è la lista operativa per realizzare quanto descritto in `RelazioneC
 <!-- Aggiungere qui le nuove istruzioni, mantenendole in ordine cronologico e indicando la voce della roadmap a cui si riferiscono. -->
 
 - [x] Aggiungere nella griglia fitosanitari il collegamento all'etichetta PDF ministeriale solo per i prodotti attivi.
+- [x] Aggiungere in Farmland il layer ZVN Lombardia sincronizzato da fonte ufficiale in Supabase e rimuovere le mappe base CartoDB, MapTiler e Thunderforest.
 
 ## Priorità da RelazioneConAgronomo
 
@@ -46,7 +47,7 @@ Questo file è la lista operativa per realizzare quanto descritto in `RelazioneC
 
 ### R4. Layer ZVN e fasce tampone
 
-- [ ] Identificare fonti cartografiche regionali ufficiali, formati e frequenza di aggiornamento.
+- [x] Identificare fonte ufficiale, formato e frequenza di aggiornamento per la Lombardia (Geoportale Regione Lombardia, GeoJSON da ArcGIS REST, aggiornamento quando necessario; estensione alle altre regioni ancora da fare).
 - [ ] Classificare gli appezzamenti come ZVN o non ZVN tramite intersezione geografica.
 - [ ] Applicare i limiti configurabili di azoto organico e il coefficiente di efficienza agronomica.
 - [ ] Individuare corpi idrici e fasce tampone, mostrando alert non bloccanti sugli spandimenti.

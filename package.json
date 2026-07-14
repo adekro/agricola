@@ -34,6 +34,7 @@
     "fitosanitari:images": "node scripts/download-fitosanitari-labels.cjs --phase=images",
     "fitosanitari:ocr": "node scripts/download-fitosanitari-labels.cjs --phase=ocr",
     "fitosanitari:extract": "node scripts/download-fitosanitari-labels.cjs --phase=extract",
+    "layerzvn:download": "node scripts/sync-environmental-layers.cjs --region=lombardia",
     "eject": "react-scripts eject",
     "version": "standard-version"
   },

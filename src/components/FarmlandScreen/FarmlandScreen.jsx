@@ -46,6 +46,7 @@ import { notebookService } from "../../services/notebookService";
 import { useCadastralWmsError } from "../../hooks/useCadastralWmsError";
 import { ageaCropService } from "../../services/ageaCropService";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { supabase } from "../../lib/supabaseClient";
 
 const normalizeCompanyName = (name = "") => name.trim().toLowerCase();
 const filterCompanyOptions = createFilterOptions();
@@ -117,6 +118,10 @@ const FarmlandScreen = (props) => {
   const [satelliteOpacity, setSatelliteOpacity] = useState(0.75);
   const [selectedCadastralLayer, setSelectedCadastralLayer] = useState("none");
   const [cadastralOpacity, setCadastralOpacity] = useState(0.9);
+  const [selectedVulnerableZonesLayer, setSelectedVulnerableZonesLayer] =
+    useState("none");
+  const [vulnerableZonesOpacity, setVulnerableZonesOpacity] = useState(0.35);
+  const [vulnerableZonesGeoJson, setVulnerableZonesGeoJson] = useState(null);
 
   const [satelliteIndices, setSatelliteIndices] = useState(null);
   const [satelliteApiResponse, setSatelliteApiResponse] = useState(null);
@@ -180,6 +185,34 @@ const FarmlandScreen = (props) => {
   const enabledMapProviders = useMemo(() => getEnabledMapProviders(), []);
   const enabledSatelliteLayers = useMemo(() => getEnabledSatelliteLayers(), []);
   const enabledCadastralLayers = useMemo(() => getEnabledCadastralLayers(), []);
+
+  useEffect(() => {
+    if (selectedVulnerableZonesLayer === "none") {
+      setVulnerableZonesGeoJson(null);
+      return;
+    }
+
+    let active = true;
+    supabase
+      .from("environmental_layers")
+      .select("geojson")
+      .eq("region_code", selectedVulnerableZonesLayer)
+      .eq("layer_type", "nitrate_vulnerable_zones")
+      .single()
+      .then(({ data, error: layerError }) => {
+        if (!active) return;
+        if (layerError) {
+          setError("Impossibile caricare il layer delle zone vulnerabili ai nitrati.");
+          setVulnerableZonesGeoJson(null);
+          return;
+        }
+        setVulnerableZonesGeoJson(data.geojson);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedVulnerableZonesLayer]);
 
   useCadastralWmsError(
     useCallback(
@@ -787,6 +820,8 @@ const FarmlandScreen = (props) => {
       satelliteOpacity={satelliteOpacity}
       cadastralLayerKey={selectedCadastralLayer}
       cadastralOpacity={cadastralOpacity}
+      vulnerableZonesGeoJson={vulnerableZonesGeoJson}
+      vulnerableZonesOpacity={vulnerableZonesOpacity}
     />
   );
 
@@ -802,6 +837,8 @@ const FarmlandScreen = (props) => {
       satelliteOpacity={satelliteOpacity}
       cadastralLayerKey={selectedCadastralLayer}
       cadastralOpacity={cadastralOpacity}
+      vulnerableZonesGeoJson={vulnerableZonesGeoJson}
+      vulnerableZonesOpacity={vulnerableZonesOpacity}
     />
   );
 
@@ -1220,6 +1257,40 @@ const FarmlandScreen = (props) => {
                     </Box>
                   )}
                 </>
+              )}
+
+              <FormControl fullWidth className={classes.Input} sx={{ mt: 2 }}>
+                <InputLabel id="vulnerable-zones-layer-label">
+                  Zone vulnerabili ai nitrati
+                </InputLabel>
+                <Select
+                  labelId="vulnerable-zones-layer-label"
+                  value={selectedVulnerableZonesLayer}
+                  label="Zone vulnerabili ai nitrati"
+                  onChange={(e) => setSelectedVulnerableZonesLayer(e.target.value)}
+                >
+                  <MenuItem value="none">Nessuno</MenuItem>
+                  <MenuItem value="IT-25">Lombardia</MenuItem>
+                </Select>
+              </FormControl>
+
+              {selectedVulnerableZonesLayer !== "none" && (
+                <Box sx={{ px: 1, mt: 2 }}>
+                  <Typography gutterBottom variant="caption">
+                    Opacita layer ZVN: {(vulnerableZonesOpacity * 100).toFixed(0)}%
+                  </Typography>
+                  <Slider
+                    value={vulnerableZonesOpacity}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    onChange={(_e, value) => setVulnerableZonesOpacity(value)}
+                    valueLabelDisplay="auto"
+                  />
+                  <Typography variant="caption" display="block">
+                    Fonte: Geoportale Regione Lombardia, licenza CC BY 4.0.
+                  </Typography>
+                </Box>
               )}
             </Box>
 

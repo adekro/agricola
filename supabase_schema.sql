@@ -794,4 +794,22 @@ DROP POLICY IF EXISTS "Allow authenticated read access to phytosanitary uses" ON
 CREATE POLICY "Allow authenticated read access to phytosanitary uses" ON phytosanitary_authorized_uses
   FOR SELECT TO authenticated USING (true);
 
+CREATE TABLE IF NOT EXISTS environmental_layers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  region_code TEXT NOT NULL,
+  layer_type TEXT NOT NULL,
+  name TEXT NOT NULL,
+  geojson JSONB NOT NULL,
+  source_url TEXT NOT NULL,
+  source_license TEXT,
+  source_updated_at TIMESTAMP WITH TIME ZONE,
+  synced_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now()),
+  UNIQUE (region_code, layer_type)
+);
+
+ALTER TABLE environmental_layers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated read access to environmental layers" ON environmental_layers;
+CREATE POLICY "Allow authenticated read access to environmental layers" ON environmental_layers
+  FOR SELECT TO authenticated USING (true);
+
 COMMIT;
