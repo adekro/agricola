@@ -56,27 +56,52 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
     [company.name, farmlands],
   );
 
-  const mappedFarmlands = companyFarmlands.filter(
-    (farmland) =>
-      (Array.isArray(farmland.coordinates) && farmland.coordinates.length) ||
-      farmland.geometry?.coordinates?.length ||
-      farmland.cadastralCoverageGeometry?.coordinates?.length,
+  const geometryPolygons = useCallback((geometry, fallbackCoordinates) => {
+    if (geometry?.type === "MultiPolygon") {
+      return geometry.coordinates.map((polygon) => polygon[0]);
+    }
+    if (geometry?.type === "Polygon") return [geometry.coordinates[0]];
+    return fallbackCoordinates?.length ? [fallbackCoordinates] : [];
+  }, []);
+
+  const polygonFeatures = useMemo(
+    () =>
+      companyFarmlands.flatMap((farmland) => {
+        const cadastralFeatures = geometryPolygons(
+          farmland.cadastralCoverageGeometry,
+          null,
+        ).map((coordinates) => ({
+          id: farmland.id,
+          coordinates,
+          geometryType: "cadastral",
+        }));
+        const terrainFeatures = geometryPolygons(
+          farmland.geometry,
+          farmland.coordinates,
+        ).map((coordinates) => ({
+          id: farmland.id,
+          coordinates,
+          geometryType: "terrain",
+        }));
+        return [...cadastralFeatures, ...terrainFeatures];
+      }),
+    [companyFarmlands, geometryPolygons],
   );
-  const mappedCoordinates = mappedFarmlands.map(
-    (farmland) => farmland.coordinates,
+
+  const mappedFarmlands = companyFarmlands.filter((farmland) =>
+    polygonFeatures.some((feature) => feature.id === farmland.id),
   );
-  const polygonFeatures = mappedFarmlands.flatMap((farmland) => {
-    const displayGeometry = farmland.geometry || farmland.cadastralCoverageGeometry;
-    const polygons =
-      displayGeometry?.type === "MultiPolygon"
-        ? displayGeometry.coordinates.map((polygon) => polygon[0])
-        : [farmland.coordinates];
-    return polygons.filter(Boolean).map((coordinates) => ({
-      id: farmland.id,
-      coordinates,
-      geometryStatus: farmland.geometry ? "defined" : farmland.geometryStatus,
-    }));
-  });
+
+  const focusCoordinatesFor = useCallback(
+    (farmlandId) =>
+      polygonFeatures.find(
+        (feature) =>
+          feature.id === farmlandId && feature.geometryType === "terrain",
+      )?.coordinates ||
+      polygonFeatures.find((feature) => feature.id === farmlandId)?.coordinates ||
+      null,
+    [polygonFeatures],
+  );
 
   const handleFarmlandClick = useCallback(
     async (farmlandId) => {
@@ -158,7 +183,7 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
             </Select>
           </FormControl>
         </Stack>
-        {mappedCoordinates.length ? (
+        {polygonFeatures.length ? (
           <>
             <Paper
               variant="outlined"
@@ -170,7 +195,6 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
               }}
             >
               <WorldMap
-                coordinates={mappedCoordinates}
                 polygonFeatures={polygonFeatures}
                 focusCoordinates={focusedCoordinates}
                 selectedFarmlandId={selectedFarmland?.id}
@@ -191,7 +215,9 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
                   key={farmland.id}
                   variant="outlined"
                   size="small"
-                  onClick={() => setFocusedCoordinates(farmland.coordinates)}
+                  onClick={() =>
+                    setFocusedCoordinates(focusCoordinatesFor(farmland.id))
+                  }
                 >
                   {farmland.name ||
                     farmland.type ||
@@ -312,7 +338,9 @@ const CompanyFarmlandsPage = ({ mapView = false }) => {
         <Button
           variant="contained"
           startIcon={<MapIcon />}
-          onClick={() => navigate("map")}
+          onClick={() =>
+            navigate(`/notebook/company/${company.id}/farmlands/map`)
+          }
         >
           Visualizza tutti i terreni
         </Button>

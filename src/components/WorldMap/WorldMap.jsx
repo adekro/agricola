@@ -153,6 +153,7 @@ const WorldMap = ({
           geometry,
           farmlandId: item.id || null,
           geometryStatus: item.geometryStatus || "defined",
+          geometryType: item.geometryType || "terrain",
         });
       });
 
@@ -165,19 +166,21 @@ const WorldMap = ({
         style: (feature) => {
           const isSelected =
             feature.get("farmlandId") === selectedFarmlandId;
+          const isCadastral = feature.get("geometryType") === "cadastral";
+          const color = isCadastral ? "#f57c00" : "#1976d2";
           return new Style({
             fill: new Fill({
               color: isSelected
-                ? "rgba(255, 204, 51, 0.45)"
-                : "rgba(255, 255, 255, 0.2)",
+                ? isCadastral
+                  ? "rgba(245, 124, 0, 0.35)"
+                  : "rgba(25, 118, 210, 0.35)"
+                : isCadastral
+                  ? "rgba(245, 124, 0, 0.18)"
+                  : "rgba(25, 118, 210, 0.22)",
             }),
             stroke: new Stroke({
-              color: "#ffcc33",
+              color,
               width: isSelected ? 4 : 2,
-              lineDash:
-                feature.get("geometryStatus") === "cadastral_coverage"
-                  ? [8, 6]
-                  : undefined,
             }),
           });
         },
