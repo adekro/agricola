@@ -5,6 +5,10 @@ import {
   Checkbox,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
   ListItemText,
@@ -19,9 +23,12 @@ import {
   TableRow,
   TextField,
   Typography,
+  Alert,
+  Stack,
 } from "@mui/material";
 import { supabase } from "../../lib/supabaseClient";
-import { useNavigate } from "react-router-dom";
+import useFarmlands from "../../hooks/useFarmlands";
+import { notebookService } from "../../services/notebookService";
 
 const COLUMN_STORAGE_KEY = "fitosanitari-visible-columns";
 const PAGE_SIZE = 500;
@@ -121,7 +128,7 @@ async function loadAllRows(table, select, configureQuery) {
 }
 
 const FitosanitariScreen = () => {
-  const navigate = useNavigate();
+  const { companies, farmlands } = useFarmlands();
   const [products, setProducts] = useState([]);
   const [extractions, setExtractions] = useState({});
   const [filter, setFilter] = useState("");
@@ -133,6 +140,18 @@ const FitosanitariScreen = () => {
   const [showRevoked, setShowRevoked] = useState(false);
   const [lastSync, setLastSync] = useState(null);
   const [error, setError] = useState("");
+  const [quickProduct, setQuickProduct] = useState(null);
+  const [quickCrops, setQuickCrops] = useState([]);
+  const [quickError, setQuickError] = useState("");
+  const [quickAuthorization, setQuickAuthorization] = useState(null);
+  const [quickCopper, setQuickCopper] = useState(null);
+  const [quickForm, setQuickForm] = useState({
+    company_id: "",
+    farmland_id: "",
+    crop_history_id: "",
+    operation_date: new Date().toISOString().slice(0, 16),
+    quantity: "",
+  });
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -203,6 +222,58 @@ const FitosanitariScreen = () => {
   }, [loadData]);
 
   useEffect(() => {
+    if (!quickForm.farmland_id) {
+      setQuickCrops([]);
+      return;
+    }
+    notebookService
+      .getCropHistory(quickForm.farmland_id)
+      .then(setQuickCrops)
+      .catch(() => setQuickCrops([]));
+  }, [quickForm.farmland_id]);
+
+  useEffect(() => {
+    const checkAlerts = async () => {
+      const crop = quickCrops.find((item) => item.id === quickForm.crop_history_id);
+      const quantity = Number(quickForm.quantity);
+      if (!quickProduct || !crop) {
+        setQuickAuthorization(null);
+        setQuickCopper(null);
+        return;
+      }
+      const cropTerm = (crop.agea_label || crop.crop || "")
+        .split(" - ")
+        .pop()
+        .trim()
+        .split(/\s+/)[0];
+      const authorized = await notebookService.isPhytosanitaryAuthorizedForCrop(
+        { registration: quickProduct.num_registration },
+        cropTerm,
+      );
+      setQuickAuthorization(authorized);
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        setQuickCopper("Inserisci la quantità in kg per calcolare il rame.");
+        return;
+      }
+      const year = Number(String(quickForm.operation_date).slice(0, 4));
+      const sau = await notebookService.getAnnualSau(quickForm.farmland_id, year);
+      const surface = sau || Number(crop.area || 0);
+      const copper = await notebookService.getPhytosanitaryCopperGPerKg({
+        registration: quickProduct.num_registration,
+      });
+      setQuickCopper(
+        copper == null || !surface
+          ? "Manca la concentrazione di rame o la SAU per il calcolo."
+          : (quantity * copper) / 1000 / surface,
+      );
+    };
+    checkAlerts().catch(() => {
+      setQuickAuthorization(null);
+      setQuickCopper("Impossibile calcolare gli alert in questo momento.");
+    });
+  }, [quickProduct, quickCrops, quickForm]);
+
+  useEffect(() => {
     localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(visibleColumns));
   }, [visibleColumns]);
 
@@ -261,6 +332,46 @@ const FitosanitariScreen = () => {
     setVisibleColumns([...new Set([...(value.length ? value : ["name"]), "addTreatment"])]);
   };
 
+  const openQuickTreatment = (product) => {
+    setQuickProduct(product);
+    setQuickError("");
+    setQuickForm({
+      company_id: "",
+      farmland_id: "",
+      crop_history_id: "",
+      operation_date: new Date().toISOString().slice(0, 16),
+      quantity: "",
+    });
+  };
+
+  const saveQuickTreatment = async () => {
+    if (!quickForm.company_id || !quickForm.farmland_id || !quickForm.crop_history_id || !quickForm.quantity) {
+      setQuickError("Azienda, terreno, coltura e quantità sono obbligatori.");
+      return;
+    }
+    const crop = quickCrops.find((item) => item.id === quickForm.crop_history_id);
+    try {
+      await notebookService.saveOperation({
+        operation_date: quickForm.operation_date,
+        type: "Trattamento fitosanitario",
+        company_id: quickForm.company_id,
+        farmland_id: quickForm.farmland_id,
+        crop_history_id: crop.id,
+        crop: crop.crop,
+        phytosanitary_registration: quickProduct.num_registration,
+        quantity: Number(quickForm.quantity),
+        unit_of_measure: "kg",
+      });
+      setQuickProduct(null);
+    } catch (saveError) {
+      setQuickError(saveError.message || "Impossibile salvare il trattamento.");
+    }
+  };
+
+  const quickFarmlands = quickForm.company_id
+    ? farmlands.filter((farmland) => farmland.company_id === quickForm.company_id)
+    : [];
+
   const renderCell = (columnId, product) => {
     const source = product.source_data || {};
     switch (columnId) {
@@ -310,14 +421,7 @@ const FitosanitariScreen = () => {
           <Button
             size="small"
             variant="contained"
-            onClick={() =>
-              navigate("/notebook/operations", {
-                state: {
-                  initialType: "Trattamento fitosanitario",
-                  initialPhytosanitaryRegistration: product.num_registration,
-                },
-              })
-            }
+            onClick={() => openQuickTreatment(product)}
           >
             Aggiungi alla coltura
           </Button>
@@ -450,6 +554,43 @@ const FitosanitariScreen = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog open={!!quickProduct} onClose={() => setQuickProduct(null)} fullWidth maxWidth="sm">
+        <DialogTitle>Aggiungi trattamento alla coltura</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Prodotto fitosanitario"
+              value={quickProduct ? quickProduct.name + " (" + quickProduct.num_registration + ")" : ""}
+              fullWidth
+              disabled
+            />
+            <TextField select label="Azienda" value={quickForm.company_id} onChange={(event) => setQuickForm((current) => ({ ...current, company_id: event.target.value, farmland_id: "", crop_history_id: "" }))} fullWidth required>
+              <MenuItem value="">Seleziona azienda</MenuItem>
+              {companies.map((company) => <MenuItem key={company.id} value={company.id}>{company.name}</MenuItem>)}
+            </TextField>
+            <TextField select label="Terreno" value={quickForm.farmland_id} onChange={(event) => setQuickForm((current) => ({ ...current, farmland_id: event.target.value, crop_history_id: "" }))} fullWidth required disabled={!quickForm.company_id}>
+              <MenuItem value="">Seleziona terreno</MenuItem>
+              {quickFarmlands.map((farmland) => <MenuItem key={farmland.id} value={farmland.id}>{farmland.name || farmland.type}</MenuItem>)}
+            </TextField>
+            <TextField select label="Coltura" value={quickForm.crop_history_id} onChange={(event) => setQuickForm((current) => ({ ...current, crop_history_id: event.target.value }))} fullWidth required disabled={!quickForm.farmland_id}>
+              <MenuItem value="">Seleziona coltura</MenuItem>
+              {quickCrops.map((crop) => <MenuItem key={crop.id} value={crop.id}>{crop.crop} ({crop.year})</MenuItem>)}
+            </TextField>
+            <Stack direction="row" spacing={2}>
+              <TextField label="Data e ora" type="datetime-local" value={quickForm.operation_date} onChange={(event) => setQuickForm((current) => ({ ...current, operation_date: event.target.value }))} InputLabelProps={{ shrink: true }} fullWidth required />
+              <TextField label="Quantità (kg)" type="number" value={quickForm.quantity} onChange={(event) => setQuickForm((current) => ({ ...current, quantity: event.target.value }))} inputProps={{ min: 0, step: "0.001" }} fullWidth required />
+            </Stack>
+            {quickAuthorization !== null && <Alert severity={quickAuthorization ? "success" : "warning"}>{quickAuthorization ? "Prodotto autorizzato per la coltura selezionata." : "Nessuna autorizzazione trovata per la coltura selezionata."}</Alert>}
+            {quickCopper && <Alert severity={typeof quickCopper === "number" && quickCopper > 4 ? "warning" : "info"}>{typeof quickCopper === "number" ? "Rame del trattamento: " + quickCopper.toFixed(3) + " kg/ha (limite annuo: 4 kg/ha)." : quickCopper}</Alert>}
+            {quickError && <Alert severity="error">{quickError}</Alert>}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setQuickProduct(null)}>Annulla</Button>
+          <Button onClick={saveQuickTreatment} variant="contained">Salva trattamento</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
