@@ -358,7 +358,7 @@ const FarmlandScreen = (props) => {
     }
   }, [companyDraft.name, createCompany, findCompanyByName, selectCompany]);
 
-  const onSaveFarmHandler = useCallback(() => {
+  const onSaveFarmHandler = useCallback(async () => {
     const company = findCompanyByName(owner);
     const drawnGeometry = coordinates
       ? { type: "Polygon", coordinates: [coordinates] }
@@ -390,13 +390,17 @@ const FarmlandScreen = (props) => {
       setError("Seleziona un'azienda esistente o creane una.");
       return;
     }
-    if (farmland) {
-      onUpdate(farmlandId, newFarmland);
-    } else {
-      onCreate(newFarmland);
+    try {
+      if (farmland) {
+        await onUpdate(farmlandId, newFarmland);
+      } else {
+        await onCreate(newFarmland);
+      }
+      handleOnClose();
+    } catch (err) {
+      console.error("Error saving farmland:", err);
+      setError(err.message || "Errore durante il salvataggio del terreno.");
     }
-
-    handleOnClose();
   }, [
     owner,
     findCompanyByName,
