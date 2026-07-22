@@ -21,7 +21,10 @@ const FarmlandCard = ({
       return groups[key] ? groups : { ...groups, [key]: crop };
     }, {}),
   ).slice(0, 5);
-  const currentCrop = crops[0]?.crop || "Nessuna coltura registrata";
+  const currentYear = new Date().getFullYear();
+  const currentCrop =
+    crops.find((crop) => Number(crop.year) === currentYear)?.crop ||
+    "Nessuna coltura registrata per l'anno corrente";
   const getSau = (year) =>
     summary?.annualSau?.find((item) => item.year === year)?.sau ?? "-";
 
