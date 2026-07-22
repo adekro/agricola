@@ -27,6 +27,11 @@ const Layout = () => {
 
   const handlerSelectSide = useCallback(
     (target) => {
+      if (target !== "evidenzia-mappali") {
+        setEvidenziaModalOpen(false);
+        setEvidenziaRows(null);
+      }
+
       if (target === "dashboard") navigate("/");
       else if (target === "farmlands") navigate("/farmlands");
       else if (target === "fitosanitari") navigate("/fitosanitari");

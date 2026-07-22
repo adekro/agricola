@@ -8,12 +8,22 @@ const FarmlandCard = ({
   location,
   perimeter,
   ownerDisplayName,
+  summary,
   id,
   onView,
 }) => {
   const onViewButtonClickHandler = () => {
     onView(id);
   };
+  const crops = Object.values(
+    (summary?.crops || []).reduce((groups, crop) => {
+      const key = `${crop.year || ""}|${crop.agea_code || crop.crop || ""}`;
+      return groups[key] ? groups : { ...groups, [key]: crop };
+    }, {}),
+  ).slice(0, 5);
+  const currentCrop = crops[0]?.crop || "Nessuna coltura registrata";
+  const getSau = (year) =>
+    summary?.annualSau?.find((item) => item.year === year)?.sau ?? "-";
 
   return (
     <div className={styles["FarmlandCard-container"]}>
@@ -38,6 +48,21 @@ const FarmlandCard = ({
           <div className={styles["FarmlandCard-owner"]}>
             <h6 className={`${styles.label} ${styles.labelVariant}`}>Owner</h6>
             <h2 className={styles.value}>{ownerDisplayName}</h2>
+            <div className={styles["FarmlandCard-summary"]}>
+              <strong>Coltura attuale: {currentCrop}</strong>
+              <span>Ultime colture e SAU</span>
+              {crops.map((crop) => (
+                <small key={crop.id}>
+                  {crop.year}: {crop.crop} — SAU {getSau(crop.year)} ha
+                </small>
+              ))}
+              <span>Ultimi trattamenti</span>
+              {(summary?.treatments || []).map((treatment) => (
+                <small key={treatment.id}>
+                  {String(treatment.operation_date || "").slice(0, 10)}: {treatment.phytosanitary?.name || treatment.product?.name || "Trattamento"}
+                </small>
+              ))}
+            </div>
           </div>
           <div className={styles["FarmlandCard-location"]}>
             <span
