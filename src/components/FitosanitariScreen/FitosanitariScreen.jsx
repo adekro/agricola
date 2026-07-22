@@ -155,20 +155,24 @@ const FitosanitariScreen = () => {
       ]);
 
       if (syncResult.error) throw syncResult.error;
-      const labelRows = productRows.length
-        ? await loadAllRows(
-            "phytosanitary_labels",
-            `id,num_registration,ministry_label_id,extraction_status,copper_g_per_kg,
-             phytosanitary_authorized_uses(crop_name,dose_min,dose_max,dose_unit,max_treatments,interval_min_days,interval_max_days,preharvest_interval_days)`,
-            (query) =>
-              query
-                .in(
-                  "num_registration",
-                  productRows.map((product) => product.num_registration),
-                )
-                .order("extracted_at", { ascending: false }),
-          )
-        : [];
+      const registrations = productRows.map((product) => product.num_registration);
+      const labelRows = (
+        await Promise.all(
+          Array.from(
+            { length: Math.ceil(registrations.length / 100) },
+            (_, index) =>
+              loadAllRows(
+                "phytosanitary_labels",
+                `id,num_registration,ministry_label_id,extraction_status,copper_g_per_kg,
+                 phytosanitary_authorized_uses(crop_name,dose_min,dose_max,dose_unit,max_treatments,interval_min_days,interval_max_days,preharvest_interval_days)`,
+                (query) =>
+                  query
+                    .in("num_registration", registrations.slice(index * 100, (index + 1) * 100))
+                    .order("extracted_at", { ascending: false }),
+              ),
+          ),
+        )
+      ).flat();
       const currentLabelIds = new Map(
         productRows.map((product) => [
           product.num_registration,
