@@ -395,12 +395,21 @@ export const notebookService = {
   },
 
   async getPhytosanitaryProducts() {
-    const { data, error } = await supabase
-      .from("phytosanitary_products")
-      .select("num_registration, name, company_name, administrative_status, is_active, source_data")
-      .order("name");
-    if (error) throw error;
-    return data || [];
+    const pageSize = 1000;
+    const products = [];
+
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("phytosanitary_products")
+        .select("num_registration, name, company_name, administrative_status, is_active, source_data")
+        .eq("is_active", true)
+        .order("name")
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+
+      products.push(...(data || []));
+      if (!data || data.length < pageSize) return products;
+    }
   },
 
   async isPhytosanitaryAuthorizedForCrop({ registration = "", productName = "" }, cropTerm) {

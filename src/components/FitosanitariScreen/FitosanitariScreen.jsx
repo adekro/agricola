@@ -125,6 +125,7 @@ const FitosanitariScreen = () => {
   const [extractionStatusFilter, setExtractionStatusFilter] = useState("Tutti");
   const [visibleColumns, setVisibleColumns] = useState(loadVisibleColumns);
   const [loading, setLoading] = useState(false);
+  const [showRevoked, setShowRevoked] = useState(false);
   const [lastSync, setLastSync] = useState(null);
   const [error, setError] = useState("");
 
@@ -132,17 +133,12 @@ const FitosanitariScreen = () => {
     setLoading(true);
     setError("");
     try {
-      const [productRows, labelRows, syncResult] = await Promise.all([
+      const [productRows, syncResult] = await Promise.all([
         loadAllRows(
           "phytosanitary_products",
           "num_registration,name,company_name,administrative_status,is_active,current_label_id,source_data,last_synced_at",
-          (query) => query.order("name"),
-        ),
-        loadAllRows(
-          "phytosanitary_labels",
-          `id,num_registration,ministry_label_id,extraction_status,copper_g_per_kg,
-           phytosanitary_authorized_uses(crop_name,dose_min,dose_max,dose_unit,max_treatments,interval_min_days,interval_max_days,preharvest_interval_days)`,
-          (query) => query.order("extracted_at", { ascending: false }),
+          (query) =>
+            (showRevoked ? query : query.eq("is_active", true)).order("name"),
         ),
         supabase
           .from("phytosanitary_sync_runs")
@@ -154,6 +150,20 @@ const FitosanitariScreen = () => {
       ]);
 
       if (syncResult.error) throw syncResult.error;
+      const labelRows = productRows.length
+        ? await loadAllRows(
+            "phytosanitary_labels",
+            `id,num_registration,ministry_label_id,extraction_status,copper_g_per_kg,
+             phytosanitary_authorized_uses(crop_name,dose_min,dose_max,dose_unit,max_treatments,interval_min_days,interval_max_days,preharvest_interval_days)`,
+            (query) =>
+              query
+                .in(
+                  "num_registration",
+                  productRows.map((product) => product.num_registration),
+                )
+                .order("extracted_at", { ascending: false }),
+          )
+        : [];
       const currentLabelIds = new Map(
         productRows.map((product) => [
           product.num_registration,
@@ -177,7 +187,7 @@ const FitosanitariScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showRevoked]);
 
   useEffect(() => {
     loadData();
@@ -301,6 +311,13 @@ const FitosanitariScreen = () => {
         <Typography variant="h5">Prodotti Fitosanitari</Typography>
         <Button variant="contained" onClick={loadData} disabled={loading}>
           {loading ? <CircularProgress size={24} /> : "Ricarica"}
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={() => setShowRevoked((current) => !current)}
+          disabled={loading}
+        >
+          {showRevoked ? "Nascondi revocati" : "Mostra revocati"}
         </Button>
         {lastSync && (
           <Chip
