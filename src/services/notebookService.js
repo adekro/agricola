@@ -397,7 +397,7 @@ export const notebookService = {
   async getPhytosanitaryProducts() {
     const { data, error } = await supabase
       .from("phytosanitary_products")
-      .select("num_registration, name, administrative_status, is_active")
+      .select("num_registration, name, company_name, administrative_status, is_active, source_data")
       .order("name");
     if (error) throw error;
     return data || [];

@@ -26,6 +26,7 @@ import {
   Tabs,
   Tab,
   Alert,
+  Autocomplete,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -776,25 +777,46 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
                       ))}
                     </TextField>
                   ) : (
-                    <TextField
-                      select
-                      name="phytosanitary_registration"
-                      label="Prodotto fitosanitario da etichetta"
-                      value={formData.phytosanitary_registration}
-                      onChange={handleChange}
+                    <Autocomplete
+                      options={phytosanitaryProducts}
+                      value={
+                        phytosanitaryProducts.find(
+                          (product) =>
+                            product.num_registration ===
+                            formData.phytosanitary_registration,
+                        ) || null
+                      }
+                      onChange={(_event, product) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          phytosanitary_registration:
+                            product?.num_registration || "",
+                          product_id: "",
+                          inventory_batch_id: "",
+                        }))
+                      }
+                      getOptionLabel={(product) =>
+                        [
+                          product.name,
+                          product.source_data?.sostanze_attive,
+                          product.company_name,
+                        ]
+                          .filter(Boolean)
+                          .join(" — ")
+                      }
+                      isOptionEqualToValue={(option, value) =>
+                        option.num_registration === value.num_registration
+                      }
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Prodotto fitosanitario da etichetta"
+                          placeholder="Nome, sostanza attiva o azienda"
+                          required
+                        />
+                      )}
                       fullWidth
-                      required
-                    >
-                      <MenuItem value="">Seleziona prodotto fitosanitario</MenuItem>
-                      {phytosanitaryProducts.map((product) => (
-                        <MenuItem
-                          key={product.num_registration}
-                          value={product.num_registration}
-                        >
-                          {product.name} ({product.num_registration})
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                    />
                   )
                 ) : (
                   <TextField
