@@ -394,6 +394,36 @@ export const notebookService = {
     return this.getProducts(farmland.company_id);
   },
 
+  async isPhytosanitaryAuthorizedForCrop(productName, cropTerm) {
+    if (!productName?.trim() || !cropTerm?.trim()) return null;
+
+    const { data: catalogueProducts, error: productError } = await supabase
+      .from("phytosanitary_products")
+      .select("num_registration, current_label_id")
+      .ilike("name", productName.trim());
+    if (productError) throw productError;
+    if (!catalogueProducts?.length) return null;
+
+    const currentLabelByRegistration = new Map(
+      catalogueProducts.map((product) => [
+        product.num_registration,
+        String(product.current_label_id || ""),
+      ]),
+    );
+    const { data: labels, error: labelError } = await supabase
+      .from("phytosanitary_labels")
+      .select("num_registration, ministry_label_id, phytosanitary_authorized_uses!inner(crop_name)")
+      .in("num_registration", catalogueProducts.map((product) => product.num_registration))
+      .ilike("phytosanitary_authorized_uses.crop_name", `%${cropTerm.trim()}%`);
+    if (labelError) throw labelError;
+
+    return (labels || []).some(
+      (label) =>
+        String(label.ministry_label_id) ===
+        currentLabelByRegistration.get(label.num_registration),
+    );
+  },
+
   async saveProduct(product) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated");

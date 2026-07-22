@@ -76,6 +76,18 @@ const buildCurrentCropSummary = (entry) => {
   return code && label ? `${code} - ${label}` : label || code;
 };
 
+const aggregateCropHistory = (entries) =>
+  Object.values(
+    entries.reduce((groups, entry) => {
+      const key = `${entry.year || ""}|${entry.agea_code || entry.crop || ""}`;
+      const group = groups[key];
+      groups[key] = group
+        ? { ...group, is_terminated: group.is_terminated && entry.is_terminated }
+        : { ...entry };
+      return groups;
+    }, {}),
+  );
+
 const FarmlandScreen = (props) => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -174,6 +186,10 @@ const FarmlandScreen = (props) => {
     organic_matter: "",
     notes: "",
   });
+  const aggregatedCropHistory = useMemo(
+    () => aggregateCropHistory(cropHistory),
+    [cropHistory],
+  );
 
   const enabledMapProviders = useMemo(() => getEnabledMapProviders(), []);
   const enabledSatelliteLayers = useMemo(() => getEnabledSatelliteLayers(), []);
@@ -1431,7 +1447,7 @@ const FarmlandScreen = (props) => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {cropHistory.map((h) => (
+                      {aggregatedCropHistory.map((h) => (
                         <TableRow key={h.id}>
                           <TableCell>{h.crop}</TableCell>
                           <TableCell>
@@ -1442,7 +1458,7 @@ const FarmlandScreen = (props) => {
                           <TableCell>{h.is_terminated ? "Terminata" : "Attiva"}</TableCell>
                         </TableRow>
                       ))}
-                      {cropHistory.length === 0 && (
+                      {aggregatedCropHistory.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={4} align="center">
                             Nessuno storico

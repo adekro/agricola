@@ -53,9 +53,10 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
   const [products, setProducts] = useState([]);
   const [batches, setBatches] = useState([]);
   const [cropHistory, setCropHistory] = useState([]);
+  const [cropAuthorization, setCropAuthorization] = useState(null);
   const [formError, setFormError] = useState("");
   const [tabValue, setTabValue] = useState(0); // 0: Tutte, 1: Solo Trattamenti, 2: Agenda
-  const { farmlands } = useFarmlands();
+  const { farmlands, companies } = useFarmlands();
 
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -133,15 +134,13 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
 
   useEffect(() => {
     if (!formData.farmland_id) {
-      setFormData((prev) => ({ ...prev, company_id: "", inventory_batch_id: "" }));
-      setBatches([]);
+      setFormData((prev) => ({ ...prev, inventory_batch_id: "" }));
       return;
     }
 
     const farm = farmlands.find((item) => item.id === formData.farmland_id);
     if (!farm?.company_id) {
-      setFormData((prev) => ({ ...prev, company_id: "", inventory_batch_id: "" }));
-      setBatches([]);
+      setFormData((prev) => ({ ...prev, inventory_batch_id: "" }));
       return;
     }
 
@@ -153,8 +152,11 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
         inventory_batch_id: "",
       };
     });
-    fetchBatches(farm.company_id);
   }, [farmlands, formData.farmland_id]);
+
+  useEffect(() => {
+    fetchBatches(formData.company_id);
+  }, [formData.company_id]);
 
   useEffect(() => {
     const fetchCropHistory = async () => {
@@ -171,6 +173,37 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
     };
     fetchCropHistory();
   }, [formData.farmland_id]);
+
+  useEffect(() => {
+    const checkCropAuthorization = async () => {
+      const product = products.find((item) => item.id === formData.product_id);
+      const crop = cropHistory.find((item) => item.id === formData.crop_history_id);
+      const cropLabel = crop?.agea_label || crop?.crop || "";
+      const cropTerm = cropLabel.split(" - ").pop().trim().split(/\s+/)[0];
+
+      if (
+        formData.type !== "Trattamento fitosanitario" ||
+        product?.category !== "Fitosanitario" ||
+        !cropTerm
+      ) {
+        setCropAuthorization(null);
+        return;
+      }
+
+      try {
+        setCropAuthorization("loading");
+        const isAuthorized = await notebookService.isPhytosanitaryAuthorizedForCrop(
+          product.name,
+          cropTerm,
+        );
+        setCropAuthorization(isAuthorized === null ? "unavailable" : isAuthorized);
+      } catch (error) {
+        console.error("Error checking phytosanitary crop authorization:", error);
+        setCropAuthorization(null);
+      }
+    };
+    checkCropAuthorization();
+  }, [cropHistory, formData.crop_history_id, formData.product_id, formData.type, products]);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => {
@@ -199,6 +232,18 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
       }
     }
 
+    if (name === "company_id") {
+      setFormData((prev) => ({
+        ...prev,
+        company_id: value,
+        farmland_id: "",
+        crop_history_id: "",
+        crop: "",
+        inventory_batch_id: "",
+        product_id: "",
+      }));
+    }
+
     if (name === "product_id") {
       setFormData((prev) => ({
         ...prev,
@@ -218,6 +263,9 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
   };
 
   const selectedFarmland = farmlands.find((farm) => farm.id === formData.farmland_id);
+  const relevantFarmlands = formData.company_id
+    ? farmlands.filter((farm) => farm.company_id === formData.company_id)
+    : farmlands;
   const farmlandArea = Number(selectedFarmland?.area || 0);
   const relevantProducts = formData.company_id
     ? products.filter((product) => product.company_id === formData.company_id)
@@ -251,6 +299,14 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      if (
+        formData.type === "Trattamento fitosanitario" &&
+        !formData.company_id
+      ) {
+        setFormError("Per un trattamento fitosanitario devi selezionare un'azienda.");
+        return;
+      }
+
       if (
         formData.type === "Trattamento fitosanitario" &&
         !formData.farmland_id
@@ -570,14 +626,32 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
               <Stack direction="row" spacing={2}>
                 <TextField
                   select
+                  name="company_id"
+                  label="Azienda"
+                  value={formData.company_id}
+                  onChange={handleChange}
+                  fullWidth
+                  required={formData.type === "Trattamento fitosanitario"}
+                >
+                  <MenuItem value="">Seleziona azienda</MenuItem>
+                  {companies.map((company) => (
+                    <MenuItem key={company.id} value={company.id}>
+                      {company.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
                   name="farmland_id"
                   label="Appezzamento"
                   value={formData.farmland_id}
                   onChange={handleChange}
                   fullWidth
                   required
+                  disabled={formData.type === "Trattamento fitosanitario" && !formData.company_id}
                 >
-                  {farmlands.map((f) => (
+                  <MenuItem value="">Seleziona terreno</MenuItem>
+                  {relevantFarmlands.map((f) => (
                     <MenuItem key={f.id} value={f.id}>
                       {f.ownerDisplayName} ({f.type})
                     </MenuItem>
@@ -681,6 +755,27 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
                       </MenuItem>
                     ))}
                   </TextField>
+                )}
+
+              {formData.type === "Trattamento fitosanitario" &&
+                cropAuthorization !== null && (
+                  <Alert
+                    severity={
+                      cropAuthorization === "loading"
+                        ? "info"
+                        : cropAuthorization === true
+                          ? "success"
+                          : "warning"
+                    }
+                  >
+                    {cropAuthorization === "loading"
+                      ? "Verifica dell'autorizzazione del prodotto per la coltura..."
+                      : cropAuthorization === true
+                        ? "Prodotto autorizzato per la coltura selezionata."
+                        : cropAuthorization === "unavailable"
+                          ? "Il prodotto non è presente nel catalogo fitosanitari: autorizzazione non verificabile."
+                          : "Nessuna autorizzazione trovata per la coltura selezionata nell'etichetta corrente del prodotto."}
+                  </Alert>
                 )}
 
               {formData.type === "Trattamento fitosanitario" && (
