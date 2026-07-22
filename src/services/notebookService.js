@@ -446,6 +446,41 @@ export const notebookService = {
     );
   },
 
+  async getPhytosanitaryCopperGPerKg({ registration = "", productName = "" }) {
+    if (!registration?.trim() && !productName?.trim()) return null;
+
+    let productQuery = supabase
+      .from("phytosanitary_products")
+      .select("num_registration, current_label_id");
+    productQuery = registration.trim()
+      ? productQuery.eq("num_registration", registration.trim())
+      : productQuery.ilike("name", productName.trim());
+    const { data: catalogueProducts, error: productError } = await productQuery;
+    if (productError) throw productError;
+    if (!catalogueProducts?.length) return null;
+
+    const currentLabelByRegistration = new Map(
+      catalogueProducts.map((product) => [
+        product.num_registration,
+        String(product.current_label_id || ""),
+      ]),
+    );
+    const { data: labels, error: labelError } = await supabase
+      .from("phytosanitary_labels")
+      .select("num_registration, ministry_label_id, copper_g_per_kg")
+      .in("num_registration", catalogueProducts.map((product) => product.num_registration));
+    if (labelError) throw labelError;
+
+    const currentLabel = (labels || []).find(
+      (label) =>
+        String(label.ministry_label_id) ===
+        currentLabelByRegistration.get(label.num_registration),
+    );
+    return currentLabel?.copper_g_per_kg == null
+      ? null
+      : Number(currentLabel.copper_g_per_kg);
+  },
+
   async saveProduct(product) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated");
@@ -757,6 +792,17 @@ export const notebookService = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  async getAnnualSau(farmlandId, year) {
+    const { data, error } = await supabase
+      .from("farmland_annual_sau")
+      .select("sau")
+      .eq("farmland_id", farmlandId)
+      .eq("year", year)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.sau == null ? null : Number(data.sau);
   },
 
   // --- Soil Analysis History ---

@@ -46,6 +46,11 @@ const operationTypes = [
   "Raccolta",
   "Altro",
 ];
+const COPPER_LIMIT_KG_PER_HECTARE = 4;
+const isKilogramUnit = (unit = "") =>
+  ["kg", "kgs", "chilogrammo", "chilogrammi"].includes(
+    unit.trim().toLowerCase(),
+  );
 
 const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
   const location = useLocation();
@@ -56,6 +61,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
   const [batches, setBatches] = useState([]);
   const [cropHistory, setCropHistory] = useState([]);
   const [cropAuthorization, setCropAuthorization] = useState(null);
+  const [copperAlert, setCopperAlert] = useState(null);
   const [formError, setFormError] = useState("");
   const [tabValue, setTabValue] = useState(0); // 0: Tutte, 1: Solo Trattamenti, 2: Agenda
   const { farmlands, companies } = useFarmlands();
@@ -220,6 +226,88 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
     };
     checkCropAuthorization();
   }, [cropHistory, formData.crop_history_id, formData.phytosanitary_registration, formData.product_id, formData.type, products]);
+
+  useEffect(() => {
+    const calculateCopper = async () => {
+      const crop = cropHistory.find((item) => item.id === formData.crop_history_id);
+      const year = Number(String(formData.operation_date || "").slice(0, 4));
+      const currentProduct = products.find((item) => item.id === formData.product_id);
+      const currentQuantity = Number(formData.quantity);
+
+      if (
+        formData.type !== "Trattamento fitosanitario" ||
+        !crop ||
+        !year ||
+        !Number.isFinite(currentQuantity) ||
+        currentQuantity <= 0 ||
+        (!formData.phytosanitary_registration && !currentProduct?.name)
+      ) {
+        setCopperAlert(null);
+        return;
+      }
+
+      if (!isKilogramUnit(formData.unit_of_measure)) {
+        setCopperAlert({ unavailable: "Indica la quantità in kg per calcolare il rame." });
+        return;
+      }
+
+      try {
+        const annualSau = await notebookService.getAnnualSau(formData.farmland_id, year);
+        const surface = annualSau || Number(crop.area || 0);
+        if (!surface) {
+          setCopperAlert({ unavailable: "Inserisci la SAU annuale della coltura per calcolare il rame per ettaro." });
+          return;
+        }
+
+        const previousTreatments = operations.filter(
+          (operation) =>
+            operation.type === "Trattamento fitosanitario" &&
+            operation.crop_history_id === crop.id &&
+            Number(String(operation.operation_date || "").slice(0, 4)) === year,
+        );
+        const treatments = [
+          ...previousTreatments,
+          {
+            quantity: currentQuantity,
+            unit_of_measure: formData.unit_of_measure,
+            phytosanitary_registration: formData.phytosanitary_registration,
+            product: currentProduct,
+          },
+        ];
+        if (treatments.some((treatment) => !isKilogramUnit(treatment.unit_of_measure))) {
+          setCopperAlert({ unavailable: "Uno o più trattamenti dell'anno non sono espressi in kg." });
+          return;
+        }
+
+        const copperValues = await Promise.all(
+          treatments.map((treatment) =>
+            notebookService.getPhytosanitaryCopperGPerKg({
+              registration: treatment.phytosanitary_registration,
+              productName: treatment.product?.name,
+            }),
+          ),
+        );
+        if (copperValues.some((value) => value == null)) {
+          setCopperAlert({ unavailable: "Manca la concentrazione di rame estratta per uno o più prodotti." });
+          return;
+        }
+
+        const copperKgPerHectare =
+          treatments.reduce(
+            (total, treatment, index) =>
+              total + Number(treatment.quantity) * copperValues[index],
+            0,
+          ) /
+          1000 /
+          surface;
+        setCopperAlert({ copperKgPerHectare, surface });
+      } catch (error) {
+        console.error("Error calculating copper alert:", error);
+        setCopperAlert({ unavailable: "Impossibile calcolare il rame in questo momento." });
+      }
+    };
+    calculateCopper();
+  }, [cropHistory, formData, operations, products]);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => {
@@ -891,6 +979,29 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
                         : cropAuthorization === "unavailable"
                           ? "Il prodotto non è presente nel catalogo fitosanitari: autorizzazione non verificabile."
                           : "Nessuna autorizzazione trovata per la coltura selezionata nell'etichetta corrente del prodotto."}
+                  </Alert>
+                )}
+
+              {formData.type === "Trattamento fitosanitario" &&
+                copperAlert && (
+                  <Alert
+                    severity={
+                      copperAlert.unavailable
+                        ? "info"
+                        : copperAlert.copperKgPerHectare > COPPER_LIMIT_KG_PER_HECTARE
+                          ? "warning"
+                          : "success"
+                    }
+                  >
+                    {copperAlert.unavailable
+                      ? copperAlert.unavailable
+                      : "Rame annuo: " +
+                        copperAlert.copperKgPerHectare.toFixed(3) +
+                        " kg/ha su " +
+                        copperAlert.surface +
+                        " ha (limite: " +
+                        COPPER_LIMIT_KG_PER_HECTARE +
+                        " kg/ha)."}
                   </Alert>
                 )}
 
