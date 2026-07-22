@@ -21,6 +21,7 @@ import {
   Typography,
 } from "@mui/material";
 import { supabase } from "../../lib/supabaseClient";
+import { useNavigate } from "react-router-dom";
 
 const COLUMN_STORAGE_KEY = "fitosanitari-visible-columns";
 const PAGE_SIZE = 500;
@@ -40,6 +41,7 @@ const columns = [
   { id: "copper", label: "Rame (g/kg)" },
   { id: "extractionStatus", label: "Stato estrazione" },
   { id: "label", label: "Etichetta" },
+  { id: "addTreatment", label: "Trattamento" },
 ];
 
 const defaultVisibleColumns = columns.map((column) => column.id);
@@ -48,7 +50,9 @@ function loadVisibleColumns() {
   try {
     const saved = JSON.parse(localStorage.getItem(COLUMN_STORAGE_KEY));
     const valid = saved?.filter((id) => columns.some((column) => column.id === id));
-    return valid?.length ? valid : defaultVisibleColumns;
+    return valid?.length
+      ? [...new Set([...valid, "addTreatment"])]
+      : defaultVisibleColumns;
   } catch {
     return defaultVisibleColumns;
   }
@@ -117,6 +121,7 @@ async function loadAllRows(table, select, configureQuery) {
 }
 
 const FitosanitariScreen = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [extractions, setExtractions] = useState({});
   const [filter, setFilter] = useState("");
@@ -249,7 +254,7 @@ const FitosanitariScreen = () => {
 
   const handleColumnChange = (event) => {
     const value = event.target.value;
-    setVisibleColumns(value.length ? value : ["name"]);
+    setVisibleColumns([...new Set([...(value.length ? value : ["name"]), "addTreatment"])]);
   };
 
   const renderCell = (columnId, product) => {
@@ -295,6 +300,23 @@ const FitosanitariScreen = () => {
           </Button>
         ) : (
           "-"
+        );
+      case "addTreatment":
+        return (
+          <Button
+            size="small"
+            variant="contained"
+            onClick={() =>
+              navigate("/notebook/operations", {
+                state: {
+                  initialType: "Trattamento fitosanitario",
+                  initialPhytosanitaryRegistration: product.num_registration,
+                },
+              })
+            }
+          >
+            Aggiungi alla coltura
+          </Button>
         );
       default:
         return "-";

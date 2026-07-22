@@ -76,7 +76,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
     crop: "",
     operator: "",
     product_id: "",
-    phytosanitary_registration: "",
+    phytosanitary_registration: routePreset.initialPhytosanitaryRegistration || "",
     inventory_batch_id: "",
     quantity: "",
     unit_of_measure: "",
@@ -146,10 +146,18 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
   }, []);
 
   useEffect(() => {
-    if (routePreset.initialFarmlandId || routePreset.initialType) {
+    if (
+      routePreset.initialFarmlandId ||
+      routePreset.initialType ||
+      routePreset.initialPhytosanitaryRegistration
+    ) {
       setOpen(true);
     }
-  }, [routePreset.initialFarmlandId, routePreset.initialType]);
+  }, [
+    routePreset.initialFarmlandId,
+    routePreset.initialType,
+    routePreset.initialPhytosanitaryRegistration,
+  ]);
 
   useEffect(() => {
     if (!formData.farmland_id) {
@@ -402,6 +410,9 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
   const inventoryPhytosanitaryProducts = formData.company_id
     ? relevantProducts.filter((product) => product.category === "Fitosanitario")
     : [];
+  const useCatalogueProduct =
+    Boolean(routePreset.initialPhytosanitaryRegistration) ||
+    inventoryPhytosanitaryProducts.length === 0;
   const relevantBatches = batches.filter(
     (batch) => !formData.product_id || batch.product_id === formData.product_id,
   );
@@ -847,7 +858,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
               <Divider>Dettagli Prodotto e Quantità</Divider>
               <Stack direction="row" spacing={2}>
                 {formData.type === "Trattamento fitosanitario" ? (
-                  inventoryPhytosanitaryProducts.length > 0 ? (
+                  !useCatalogueProduct ? (
                     <TextField
                       select
                       name="product_id"
