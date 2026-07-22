@@ -2,13 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 const normalizeCompanyName = (name = "") => name.trim().toLowerCase();
+const nullableNumber = (value) => (value === "" || value == null ? null : value);
 
 const mapFromSupabase = (item) => ({
   id: item.id,
   name: item.name,
   type: item.type,
-  area: item.area,
-  perimeter: item.perimeter,
+  area: nullableNumber(item.area),
+  perimeter: nullableNumber(item.perimeter),
   notes: item.notes,
   location: item.location,
   ownerDisplayName: item.owner_display_name,
@@ -35,8 +36,8 @@ const mapCompanyFromSupabase = (item) => ({
 const mapToSupabase = (item, userId) => ({
   name: item.name,
   type: item.type,
-  area: item.area,
-  perimeter: item.perimeter,
+  area: nullableNumber(item.area),
+  perimeter: nullableNumber(item.perimeter),
   notes: item.notes,
   location: item.location,
   owner_display_name: item.ownerDisplayName,
