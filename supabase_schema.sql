@@ -177,6 +177,7 @@ CREATE TABLE IF NOT EXISTS operations (
   crop TEXT,
   operator TEXT,
   product_id UUID REFERENCES inventory_products(id) ON DELETE SET NULL,
+  phytosanitary_registration TEXT,
   inventory_batch_id UUID,
   quantity NUMERIC,
   unit_of_measure TEXT,
@@ -194,6 +195,7 @@ ALTER TABLE operations ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES compa
 ALTER TABLE operations ADD COLUMN IF NOT EXISTS crop_history_id UUID;
 ALTER TABLE operations ADD COLUMN IF NOT EXISTS inventory_batch_id UUID;
 ALTER TABLE operations ADD COLUMN IF NOT EXISTS fertilization_plan_id UUID;
+ALTER TABLE operations ADD COLUMN IF NOT EXISTS phytosanitary_registration TEXT;
 
 CREATE TABLE IF NOT EXISTS harvests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -783,6 +785,14 @@ CREATE INDEX IF NOT EXISTS idx_phytosanitary_uses_label
   ON phytosanitary_authorized_uses (label_id);
 CREATE INDEX IF NOT EXISTS idx_phytosanitary_uses_adversities
   ON phytosanitary_authorized_uses USING GIN (adversities);
+
+ALTER TABLE operations
+  DROP CONSTRAINT IF EXISTS operations_phytosanitary_registration_fkey;
+ALTER TABLE operations
+  ADD CONSTRAINT operations_phytosanitary_registration_fkey
+  FOREIGN KEY (phytosanitary_registration) REFERENCES phytosanitary_products(num_registration) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_operations_phytosanitary_registration
+  ON operations(phytosanitary_registration);
 
 ALTER TABLE phytosanitary_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE phytosanitary_sync_runs ENABLE ROW LEVEL SECURITY;

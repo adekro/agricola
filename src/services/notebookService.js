@@ -394,13 +394,25 @@ export const notebookService = {
     return this.getProducts(farmland.company_id);
   },
 
-  async isPhytosanitaryAuthorizedForCrop(productName, cropTerm) {
-    if (!productName?.trim() || !cropTerm?.trim()) return null;
-
-    const { data: catalogueProducts, error: productError } = await supabase
+  async getPhytosanitaryProducts() {
+    const { data, error } = await supabase
       .from("phytosanitary_products")
-      .select("num_registration, current_label_id")
-      .ilike("name", productName.trim());
+      .select("num_registration, name, administrative_status, is_active")
+      .order("name");
+    if (error) throw error;
+    return data || [];
+  },
+
+  async isPhytosanitaryAuthorizedForCrop({ registration = "", productName = "" }, cropTerm) {
+    if ((!registration?.trim() && !productName?.trim()) || !cropTerm?.trim()) return null;
+
+    let productQuery = supabase
+      .from("phytosanitary_products")
+      .select("num_registration, current_label_id");
+    productQuery = registration.trim()
+      ? productQuery.eq("num_registration", registration.trim())
+      : productQuery.ilike("name", productName.trim());
+    const { data: catalogueProducts, error: productError } = await productQuery;
     if (productError) throw productError;
     if (!catalogueProducts?.length) return null;
 
@@ -410,6 +422,7 @@ export const notebookService = {
         String(product.current_label_id || ""),
       ]),
     );
+
     const { data: labels, error: labelError } = await supabase
       .from("phytosanitary_labels")
       .select("num_registration, ministry_label_id, phytosanitary_authorized_uses!inner(crop_name)")
@@ -516,7 +529,7 @@ export const notebookService = {
   async getOperations(filters = {}) {
     let query = supabase
       .from("operations")
-      .select("*, farmland:farmland_id(id, type, area, owner_display_name, current_crop), crop_entry:crop_history_id(id, crop, agea_code, agea_label, year, is_terminated), product:product_id(id, name, category, company_id), batch:inventory_batch_id(id, batch_number, expiry_date), company:company_id(id, name)")
+      .select("*, farmland:farmland_id(id, type, area, owner_display_name, current_crop), crop_entry:crop_history_id(id, crop, agea_code, agea_label, year, is_terminated), product:product_id(id, name, category, company_id), phytosanitary:phytosanitary_registration(num_registration, name), batch:inventory_batch_id(id, batch_number, expiry_date), company:company_id(id, name)")
       .order("operation_date", { ascending: false });
 
     if (filters.farmland_id) query = query.eq("farmland_id", filters.farmland_id);

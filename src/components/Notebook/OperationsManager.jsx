@@ -51,6 +51,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
   const routePreset = location.state || {};
   const [operations, setOperations] = useState([]);
   const [products, setProducts] = useState([]);
+  const [phytosanitaryProducts, setPhytosanitaryProducts] = useState([]);
   const [batches, setBatches] = useState([]);
   const [cropHistory, setCropHistory] = useState([]);
   const [cropAuthorization, setCropAuthorization] = useState(null);
@@ -68,6 +69,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
     crop: "",
     operator: "",
     product_id: "",
+    phytosanitary_registration: "",
     inventory_batch_id: "",
     quantity: "",
     unit_of_measure: "",
@@ -106,6 +108,15 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
     }
   };
 
+  const fetchPhytosanitaryProducts = async () => {
+    try {
+      setPhytosanitaryProducts(await notebookService.getPhytosanitaryProducts());
+    } catch (error) {
+      console.error("Error fetching phytosanitary products:", error);
+      setPhytosanitaryProducts([]);
+    }
+  };
+
   const fetchBatches = async (companyId = null) => {
     if (!companyId) {
       setBatches([]);
@@ -124,6 +135,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
   useEffect(() => {
     fetchOperations();
     fetchProducts();
+    fetchPhytosanitaryProducts();
   }, []);
 
   useEffect(() => {
@@ -176,14 +188,14 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
 
   useEffect(() => {
     const checkCropAuthorization = async () => {
-      const product = products.find((item) => item.id === formData.product_id);
+      const inventoryProduct = products.find((item) => item.id === formData.product_id);
       const crop = cropHistory.find((item) => item.id === formData.crop_history_id);
       const cropLabel = crop?.agea_label || crop?.crop || "";
       const cropTerm = cropLabel.split(" - ").pop().trim().split(/\s+/)[0];
 
       if (
         formData.type !== "Trattamento fitosanitario" ||
-        product?.category !== "Fitosanitario" ||
+        (!formData.phytosanitary_registration && !inventoryProduct?.name) ||
         !cropTerm
       ) {
         setCropAuthorization(null);
@@ -193,7 +205,10 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
       try {
         setCropAuthorization("loading");
         const isAuthorized = await notebookService.isPhytosanitaryAuthorizedForCrop(
-          product.name,
+          {
+            registration: formData.phytosanitary_registration,
+            productName: inventoryProduct?.name,
+          },
           cropTerm,
         );
         setCropAuthorization(isAuthorized === null ? "unavailable" : isAuthorized);
@@ -203,7 +218,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
       }
     };
     checkCropAuthorization();
-  }, [cropHistory, formData.crop_history_id, formData.product_id, formData.type, products]);
+  }, [cropHistory, formData.crop_history_id, formData.phytosanitary_registration, formData.product_id, formData.type, products]);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => {
@@ -228,6 +243,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
           crop_history_id: "",
           inventory_batch_id: "",
           product_id: "",
+          phytosanitary_registration: "",
         }));
       }
     }
@@ -241,6 +257,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
         crop: "",
         inventory_batch_id: "",
         product_id: "",
+        phytosanitary_registration: "",
       }));
     }
 
@@ -248,6 +265,29 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
       setFormData((prev) => ({
         ...prev,
         product_id: value,
+        phytosanitary_registration: "",
+        inventory_batch_id: "",
+      }));
+    }
+
+    if (name === "type") {
+      setFormData((prev) => ({
+        ...prev,
+        type: value,
+        product_id: value === "Trattamento fitosanitario" ? "" : prev.product_id,
+        phytosanitary_registration:
+          value === "Trattamento fitosanitario"
+            ? prev.phytosanitary_registration
+            : "",
+        inventory_batch_id: value === "Trattamento fitosanitario" ? "" : prev.inventory_batch_id,
+      }));
+    }
+
+    if (name === "phytosanitary_registration") {
+      setFormData((prev) => ({
+        ...prev,
+        phytosanitary_registration: value,
+        product_id: "",
         inventory_batch_id: "",
       }));
     }
@@ -270,6 +310,9 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
   const relevantProducts = formData.company_id
     ? products.filter((product) => product.company_id === formData.company_id)
     : products;
+  const inventoryPhytosanitaryProducts = formData.company_id
+    ? relevantProducts.filter((product) => product.category === "Fitosanitario")
+    : [];
   const relevantBatches = batches.filter(
     (batch) => !formData.product_id || batch.product_id === formData.product_id,
   );
@@ -324,6 +367,15 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
       }
 
       if (
+        formData.type === "Trattamento fitosanitario" &&
+        !formData.phytosanitary_registration &&
+        !formData.product_id
+      ) {
+        setFormError("Per un trattamento fitosanitario devi selezionare un prodotto.");
+        return;
+      }
+
+      if (
         (formData.type === "Trattamento fitosanitario" ||
           formData.type === "Concimazione") &&
         formData.product_id &&
@@ -337,6 +389,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
         ...formData,
         company_id: formData.company_id || null,
         crop_history_id: formData.crop_history_id || null,
+        phytosanitary_registration: formData.phytosanitary_registration || null,
         inventory_batch_id: formData.inventory_batch_id || null,
         fertilization_plan_id: formData.fertilization_plan_id || null,
         quantity: formData.quantity ? parseFloat(formData.quantity) : null,
@@ -562,7 +615,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
                   {op.farmland?.owner_display_name || "N/A"}
                 </TableCell>
                 <TableCell>{op.crop || "-"}</TableCell>
-                <TableCell>{op.product?.name || "-"}</TableCell>
+                <TableCell>{op.phytosanitary?.name || op.product?.name || "-"}</TableCell>
                 <TableCell>
                   {op.quantity ? `${op.quantity} ${op.unit_of_measure}` : "-"}
                 </TableCell>
@@ -704,21 +757,62 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
 
               <Divider>Dettagli Prodotto e Quantità</Divider>
               <Stack direction="row" spacing={2}>
-                <TextField
-                  select
-                  name="product_id"
-                  label="Prodotto Utilizzato"
-                  value={formData.product_id}
-                  onChange={handleChange}
-                  fullWidth
-                >
-                  <MenuItem value="">Nessun prodotto</MenuItem>
-                  {relevantProducts.map((p) => (
-                    <MenuItem key={p.id} value={p.id}>
-                      {p.name} ({p.category})
-                    </MenuItem>
-                  ))}
-                </TextField>
+                {formData.type === "Trattamento fitosanitario" ? (
+                  inventoryPhytosanitaryProducts.length > 0 ? (
+                    <TextField
+                      select
+                      name="product_id"
+                      label="Prodotto fitosanitario di magazzino"
+                      value={formData.product_id}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                    >
+                      <MenuItem value="">Seleziona prodotto fitosanitario</MenuItem>
+                      {inventoryPhytosanitaryProducts.map((product) => (
+                        <MenuItem key={product.id} value={product.id}>
+                          {product.name}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  ) : (
+                    <TextField
+                      select
+                      name="phytosanitary_registration"
+                      label="Prodotto fitosanitario da etichetta"
+                      value={formData.phytosanitary_registration}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                    >
+                      <MenuItem value="">Seleziona prodotto fitosanitario</MenuItem>
+                      {phytosanitaryProducts.map((product) => (
+                        <MenuItem
+                          key={product.num_registration}
+                          value={product.num_registration}
+                        >
+                          {product.name} ({product.num_registration})
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  )
+                ) : (
+                  <TextField
+                    select
+                    name="product_id"
+                    label="Prodotto Utilizzato"
+                    value={formData.product_id}
+                    onChange={handleChange}
+                    fullWidth
+                  >
+                    <MenuItem value="">Nessun prodotto</MenuItem>
+                    {relevantProducts.map((p) => (
+                      <MenuItem key={p.id} value={p.id}>
+                        {p.name} ({p.category})
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                )}
                 <TextField
                   name="quantity"
                   label="Quantità"
