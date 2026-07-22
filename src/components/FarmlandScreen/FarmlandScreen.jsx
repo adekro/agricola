@@ -359,12 +359,14 @@ const FarmlandScreen = (props) => {
   }, [companyDraft.name, createCompany, findCompanyByName, selectCompany]);
 
   const onSaveFarmHandler = useCallback(() => {
+    const company = findCompanyByName(owner);
     const drawnGeometry = coordinates
       ? { type: "Polygon", coordinates: [coordinates] }
       : null;
     const newFarmland = {
       ...formik.values,
       ownerDisplayName: owner.trim(),
+      company_id: company?.id || null,
       coordinates: terrainDeleted
         ? null
         : coordinates || farmland?.coordinates || null,
@@ -384,8 +386,8 @@ const FarmlandScreen = (props) => {
       setError("Il nome del terreno è obbligatorio.");
       return;
     }
-    if (!newFarmland.area || !newFarmland.perimeter) {
-      setError("Please fill all the required data");
+    if (!company) {
+      setError("Seleziona un'azienda esistente o creane una.");
       return;
     }
     if (farmland) {
@@ -397,6 +399,7 @@ const FarmlandScreen = (props) => {
     handleOnClose();
   }, [
     owner,
+    findCompanyByName,
     coordinates,
     farmland,
     farmlandId,
@@ -1150,7 +1153,7 @@ const FarmlandScreen = (props) => {
                     option.id === value.id
                   }
                   renderInput={(params) => (
-                    <TextField {...params} label="Company name" />
+                    <TextField {...params} label="Company name" required />
                   )}
                   renderOption={(renderProps, option) => (
                     <li {...renderProps} key={option.id}>
