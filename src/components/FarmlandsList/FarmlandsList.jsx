@@ -16,14 +16,15 @@ const FarmlandsList = (props) => {
       try {
         const entries = await Promise.all(
           farmlands.map(async (farmland) => {
-            const [summary, operations] = await Promise.all([
+            const [summary, crops, operations] = await Promise.all([
               notebookService.getFarmlandSummary(farmland.id),
+              notebookService.getCropHistory(farmland.id),
               notebookService.getFarmlandOperations(farmland.id),
             ]);
             return [
               farmland.id,
               {
-                crops: summary.crops.slice(0, 5),
+                crops: crops.slice(0, 5),
                 annualSau: summary.annualSau,
                 treatments: operations
                   .filter((operation) => operation.type === "Trattamento fitosanitario")
