@@ -26,6 +26,8 @@ import {
   Stack,
   CircularProgress,
   IconButton,
+  Checkbox,
+  FormControlLabel,
 } from "@mui/material";
 import { createFilterOptions } from "@mui/material/Autocomplete";
 import FullScreenDialog from "../UI/FullScreenDialog/FullScreenDialog";
@@ -72,14 +74,6 @@ const buildCurrentCropSummary = (entry) => {
   const code = String(entry.agea_code || "").trim();
   const label = String(entry.agea_label || entry.crop || "").trim();
   return code && label ? `${code} - ${label}` : label || code;
-};
-
-const formatCropPeriod = (entry) => {
-  const monthLabel =
-    monthOptions.find((item) => item.value === Number(entry?.month))?.label ||
-    "-";
-  const yearLabel = entry?.year || "-";
-  return `${monthLabel} ${yearLabel}`;
 };
 
 const FarmlandScreen = (props) => {
@@ -155,8 +149,7 @@ const FarmlandScreen = (props) => {
     area: "",
     month: new Date().getMonth() + 1,
     year: getCurrentYear(),
-    foglio: "",
-    mappale: "",
+    is_terminated: false,
     start_date: "",
     end_date: "",
     notes: "",
@@ -575,6 +568,7 @@ const FarmlandScreen = (props) => {
         area: Number.parseFloat(newCrop.area),
         month: Number.parseInt(newCrop.month, 10),
         year: Number.parseInt(newCrop.year, 10),
+        is_terminated: Boolean(newCrop.is_terminated),
       };
 
       await notebookService.saveCropHistory(entry);
@@ -612,8 +606,7 @@ const FarmlandScreen = (props) => {
         area: "",
         month: new Date().getMonth() + 1,
         year: getCurrentYear(),
-        foglio: "",
-        mappale: "",
+        is_terminated: false,
         start_date: "",
         end_date: "",
         notes: "",
@@ -1424,33 +1417,27 @@ const FarmlandScreen = (props) => {
                   <Table size="small">
                     <TableHead>
                       <TableRow>
-                        <TableCell>Codice AGEA</TableCell>
                         <TableCell>Coltura</TableCell>
-                        <TableCell>Superficie</TableCell>
-                        <TableCell>Mese/Anno</TableCell>
-                        <TableCell>Foglio</TableCell>
-                        <TableCell>Mappale</TableCell>
-                        <TableCell>SAU annuale</TableCell>
+                        <TableCell>SAU (ha)</TableCell>
+                        <TableCell>Anno</TableCell>
+                        <TableCell>Stato</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {cropHistory.map((h) => (
                         <TableRow key={h.id}>
-                          <TableCell>{h.agea_code || "-"}</TableCell>
                           <TableCell>{h.crop}</TableCell>
-                          <TableCell>{h.area || "-"}</TableCell>
-                          <TableCell>{formatCropPeriod(h)}</TableCell>
-                          <TableCell>{h.foglio || "-"}</TableCell>
-                          <TableCell>{h.mappale || "-"}</TableCell>
                           <TableCell>
                             {annualSau.find((item) => item.year === h.year)
                               ?.sau ?? "-"}
                           </TableCell>
+                          <TableCell>{h.year || "-"}</TableCell>
+                          <TableCell>{h.is_terminated ? "Terminata" : "Attiva"}</TableCell>
                         </TableRow>
                       ))}
                       {cropHistory.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={7} align="center">
+                          <TableCell colSpan={4} align="center">
                             Nessuno storico
                           </TableCell>
                         </TableRow>
@@ -1744,24 +1731,20 @@ const FarmlandScreen = (props) => {
               }
               helperText="Un solo valore per terreno e anno; un nuovo inserimento aggiorna quello esistente."
             />
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-              <TextField
-                label="Foglio"
-                fullWidth
-                value={newCrop.foglio}
-                onChange={(e) =>
-                  setNewCrop((prev) => ({ ...prev, foglio: e.target.value }))
-                }
-              />
-              <TextField
-                label="Mappale"
-                fullWidth
-                value={newCrop.mappale}
-                onChange={(e) =>
-                  setNewCrop((prev) => ({ ...prev, mappale: e.target.value }))
-                }
-              />
-            </Stack>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={newCrop.is_terminated}
+                  onChange={(e) =>
+                    setNewCrop((prev) => ({
+                      ...prev,
+                      is_terminated: e.target.checked,
+                    }))
+                  }
+                />
+              }
+              label="Coltura terminata"
+            />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
                 label="Inizio"

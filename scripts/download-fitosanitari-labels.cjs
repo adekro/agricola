@@ -431,6 +431,7 @@ const extractionSchema = {
           interval_min_days: { type: ["integer", "null"] },
           interval_max_days: { type: ["integer", "null"] },
           preharvest_interval_days: { type: ["integer", "null"] },
+          adversities: { type: "array", items: { type: "string" } },
           source_text: { type: ["string", "null"] },
           confidence: { type: "number", minimum: 0, maximum: 1 },
           ambiguous: { type: "boolean" },
@@ -438,6 +439,7 @@ const extractionSchema = {
         required: [
           "crop_name", "dose_min", "dose_max", "dose_unit", "max_treatments",
           "interval_min_days", "interval_max_days", "preharvest_interval_days",
+          "adversities",
           "source_text", "confidence", "ambiguous",
         ],
       },
@@ -454,7 +456,12 @@ function validateExtraction(value) {
     throw new Error("Risposta AI incompleta");
   }
   for (const use of value.authorized_uses) {
-    if (!use.crop_name || typeof use.confidence !== "number") {
+    if (
+      !use.crop_name ||
+      !Array.isArray(use.adversities) ||
+      use.adversities.some((adversity) => typeof adversity !== "string") ||
+      typeof use.confidence !== "number"
+    ) {
       throw new Error("Uso autorizzato AI non valido");
     }
   }
@@ -540,6 +547,8 @@ async function extractLabel(ocrText) {
           "Analizza il seguente testo OCR di un'etichetta fitosanitaria italiana.",
           "Estrai ogni coltura separatamente con dose minima/massima e unità originali,",
           "numero massimo di trattamenti, intervallo minimo/massimo e tempo di carenza.",
+          "Per ogni coltura estrai anche tutte le avversità indicate (insetti, infestanti e funghi),",
+          "come elenco di stringhe fedeli all'etichetta, senza normalizzarle o inventarle.",
           "Estrai il rame in g/kg solo quando ricavabile senza densità o assunzioni;",
           "altrimenti conserva valore e unità originali e marca ambiguous=true.",
           "Non inventare dati mancanti. source_text deve riportare il passaggio utile.",
@@ -631,6 +640,7 @@ async function saveExtraction(labelRecord, registrationNumber, labelId, pdfPath,
     interval_min_days: use.interval_min_days,
     interval_max_days: use.interval_max_days,
     preharvest_interval_days: use.preharvest_interval_days,
+    adversities: use.adversities,
     source_text: use.source_text,
     confidence: use.confidence,
     review_required: use.ambiguous,

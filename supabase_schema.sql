@@ -172,6 +172,7 @@ CREATE TABLE IF NOT EXISTS operations (
   operation_date TIMESTAMP WITH TIME ZONE NOT NULL,
   type TEXT CHECK (type IN ('Semina', 'Trapianto', 'Concimazione', 'Irrigazione', 'Trattamento fitosanitario', 'Diserbo', 'Potatura', 'Lavorazione del terreno', 'Raccolta', 'Altro')),
   farmland_id UUID REFERENCES farmlands(id) ON DELETE CASCADE,
+  crop_history_id UUID,
   company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
   crop TEXT,
   operator TEXT,
@@ -190,6 +191,7 @@ CREATE TABLE IF NOT EXISTS operations (
 );
 
 ALTER TABLE operations ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES companies(id) ON DELETE SET NULL;
+ALTER TABLE operations ADD COLUMN IF NOT EXISTS crop_history_id UUID;
 ALTER TABLE operations ADD COLUMN IF NOT EXISTS inventory_batch_id UUID;
 ALTER TABLE operations ADD COLUMN IF NOT EXISTS fertilization_plan_id UUID;
 
@@ -320,6 +322,7 @@ CREATE TABLE IF NOT EXISTS crop_history (
   agea_code TEXT,
   agea_label TEXT,
   area NUMERIC,
+  is_terminated BOOLEAN NOT NULL DEFAULT FALSE,
   month INTEGER,
   year INTEGER,
   foglio TEXT,
@@ -337,6 +340,7 @@ ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS crop TEXT;
 ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS agea_code TEXT;
 ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS agea_label TEXT;
 ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS area NUMERIC;
+ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS is_terminated BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS month INTEGER;
 ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS year INTEGER;
 ALTER TABLE crop_history ADD COLUMN IF NOT EXISTS foglio TEXT;
@@ -362,6 +366,12 @@ WHERE crop_history.id = duplicate_import_keys.id
   AND duplicate_import_keys.duplicate_number > 1;
 CREATE UNIQUE INDEX IF NOT EXISTS crop_history_import_key_uidx
   ON crop_history(import_key) WHERE import_key IS NOT NULL;
+ALTER TABLE operations
+  DROP CONSTRAINT IF EXISTS operations_crop_history_id_fkey;
+ALTER TABLE operations
+  ADD CONSTRAINT operations_crop_history_id_fkey
+  FOREIGN KEY (crop_history_id) REFERENCES crop_history(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_operations_crop_history_id ON operations(crop_history_id);
 
 CREATE TABLE IF NOT EXISTS cadastral_identifiers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -537,14 +547,6 @@ BEGIN
           created_farmlands := created_farmlands + 1;
           created_current := TRUE;
         END IF;
-      END IF;
-
-      IF EXISTS (
-        SELECT 1 FROM crop_history
-        WHERE farmland_id = target_farmland_id AND year = campaign_year
-          AND COALESCE(NULLIF(agea_code, ''), crop) <> COALESCE(NULLIF(row_data->>'ageaCode', ''), row_data->>'crop')
-      ) THEN
-        RAISE EXCEPTION 'Il terreno selezionato ha già una coltura diversa nella campagna %', campaign_year;
       END IF;
 
       SELECT EXISTS (SELECT 1 FROM farmland_cadastral_identifiers WHERE farmland_id = target_farmland_id AND cadastral_identifier_id = cadastral_id) INTO link_exists;
@@ -763,11 +765,15 @@ CREATE TABLE IF NOT EXISTS phytosanitary_authorized_uses (
   interval_min_days INTEGER,
   interval_max_days INTEGER,
   preharvest_interval_days INTEGER,
+  adversities TEXT[] NOT NULL DEFAULT '{}'::TEXT[],
   source_text TEXT,
   confidence NUMERIC CHECK (confidence BETWEEN 0 AND 1),
   review_required BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+ALTER TABLE phytosanitary_authorized_uses
+  ADD COLUMN IF NOT EXISTS adversities TEXT[] NOT NULL DEFAULT '{}'::TEXT[];
 
 CREATE INDEX IF NOT EXISTS idx_phytosanitary_products_active
   ON phytosanitary_products (is_active);
@@ -775,6 +781,8 @@ CREATE INDEX IF NOT EXISTS idx_phytosanitary_labels_registration
   ON phytosanitary_labels (num_registration, ministry_label_id);
 CREATE INDEX IF NOT EXISTS idx_phytosanitary_uses_label
   ON phytosanitary_authorized_uses (label_id);
+CREATE INDEX IF NOT EXISTS idx_phytosanitary_uses_adversities
+  ON phytosanitary_authorized_uses USING GIN (adversities);
 
 ALTER TABLE phytosanitary_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE phytosanitary_sync_runs ENABLE ROW LEVEL SECURITY;

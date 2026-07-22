@@ -52,6 +52,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
   const [operations, setOperations] = useState([]);
   const [products, setProducts] = useState([]);
   const [batches, setBatches] = useState([]);
+  const [cropHistory, setCropHistory] = useState([]);
   const [formError, setFormError] = useState("");
   const [tabValue, setTabValue] = useState(0); // 0: Tutte, 1: Solo Trattamenti, 2: Agenda
   const { farmlands } = useFarmlands();
@@ -62,6 +63,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
     type: initialType || routePreset.initialType || "Lavorazione del terreno",
     farmland_id: initialFarmlandId || routePreset.initialFarmlandId || "",
     company_id: "",
+    crop_history_id: "",
     crop: "",
     operator: "",
     product_id: "",
@@ -154,6 +156,22 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
     fetchBatches(farm.company_id);
   }, [farmlands, formData.farmland_id]);
 
+  useEffect(() => {
+    const fetchCropHistory = async () => {
+      if (!formData.farmland_id) {
+        setCropHistory([]);
+        return;
+      }
+      try {
+        setCropHistory(await notebookService.getCropHistory(formData.farmland_id));
+      } catch (error) {
+        console.error("Error fetching crop history:", error);
+        setCropHistory([]);
+      }
+    };
+    fetchCropHistory();
+  }, [formData.farmland_id]);
+
   const handleOpen = () => setOpen(true);
   const handleClose = () => {
     setFormError("");
@@ -174,6 +192,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
           farmland_id: value,
           company_id: farm.company_id || "",
           crop: farm.currentCrop || "",
+          crop_history_id: "",
           inventory_batch_id: "",
           product_id: "",
         }));
@@ -185,6 +204,15 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
         ...prev,
         product_id: value,
         inventory_batch_id: "",
+      }));
+    }
+
+    if (name === "crop_history_id") {
+      const cropEntry = cropHistory.find((entry) => entry.id === value);
+      setFormData((prev) => ({
+        ...prev,
+        crop_history_id: value,
+        crop: cropEntry?.crop || "",
       }));
     }
   };
@@ -232,6 +260,14 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
       }
 
       if (
+        formData.type === "Trattamento fitosanitario" &&
+        !formData.crop_history_id
+      ) {
+        setFormError("Per un trattamento fitosanitario devi selezionare una coltura.");
+        return;
+      }
+
+      if (
         (formData.type === "Trattamento fitosanitario" ||
           formData.type === "Concimazione") &&
         formData.product_id &&
@@ -244,6 +280,7 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
       const savedOperation = await notebookService.saveOperation({
         ...formData,
         company_id: formData.company_id || null,
+        crop_history_id: formData.crop_history_id || null,
         inventory_batch_id: formData.inventory_batch_id || null,
         fertilization_plan_id: formData.fertilization_plan_id || null,
         quantity: formData.quantity ? parseFloat(formData.quantity) : null,
@@ -546,13 +583,33 @@ const OperationsManager = ({ initialFarmlandId = "", initialType = "" }) => {
                     </MenuItem>
                   ))}
                 </TextField>
-                <TextField
-                  name="crop"
-                  label="Coltura"
-                  value={formData.crop}
-                  onChange={handleChange}
-                  fullWidth
-                />
+                {formData.type === "Trattamento fitosanitario" ? (
+                  <TextField
+                    select
+                    name="crop_history_id"
+                    label="Coltura"
+                    value={formData.crop_history_id}
+                    onChange={handleChange}
+                    fullWidth
+                    required
+                    disabled={!formData.farmland_id}
+                  >
+                    <MenuItem value="">Seleziona coltura</MenuItem>
+                    {cropHistory.map((entry) => (
+                      <MenuItem key={entry.id} value={entry.id}>
+                        {entry.crop} ({entry.year}){entry.is_terminated ? " — terminata" : ""}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                ) : (
+                  <TextField
+                    name="crop"
+                    label="Coltura"
+                    value={formData.crop}
+                    onChange={handleChange}
+                    fullWidth
+                  />
+                )}
               </Stack>
 
               {selectedFarmland && (

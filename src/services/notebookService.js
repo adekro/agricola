@@ -486,7 +486,7 @@ export const notebookService = {
   async getOperations(filters = {}) {
     let query = supabase
       .from("operations")
-      .select("*, farmland:farmland_id(id, type, area, owner_display_name, current_crop), product:product_id(id, name, category, company_id), batch:inventory_batch_id(id, batch_number, expiry_date), company:company_id(id, name)")
+      .select("*, farmland:farmland_id(id, type, area, owner_display_name, current_crop), crop_entry:crop_history_id(id, crop, agea_code, agea_label, year, is_terminated), product:product_id(id, name, category, company_id), batch:inventory_batch_id(id, batch_number, expiry_date), company:company_id(id, name)")
       .order("operation_date", { ascending: false });
 
     if (filters.farmland_id) query = query.eq("farmland_id", filters.farmland_id);

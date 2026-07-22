@@ -15,6 +15,7 @@ Questo file è la lista operativa per realizzare quanto descritto in `RelazioneC
 
 <!-- Aggiungere qui le nuove istruzioni, mantenendole in ordine cronologico e indicando la voce della roadmap a cui si riferiscono. -->
 
+- [ ] Riordinare la schermata Terreni e il quaderno di campagna: formalizzare la relazione molti-a-molti fra terreni e mappe catastali (un terreno puo essere collegato a piu mappe catastali e una mappa catastale a piu terreni); modellare la coltura come entita del terreno con anno, SAU e flag "coltura terminata", senza limitarla a una sola coltura annua e senza foglio o mappale; riordinare la griglia delle colture per coltura, SAU e anno; rendere trattamenti fitosanitari e piani di fertilizzazione sottotabelle della coltura (rinviando l'implementazione del piano di fertilizzazione); aggiungere dal menu annuale l'inserimento di un trattamento con selezione azienda, terreno, coltura, prodotto fitosanitario e quantita; mostrare alert non bloccanti sulla compatibilita prodotto-coltura e sul rame annuo per ettaro, definendo prima soglia, formula e fonte normativa del rame.
 - [x] Aggiungere nella griglia fitosanitari il collegamento all'etichetta PDF ministeriale solo per i prodotti attivi.
 - [x] Aggiungere in Farmland il layer ZVN Lombardia sincronizzato da fonte ufficiale in Supabase e rimuovere le mappe base CartoDB, MapTiler e Thunderforest.
 - [x] Distinguere in Farmland i mappali catastali arancioni dal terreno effettivo blu e consentire il disegno della geometria agronomica.
@@ -112,6 +113,7 @@ Questo file è la lista operativa per realizzare quanto descritto in `RelazioneC
 - [x] Download della singola etichetta PDF tramite proxy ministeriale per i soli prodotti attivi (FitosanitariScreen)
 - [x] Griglia fitosanitari da Supabase con dati estratti, filtri e preferenze colonne in localStorage
 - [x] Script Node in comandi separati per download PDF, conversione immagini, OCR locale ed estrazione AI
+- [x] Indicizzazione delle avversità estratte dall'etichetta per ciascuna coltura autorizzata
 - [x] Controlli automatici (tempi di carenza, dose per ettaro nei trattamenti) (OperationsManager calcola dose attesa per appezzamento, segnala scostamenti e mostra la fine del tempo di carenza)
 - [x] Registrazione trattamenti con costi (OperationsManager - trattamento fitosanitario)
 - [x] Piano di fertilizzazione (modulo dedicato in FarmlandScreen con righe collegate all'appezzamento e prefill dall'ultima analisi terreno)
